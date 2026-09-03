@@ -15,14 +15,17 @@ using LeadsManagement.Api.Services.Implementations;
 using LeadsManagement.Api.Services.Interfaces;
 using LeadsManagement.Api.Services.Strategies;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Configure port for Render.com (Render supplies PORT env var)
-var renderPort = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrWhiteSpace(renderPort))
+try
 {
-    builder.WebHost.UseUrls($"http://+:{renderPort}");
-}
+    Console.WriteLine("[STARTUP] Initializing Leads Management Backend API...");
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure port for Render.com (Render supplies PORT env var)
+    var renderPort = Environment.GetEnvironmentVariable("PORT");
+    if (!string.IsNullOrWhiteSpace(renderPort))
+    {
+        builder.WebHost.UseUrls($"http://+:{renderPort}");
+    }
 
 // 1. Add Controllers with flexible JSON formatting
 builder.Services.AddControllers()
@@ -157,4 +160,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+Console.WriteLine("[STARTUP] Pipeline configured. Starting HTTP listener...");
 app.Run();
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[FATAL CRASH AT STARTUP]: {ex}");
+    throw;
+}

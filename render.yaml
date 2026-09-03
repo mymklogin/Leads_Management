@@ -8,6 +8,18 @@ services:
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      - key: DOTNET_EnableDiagnostics
+        value: "0"
+      - key: DOTNET_EnableWriteXorExecute
+        value: "0"
+      - key: GLIBC_TUNABLES
+        value: "glibc.pthread.rseq=0"
+      - key: DOTNET_TieredPGO
+        value: "0"
+      - key: DOTNET_SYSTEM_GLOBALIZATION_INVARIANT
+        value: "1"
+      - key: DOTNET_GCHeapHardLimitPercent
+        value: "75"
       - key: ConnectionStrings__PostgreSqlConnection
         value: Host=ep-bitter-smoke-b3m1hg9u-pooler.c-4.ap-southeast-1.aws.neon.tech;Port=5432;Database=neondb;Username=neondb_owner;Password=npg_FzriwB8AoQ0X;SSL Mode=Require;Trust Server Certificate=true;
 

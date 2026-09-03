@@ -10,7 +10,7 @@ WORKDIR /app
 COPY src/LeadsManagement.Api/LeadsManagement.Api.csproj src/LeadsManagement.Api/
 RUN dotnet restore src/LeadsManagement.Api/LeadsManagement.Api.csproj
 
-# Copy only src directory
+# Copy only src directory (ignoring bin/obj via .dockerignore)
 COPY src/ src/
 
 # Build and publish release
@@ -21,18 +21,16 @@ RUN dotnet publish LeadsManagement.Api.csproj -c Release -o /app/publish /p:UseA
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
-# Install libicu & ca-certificates for Linux globalization stability
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libicu72 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY --from=build /app/publish .
 
-# Environment settings for Render.com
+# Essential container environment flags for Render.com virtualized sandbox (Prevents SIGSEGV status 139)
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_EnableDiagnostics=0
-ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV DOTNET_EnableWriteXorExecute=0
+ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
+ENV DOTNET_TieredPGO=0
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+ENV DOTNET_GCHeapHardLimitPercent=75
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "LeadsManagement.Api.dll"]
