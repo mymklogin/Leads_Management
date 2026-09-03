@@ -175,7 +175,7 @@ INSERT INTO users (
 )
 VALUES (
     'superadmin', 'superadmin@expressivr.com',
-    'Nb0CbHq7X3cLPmPoXxoKsA==:FU5trpIvjozUe+eoc/IUQ4cCSBL8hya/sX2HP7zQTfI=',
+    'JqMuDjIJeWSe+AaCirDtXA==:AvugawUe0x8H9Ml1wRg7BYOl2n5iYzA6IyAEdLiFYSA=',
     'Super Administrator', '9999900000',
     1, NULL, 100000, 100000, 100000, 100000, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
