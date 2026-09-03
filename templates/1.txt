@@ -1,0 +1,247 @@
+
+TEMPLATE ID - 1 (DTMF Campaign)
+--------
+{
+    "userId":50002,
+    "templateId":1,
+    "dtmf":"1",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "welcomePId":0,
+    "menuPId":240,
+    "thanksPId":1203,
+    "wrongInputPId":1204,
+    "noInputPId":1205,
+    "rePrompt":1,
+    "countryCode":"91",
+    "menuWaitTime":3,
+    "retries":0,
+    "retryInterval":0,
+    "otp":0,
+    "sms" : "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+
+logic
+
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleDtmfCampaignWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    // ---------------------------------------------------------
+    // Validate Payload
+    // ---------------------------------------------------------
+
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType =
+        payload.EventType?.Trim().ToUpperInvariant() ?? "";
+
+    string pressedKey =
+        payload.PressedKey?.Trim() ?? "";
+
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Find Existing Lead
+    // ---------------------------------------------------------
+
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(
+            x => x.Mobile == payload.Mobile,
+            cancellationToken);
+
+    string leadStatus;
+
+    // ---------------------------------------------------------
+    // EVENT LOGIC
+    // ---------------------------------------------------------
+
+    switch (eventType)
+    {
+        // -----------------------------------------------------
+        // CALL CONNECTED
+        // -----------------------------------------------------
+
+        case "CONNECTED_CALLS":
+
+            leadStatus = "DTMF Call Connected";
+
+            break;
+
+
+        // -----------------------------------------------------
+        // DTMF
+        // -----------------------------------------------------
+
+        case "DTMF":
+
+            if (pressedKey == "1")
+            {
+                leadStatus =
+                    "Interested Lead - Pressed 1";
+            }
+            else if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                leadStatus =
+                    $"Interactive Lead - Other Key Pressed ({pressedKey})";
+            }
+            else
+            {
+                leadStatus =
+                    "DTMF Event - No Key Captured";
+            }
+
+            break;
+
+
+        // -----------------------------------------------------
+        // HANGUP
+        // -----------------------------------------------------
+
+        case "HANGUP":
+
+            // IMPORTANT:
+            // HANGUP ke time sirf HANGUP webhook ka actual
+            // pressedKey use hoga.
+            //
+            // DB se PressedDtmf read karke fallback nahi hoga.
+
+            if (pressedKey == "1" && duration > 30)
+            {
+                leadStatus =
+                    "Super Hot Lead - Pressed 1 & Long Call";
+            }
+            else if (pressedKey == "1")
+            {
+                leadStatus =
+                    "Interested Lead - Pressed 1";
+            }
+            else if (duration >= 25)
+            {
+                leadStatus =
+                    "Warm Lead - Long Call Without Target Key";
+            }
+            else if (duration >= 5)
+            {
+                leadStatus =
+                    "Cold Lead - Short Interaction";
+            }
+            else
+            {
+                leadStatus =
+                    "Dropped / Ignored";
+            }
+
+            break;
+
+
+        // -----------------------------------------------------
+        // Unsupported Event
+        // -----------------------------------------------------
+
+        default:
+
+            return BadRequest(new
+            {
+                status = "error",
+                message =
+                    $"Unsupported event type: {payload.EventType}"
+            });
+    }
+
+    // ---------------------------------------------------------
+    // CREATE / UPDATE LEAD
+    // ---------------------------------------------------------
+
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+            CallDuration = duration,
+
+            PressedDtmf =
+                !string.IsNullOrWhiteSpace(pressedKey)
+                    ? pressedKey
+                    : null,
+
+            LastEventType = eventType,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        lead.LeadStatus = leadStatus;
+        lead.LastEventType = eventType;
+        lead.UpdatedAt = DateTime.UtcNow;
+
+        // -----------------------------------------------------
+        // DTMF Event
+        // -----------------------------------------------------
+
+        if (eventType == "DTMF" &&
+            !string.IsNullOrWhiteSpace(pressedKey))
+        {
+            lead.PressedDtmf = pressedKey;
+        }
+
+        // -----------------------------------------------------
+        // HANGUP
+        // -----------------------------------------------------
+
+        if (eventType == "HANGUP")
+        {
+            lead.CallDuration = duration;
+
+            // Sirf HANGUP ke actual pressedKey ko save karo.
+            // Blank hai to purana DTMF overwrite nahi hoga.
+            if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                lead.PressedDtmf = pressedKey;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Save
+    // ---------------------------------------------------------
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    // ---------------------------------------------------------
+    // Response
+    // ---------------------------------------------------------
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 1,
+        eventType,
+        pressedKey,
+        duration,
+        leadStatus
+    });
+}

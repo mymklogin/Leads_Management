@@ -1,0 +1,288 @@
+TEMPLATE ID - 5 (OTP Case)
+-----------
+{
+    "userId":50002,
+    "templateId":5,
+    "dtmf":"",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "welcomePId":240,
+    "menuPId":0,
+    "thanksPId":0,
+    "wrongInputPId":0,
+    "noInputPId":0,
+    "rePrompt":0,
+    "countryCode":"91",
+    "menuWaitTime":0,
+    "retries":0,
+    "retryInterval":0,
+    "otp":"123456",
+    "sms" : "{}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+
+logic
+
+```csharp
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleOtpWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType =
+        payload.EventType?.Trim().ToUpperInvariant() ?? "";
+
+    string pressedKey =
+        payload.PressedKey?.Trim() ?? "";
+
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(payload.Mobile))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Mobile number is required."
+        });
+    }
+
+    string cacheKey = $"OTP_DTMF_{payload.Mobile}";
+
+    string? temporaryOtpInput = null;
+
+    // ---------------------------------------------------------
+    // CONNECTED CALL
+    // ---------------------------------------------------------
+
+    if (eventType == "CONNECTED_CALLS")
+    {
+        return Ok(new
+        {
+            status = "success",
+            templateId = 5,
+            eventType,
+            pressedKey,
+            duration,
+            message = "OTP call connected."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // DTMF
+    //
+    // OTP digits are temporarily stored.
+    // No DB save here.
+    // ---------------------------------------------------------
+
+    if (eventType == "DTMF")
+    {
+        if (!string.IsNullOrWhiteSpace(pressedKey))
+        {
+            _cache.Set(
+                cacheKey,
+                pressedKey,
+                TimeSpan.FromMinutes(30));
+        }
+
+        return Ok(new
+        {
+            status = "success",
+            templateId = 5,
+            eventType,
+            pressedKey,
+            duration,
+            message = "OTP DTMF temporarily stored."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Only HANGUP performs final DB save
+    // ---------------------------------------------------------
+
+    if (eventType != "HANGUP")
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message =
+                $"Unsupported event type: {payload.EventType}"
+        });
+    }
+
+    // ---------------------------------------------------------
+    // HANGUP
+    //
+    // If HANGUP contains PressedKey, use it.
+    // Otherwise use temporarily stored DTMF.
+    // ---------------------------------------------------------
+
+    if (!string.IsNullOrWhiteSpace(pressedKey))
+    {
+        temporaryOtpInput = pressedKey;
+    }
+    else
+    {
+        _cache.TryGetValue(
+            cacheKey,
+            out temporaryOtpInput);
+    }
+
+    temporaryOtpInput =
+        temporaryOtpInput?.Trim() ?? "";
+
+    // ---------------------------------------------------------
+    // OTP FINAL STATUS
+    // ---------------------------------------------------------
+
+    string leadStatus;
+
+    if (string.IsNullOrWhiteSpace(temporaryOtpInput))
+    {
+        if (duration < 5)
+        {
+            leadStatus =
+                "OTP Call Dropped Immediately";
+        }
+        else if (duration < 10)
+        {
+            leadStatus =
+                "OTP Intro Drop";
+        }
+        else if (duration < 15)
+        {
+            leadStatus =
+                "OTP Call - No OTP Input";
+        }
+        else if (duration < 30)
+        {
+            leadStatus =
+                "OTP Verification Attempt - No Input";
+        }
+        else
+        {
+            leadStatus =
+                "OTP Call Completed - No OTP Input";
+        }
+    }
+    else if (duration < 5)
+    {
+        leadStatus =
+            $"OTP Input Received - Key {temporaryOtpInput} - Immediate Drop";
+    }
+    else if (duration < 15)
+    {
+        leadStatus =
+            $"OTP Verification Attempt - Input {temporaryOtpInput}";
+    }
+    else if (duration < 30)
+    {
+        leadStatus =
+            $"OTP Verification In Progress - Input {temporaryOtpInput}";
+    }
+    else if (duration < 60)
+    {
+        leadStatus =
+            $"OTP Verification Completed - Input {temporaryOtpInput}";
+    }
+    else
+    {
+        leadStatus =
+            $"OTP Verification - Long Engagement - Input {temporaryOtpInput}";
+    }
+
+    // ---------------------------------------------------------
+    // FIND LEAD
+    //
+    // DB lookup only happens at HANGUP.
+    // ---------------------------------------------------------
+
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(
+            x => x.Mobile == payload.Mobile,
+            cancellationToken);
+
+    // ---------------------------------------------------------
+    // FINAL DB SAVE
+    // ---------------------------------------------------------
+
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+            CallDuration = duration,
+
+            PressedDtmf =
+                string.IsNullOrWhiteSpace(temporaryOtpInput)
+                    ? null
+                    : temporaryOtpInput,
+
+            LastEventType = "HANGUP",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        lead.LeadStatus = leadStatus;
+        lead.CallDuration = duration;
+        lead.LastEventType = "HANGUP";
+        lead.UpdatedAt = DateTime.UtcNow;
+
+        lead.PressedDtmf =
+            string.IsNullOrWhiteSpace(temporaryOtpInput)
+                ? null
+                : temporaryOtpInput;
+    }
+
+    // ---------------------------------------------------------
+    // FINAL SAVE
+    // ---------------------------------------------------------
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    // ---------------------------------------------------------
+    // REMOVE TEMPORARY OTP INPUT
+    // ---------------------------------------------------------
+
+    _cache.Remove(cacheKey);
+
+    // ---------------------------------------------------------
+    // RESPONSE
+    // ---------------------------------------------------------
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 5,
+        eventType,
+        pressedKey,
+        effectivePressedKey = temporaryOtpInput,
+        duration,
+        leadStatus,
+        message = "HANGUP received. Final OTP lead data saved."
+    });
+}
+```

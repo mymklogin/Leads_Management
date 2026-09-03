@@ -1,0 +1,29 @@
+https://obd3api.expressivr.com/api/obd/singlecall
+Api-Key : XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX (To be generated in Voice panel)
+++++++++++++++++++++++++++++++++++++++++
+TEMPLATE ID - 0 (Simple Campaign)
+-------
+{
+    "userId":50002,
+    "templateId":0,
+    "dtmf":"",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "welcomePId":238,
+    "menuPId":0,
+    "thanksPId":0,
+    "wrongInputPId":0,
+    "noInputPId":0,
+    "rePrompt":0,
+    "countryCode":"91",
+    "menuWaitTime":0,
+    "retries":0,
+    "retryInterval":0,
+    "otp":0,
+    "sms" : "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+======================
+
+yhi logic likho bhai

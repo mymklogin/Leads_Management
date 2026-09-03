@@ -1,0 +1,300 @@
+TEMPLATE ID - 4 (Multi Level IVR Nextar Case)
+---------
+{
+    "userId":50002,
+    "templateId":4,
+    "dtmf":"",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "rePrompt":1,
+    "countryCode":"91",
+    "menuWaitTime":5,
+    "retries":0,
+    "retryInterval":0,
+    "welcomePId":0,
+    "menuPId":0,
+    "wrongInputPId":0,
+    "noInputPId":0,
+    "thanksPId":0,
+    "otp":0,
+    "sms" : "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}",
+    "menus":"{ \"1\": { \"prompt\": 241, \"dtmf\": \"5|6|7|8\" }, \"2\": { \"prompt\": 238, \"dtmf\": \"5|6|7\" }, \"3\": { \"prompt\": 240, \"dtmf\": \"1|2|3|4\" } }",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+Logic
+
+=========================
+```csharp
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleMultiLevelNextarWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType =
+        payload.EventType?.Trim().ToUpperInvariant() ?? "";
+
+    string pressedKey =
+        payload.PressedKey?.Trim() ?? "";
+
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    if (string.IsNullOrWhiteSpace(payload.Mobile))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Mobile number is required."
+        });
+    }
+
+    string cacheKey = $"IVR_DTMF_{payload.Mobile}";
+
+    string? temporaryDtmf = null;
+
+    // ---------------------------------------------------------
+    // CONNECTED CALL
+    // ---------------------------------------------------------
+
+    if (eventType == "CONNECTED_CALLS")
+    {
+        return Ok(new
+        {
+            status = "success",
+            templateId = 4,
+            eventType,
+            pressedKey,
+            duration,
+            message = "Call connected."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // DTMF
+    //
+    // IMPORTANT:
+    // DTMF yahan DB me save nahi hoga.
+    // Sirf temporary cache me hold hoga.
+    // ---------------------------------------------------------
+
+    if (eventType == "DTMF")
+    {
+        if (!string.IsNullOrWhiteSpace(pressedKey))
+        {
+            _cache.Set(
+                cacheKey,
+                pressedKey,
+                TimeSpan.FromMinutes(30));
+        }
+
+        return Ok(new
+        {
+            status = "success",
+            templateId = 4,
+            eventType,
+            pressedKey,
+            duration,
+            message = "DTMF received and temporarily stored."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Only HANGUP will create/update final DB record
+    // ---------------------------------------------------------
+
+    if (eventType != "HANGUP")
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message =
+                $"Unsupported event type: {payload.EventType}"
+        });
+    }
+
+    // ---------------------------------------------------------
+    // HANGUP
+    //
+    // First priority:
+    // If HANGUP itself has PressedKey, use it.
+    //
+    // Otherwise:
+    // Use DTMF temporarily stored during DTMF event.
+    // ---------------------------------------------------------
+
+    if (!string.IsNullOrWhiteSpace(pressedKey))
+    {
+        temporaryDtmf = pressedKey;
+    }
+    else
+    {
+        _cache.TryGetValue(
+            cacheKey,
+            out temporaryDtmf);
+    }
+
+    temporaryDtmf =
+        temporaryDtmf?.Trim() ?? "";
+
+    // ---------------------------------------------------------
+    // Final lead status
+    // ---------------------------------------------------------
+
+    bool highIntentKey =
+        temporaryDtmf is "1" or "2" or "3" or "4";
+
+    string leadStatus;
+
+    if (highIntentKey && duration >= 60)
+    {
+        leadStatus =
+            $"Very Hot Lead - High Intent Key {temporaryDtmf} + Deep Engagement";
+    }
+    else if (highIntentKey && duration >= 30)
+    {
+        leadStatus =
+            $"Hot Lead - High Intent Key {temporaryDtmf} + Good Engagement";
+    }
+    else if (highIntentKey)
+    {
+        leadStatus =
+            $"Interested Lead - High Intent Key {temporaryDtmf}";
+    }
+    else if (!string.IsNullOrWhiteSpace(temporaryDtmf) &&
+             duration >= 60)
+    {
+        leadStatus =
+            $"Hot Lead - Deep IVR Engagement - Key {temporaryDtmf}";
+    }
+    else if (!string.IsNullOrWhiteSpace(temporaryDtmf) &&
+             duration >= 30)
+    {
+        leadStatus =
+            $"Warm Lead - IVR Exploration - Key {temporaryDtmf}";
+    }
+    else if (duration >= 60)
+    {
+        leadStatus =
+            "Hot Lead - Long IVR Engagement";
+    }
+    else if (duration >= 30)
+    {
+        leadStatus =
+            "Warm Lead - Good IVR Engagement";
+    }
+    else if (duration >= 15)
+    {
+        leadStatus =
+            "Cold Lead - Short IVR Interaction";
+    }
+    else if (duration >= 10)
+    {
+        leadStatus =
+            "Quick IVR Interaction";
+    }
+    else if (duration >= 5)
+    {
+        leadStatus =
+            "Intro Drop";
+    }
+    else
+    {
+        leadStatus =
+            "Immediate Drop";
+    }
+
+    // ---------------------------------------------------------
+    // Find existing lead
+    //
+    // DB lookup happens only at HANGUP.
+    // ---------------------------------------------------------
+
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(
+            x => x.Mobile == payload.Mobile,
+            cancellationToken);
+
+    // ---------------------------------------------------------
+    // FINAL DB SAVE
+    // ---------------------------------------------------------
+
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+            CallDuration = duration,
+
+            PressedDtmf =
+                string.IsNullOrWhiteSpace(temporaryDtmf)
+                    ? null
+                    : temporaryDtmf,
+
+            LastEventType = "HANGUP",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        lead.LeadStatus = leadStatus;
+        lead.CallDuration = duration;
+        lead.LastEventType = "HANGUP";
+        lead.UpdatedAt = DateTime.UtcNow;
+
+        lead.PressedDtmf =
+            string.IsNullOrWhiteSpace(temporaryDtmf)
+                ? null
+                : temporaryDtmf;
+    }
+
+    // ---------------------------------------------------------
+    // FINAL SAVE
+    // ---------------------------------------------------------
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    // ---------------------------------------------------------
+    // Remove temporary DTMF after successful final save
+    // ---------------------------------------------------------
+
+    _cache.Remove(cacheKey);
+
+    // ---------------------------------------------------------
+    // RESPONSE
+    // ---------------------------------------------------------
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 4,
+        eventType,
+        pressedKey,
+        effectivePressedKey = temporaryDtmf,
+        duration,
+        leadStatus,
+        message = "HANGUP received. Final lead data saved."
+    });
+}
+```

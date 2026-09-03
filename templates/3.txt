@@ -1,0 +1,309 @@
+++++++++++++++++++++++++++++++++++
+TEMPLATE ID - 3 (Custom IVR Campaign)
+----------
+{
+    "userId":50002,
+    "templateId":3,
+    "dtmf":"",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "welcomePId":0,
+    "menuPId":0,
+    "thanksPId":0,
+    "wrongInputPId":1204,
+    "noInputPId":1205,
+    "ivrId":18,
+    "rePrompt":1,
+    "countryCode":"91",
+    "menuWaitTime":3,
+    "retries":0,
+    "retryInterval":0,
+    "otp":0,
+    "sms" : "{}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+
+logic
+====================
+```csharp
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleCustomIvrWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType =
+        payload.EventType?.Trim().ToUpperInvariant() ?? "";
+
+    string pressedKey =
+        payload.PressedKey?.Trim() ?? "";
+
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // FIND EXISTING LEAD
+    // ---------------------------------------------------------
+
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(
+            x => x.Mobile == payload.Mobile,
+            cancellationToken);
+
+    // ---------------------------------------------------------
+    // EFFECTIVE DTMF
+    //
+    // DTMF:
+    //     Use actual PressedKey received from webhook.
+    //
+    // HANGUP:
+    //     If HANGUP sends PressedKey, use it.
+    //     If HANGUP PressedKey is blank, use the actual
+    //     DTMF already captured in DB.
+    //
+    // No key is assumed automatically.
+    // ---------------------------------------------------------
+
+    string effectivePressedKey = pressedKey;
+
+    if (eventType == "HANGUP" &&
+        string.IsNullOrWhiteSpace(effectivePressedKey) &&
+        lead != null &&
+        !string.IsNullOrWhiteSpace(lead.PressedDtmf))
+    {
+        effectivePressedKey = lead.PressedDtmf.Trim();
+    }
+
+    string leadStatus;
+
+    // ---------------------------------------------------------
+    // EVENT LOGIC
+    // ---------------------------------------------------------
+
+    switch (eventType)
+    {
+        // -----------------------------------------------------
+        // CONNECTED
+        // -----------------------------------------------------
+
+        case "CONNECTED_CALLS":
+
+            leadStatus =
+                "Custom IVR Call Connected";
+
+            break;
+
+
+        // -----------------------------------------------------
+        // DTMF
+        // -----------------------------------------------------
+
+        case "DTMF":
+
+            if (string.IsNullOrWhiteSpace(pressedKey))
+            {
+                leadStatus =
+                    "Custom IVR - DTMF Event - No Key Captured";
+            }
+            else
+            {
+                leadStatus =
+                    $"Custom IVR - Key {pressedKey} Pressed";
+            }
+
+            break;
+
+
+        // -----------------------------------------------------
+        // HANGUP
+        // -----------------------------------------------------
+
+        case "HANGUP":
+
+            // -------------------------------------------------
+            // DTMF was captured
+            // -------------------------------------------------
+
+            if (!string.IsNullOrWhiteSpace(effectivePressedKey))
+            {
+                if (duration >= 60)
+                {
+                    leadStatus =
+                        $"Hot Lead - Custom IVR Deep Engagement - Key {effectivePressedKey}";
+                }
+                else if (duration >= 30)
+                {
+                    leadStatus =
+                        $"Warm Lead - Custom IVR Engagement - Key {effectivePressedKey}";
+                }
+                else if (duration >= 15)
+                {
+                    leadStatus =
+                        $"Custom IVR Interaction - Key {effectivePressedKey}";
+                }
+                else if (duration >= 5)
+                {
+                    leadStatus =
+                        $"Custom IVR Short Interaction - Key {effectivePressedKey}";
+                }
+                else
+                {
+                    leadStatus =
+                        $"Custom IVR - Key {effectivePressedKey} - Immediate Drop";
+                }
+            }
+
+            // -------------------------------------------------
+            // No DTMF captured
+            // -------------------------------------------------
+
+            else if (duration >= 60)
+            {
+                leadStatus =
+                    "Hot Lead - Custom IVR Deep Engagement";
+            }
+            else if (duration >= 30)
+            {
+                leadStatus =
+                    "Warm Lead - Custom IVR Engagement";
+            }
+            else if (duration >= 15)
+            {
+                leadStatus =
+                    "Custom IVR - Short Interaction";
+            }
+            else if (duration >= 5)
+            {
+                leadStatus =
+                    "Custom IVR - Intro Drop";
+            }
+            else
+            {
+                leadStatus =
+                    "Custom IVR - Immediate Drop";
+            }
+
+            break;
+
+
+        // -----------------------------------------------------
+        // INVALID EVENT
+        // -----------------------------------------------------
+
+        default:
+
+            return BadRequest(new
+            {
+                status = "error",
+                message =
+                    $"Unsupported event type: {payload.EventType}"
+            });
+    }
+
+    // ---------------------------------------------------------
+    // CREATE / UPDATE LEAD
+    // ---------------------------------------------------------
+
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+            CallDuration = duration,
+
+            // Only actual webhook DTMF is saved.
+            PressedDtmf =
+                !string.IsNullOrWhiteSpace(pressedKey)
+                    ? pressedKey
+                    : null,
+
+            LastEventType = eventType,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        // -----------------------------------------------------
+        // UPDATE EVENT
+        // -----------------------------------------------------
+
+        lead.LeadStatus = leadStatus;
+        lead.LastEventType = eventType;
+        lead.UpdatedAt = DateTime.UtcNow;
+
+        // -----------------------------------------------------
+        // DTMF EVENT
+        //
+        // Save the actual key pressed by customer.
+        // -----------------------------------------------------
+
+        if (eventType == "DTMF" &&
+            !string.IsNullOrWhiteSpace(pressedKey))
+        {
+            lead.PressedDtmf = pressedKey;
+        }
+
+        // -----------------------------------------------------
+        // HANGUP EVENT
+        //
+        // Save final duration.
+        //
+        // If HANGUP has a key, update it.
+        // If blank, keep the DTMF already captured.
+        // -----------------------------------------------------
+
+        if (eventType == "HANGUP")
+        {
+            lead.CallDuration = duration;
+
+            if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                lead.PressedDtmf = pressedKey;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // SAVE FINAL DATABASE STATE
+    // ---------------------------------------------------------
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    // ---------------------------------------------------------
+    // RESPONSE
+    // ---------------------------------------------------------
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 3,
+        ivrId = 18,
+        eventType,
+        pressedKey,
+        effectivePressedKey,
+        duration,
+        leadStatus
+    });
+}
+```

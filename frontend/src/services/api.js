@@ -1,0 +1,48 @@
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:5108/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Auto-inject JWT token & User ID into every outgoing request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('lead_mgmt_token');
+  const user = localStorage.getItem('lead_mgmt_user');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (user) {
+    try {
+      const parsed = JSON.parse(user);
+      if (parsed?.id) {
+        config.headers['X-User-Id'] = parsed.id.toString();
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Auto-handle 401 Unauthorized
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      // localStorage.removeItem('lead_mgmt_token');
+      // localStorage.removeItem('lead_mgmt_user');
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;

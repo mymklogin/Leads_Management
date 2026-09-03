@@ -1,0 +1,172 @@
+https://obd3api.expressivr.com/api/obd/singlecall
+Api-Key : XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX (To be generated in Voice panel)
+++++++++++++++++++++++++++++++++++++++++
+TEMPLATE ID - 0 (Simple Campaign)
+-------
+{
+    "userId":50002,
+    "templateId":0,
+    "dtmf":"",
+    "cli":"9999900119",
+    "mobile":"8571844348",
+    "welcomePId":238,
+    "menuPId":0,
+    "thanksPId":0,
+    "wrongInputPId":0,
+    "noInputPId":0,
+    "rePrompt":0,
+    "countryCode":"91",
+    "menuWaitTime":0,
+    "retries":0,
+    "retryInterval":0,
+    "otp":0,
+    "sms" : "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}"
+}
+
+logic
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleDtmfCampaignWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    // ---------------------------------------------------------
+    // Validate Payload
+    // ---------------------------------------------------------
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType = payload.EventType?.Trim().ToUpperInvariant() ?? "";
+    string webhookPressedKey = payload.PressedKey?.Trim() ?? "";
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Find Existing Lead by Mobile
+    // ---------------------------------------------------------
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(x => x.Mobile == payload.Mobile, cancellationToken);
+
+    // Key preservation logic: Agar hangup mein key nahi aayi par DTMF event mein pehle mil chuki thi
+    string effectivePressedKey = webhookPressedKey;
+    if (string.IsNullOrWhiteSpace(effectivePressedKey) && lead != null && !string.IsNullOrWhiteSpace(lead.PressedDtmf))
+    {
+        effectivePressedKey = lead.PressedDtmf;
+    }
+
+    string leadStatus = "Processing";
+
+    // ---------------------------------------------------------
+    // EVENT LOGIC
+    // ---------------------------------------------------------
+    switch (eventType)
+    {
+        case "CONNECTED_CALLS":
+            leadStatus = "DTMF Call Connected";
+            break;
+
+        case "DTMF":
+            if (webhookPressedKey == "2")
+                leadStatus = "Not Interested (Pressed 2)";
+            else if (webhookPressedKey == "9")
+                leadStatus = "DND / Opt-Out (Pressed 9)";
+            else if (!string.IsNullOrWhiteSpace(webhookPressedKey))
+                leadStatus = $"Interactive Lead (Pressed {webhookPressedKey})";
+            else
+                leadStatus = "DTMF Event - No Key Captured";
+            break;
+
+        case "HANGUP":
+            if (effectivePressedKey == "2")
+            {
+                leadStatus = "Not Interested (Pressed 2)";
+            }
+            else if (effectivePressedKey == "9")
+            {
+                leadStatus = "DND / Opt-Out (Pressed 9)";
+            }
+            else
+            {
+                // Single-line combination (Key + Duration Bucket)
+                string keyDesc = string.IsNullOrWhiteSpace(effectivePressedKey) ? "No Key" : $"Pressed {effectivePressedKey}";
+
+                if (duration >= 45)
+                    leadStatus = $"Super Hot Interaction ({keyDesc} | 45-60+ sec)";
+                else if (duration >= 30)
+                    leadStatus = $"Hot Interaction ({keyDesc} | 30-45 sec)";
+                else if (duration >= 15)
+                    leadStatus = $"Engaged Interaction ({keyDesc} | 15-30 sec)";
+                else if (duration >= 10)
+                    leadStatus = $"Active Interaction ({keyDesc} | 10-15 sec)";
+                else if (duration >= 5)
+                    leadStatus = $"Quick Interaction ({keyDesc} | 5-10 sec)";
+                else
+                    leadStatus = $"Call Cut / Dropped ({keyDesc} | <5 sec)";
+            }
+            break;
+
+        default:
+            return BadRequest(new
+            {
+                status = "error",
+                message = $"Unsupported event type: {payload.EventType}"
+            });
+    }
+
+    // ---------------------------------------------------------
+    // CREATE / UPDATE LEAD IN DATABASE
+    // ---------------------------------------------------------
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+            CallDuration = duration,
+            PressedDtmf = !string.IsNullOrWhiteSpace(effectivePressedKey) ? effectivePressedKey : null,
+            LastEventType = eventType,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        lead.LeadStatus = leadStatus;
+        lead.LastEventType = eventType;
+        lead.UpdatedAt = DateTime.UtcNow;
+        lead.CallDuration = Math.Max(lead.CallDuration, duration);
+
+        if (!string.IsNullOrWhiteSpace(effectivePressedKey))
+        {
+            lead.PressedDtmf = effectivePressedKey;
+        }
+    }
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 0,
+        eventType,
+        pressedKey = effectivePressedKey,
+        duration,
+        leadStatus
+    });
+}

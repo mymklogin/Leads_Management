@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+node_modules/
+dist/
+build/
+.vite/
+*.db
+*.db-shm
+*.db-wal
+*.log

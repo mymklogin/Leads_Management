@@ -1,0 +1,308 @@
+For TTS Call Patch - TEMPLATE ID - 9
+
+{
+    "userId":500002,
+    "templateId":9,
+    "dtmf":"",
+    "cli":"",
+    "mobile":"9065968937_Rohit,1232",
+    "rePrompt":0,
+    "countryCode":"91",
+    "menuWaitTime":1,
+    "retries":0,
+    "retryInterval":0,
+    "welcomePId":0,
+    "menuPId":19,
+    "wrongInputPId":1204,
+    "noInputPId":1205,
+    "thanksPId":1203,
+    "noAgentId":19,
+    "otp":0,
+    "agentRows":"{\"patchList\":[{\"agentGroup\":\"8\",\"agentDtmf\":\"1\"}]}",
+    "sms" : "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}",
+    "webhooks": "{\"HANGUP\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"DTMF\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"},\"CONNECTED_CALLS\":{\"url\":\"http://localhost:2014/api/v1/GetRoutingInfo\"}}",
+    "ttsRows":"{\"ttsList\":[{\"ttsType\":\"prompt\",\"value\":\"19\",\"variableType\":\"\"},{\"ttsType\":\"variable\",\"value\":\"1\",\"variableType\":\"text\"},{\"ttsType\":\"prompt\",\"value\":\"88\",\"variableType\":\"\"},{\"ttsType\":\"variable\",\"value\":\"2\",\"variableType\":\"number\"}]}",
+    "gender": "MALE",
+    "language": "en-IN"
+}
+============
+logic
+```csharp
+[HttpPost("GetRoutingInfo")]
+public async Task<IActionResult> HandleTtsCallPatchWebhook(
+    [FromBody] ExpressIvrWebhookDto payload,
+    CancellationToken cancellationToken)
+{
+    if (payload == null)
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Invalid webhook payload."
+        });
+    }
+
+    string eventType =
+        payload.EventType?.Trim().ToUpperInvariant() ?? "";
+
+    string pressedKey =
+        payload.PressedKey?.Trim() ?? "";
+
+    int duration = Math.Max(0, payload.Duration);
+
+    if (string.IsNullOrWhiteSpace(eventType))
+    {
+        return BadRequest(new
+        {
+            status = "error",
+            message = "Event type is required."
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Find existing lead
+    // ---------------------------------------------------------
+
+    var lead = await _context.LeadRecords
+        .FirstOrDefaultAsync(
+            x => x.Mobile == payload.Mobile,
+            cancellationToken);
+
+    // ---------------------------------------------------------
+    // HANGUP fallback
+    //
+    // HANGUP me PressedKey blank aa sakta hai.
+    // Isliye DTMF event par pehle saved key use karenge.
+    // ---------------------------------------------------------
+
+    string effectivePressedKey = pressedKey;
+
+    if (eventType == "HANGUP" &&
+        string.IsNullOrWhiteSpace(effectivePressedKey) &&
+        lead != null &&
+        !string.IsNullOrWhiteSpace(lead.PressedDtmf))
+    {
+        effectivePressedKey = lead.PressedDtmf.Trim();
+    }
+
+    string leadStatus;
+
+    // ---------------------------------------------------------
+    // EVENT LOGIC
+    // ---------------------------------------------------------
+
+    switch (eventType)
+    {
+        // -----------------------------------------------------
+        // CALL CONNECTED
+        // -----------------------------------------------------
+
+        case "CONNECTED_CALLS":
+
+            leadStatus =
+                "TTS Call Patch Connected";
+
+            break;
+
+
+        // -----------------------------------------------------
+        // DTMF
+        // -----------------------------------------------------
+
+        case "DTMF":
+
+            if (pressedKey == "1")
+            {
+                leadStatus =
+                    "Agent Connection Requested - TTS Pressed 1";
+            }
+            else if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                leadStatus =
+                    $"TTS Call Patch Interaction - Key {pressedKey}";
+            }
+            else
+            {
+                leadStatus =
+                    "TTS Call Patch DTMF - No Key Captured";
+            }
+
+            break;
+
+
+        // -----------------------------------------------------
+        // HANGUP = CALL DISCONNECTED
+        //
+        // Final status yahin decide/save hoga.
+        // -----------------------------------------------------
+
+        case "HANGUP":
+
+            // Agent request + long engagement
+            if (effectivePressedKey == "1" &&
+                duration >= 60)
+            {
+                leadStatus =
+                    "Very Hot Lead - TTS Agent Connection + Long Engagement";
+            }
+            else if (effectivePressedKey == "1" &&
+                     duration >= 30)
+            {
+                leadStatus =
+                    "Hot Lead - TTS Agent Connection + Good Engagement";
+            }
+            else if (effectivePressedKey == "1")
+            {
+                leadStatus =
+                    "Interested Lead - TTS Agent Connection Requested";
+            }
+
+            // No agent request
+            else if (duration >= 60)
+            {
+                leadStatus =
+                    "Hot Lead - Long TTS Call Patch Engagement";
+            }
+            else if (duration >= 30)
+            {
+                leadStatus =
+                    "Warm Lead - Good TTS Call Patch Engagement";
+            }
+            else if (duration >= 15)
+            {
+                leadStatus =
+                    "Cold Lead - Short TTS Call Patch Interaction";
+            }
+            else if (duration >= 10)
+            {
+                leadStatus =
+                    "Quick TTS Call Patch Interaction";
+            }
+            else if (duration >= 5)
+            {
+                leadStatus =
+                    "TTS Call Patch Intro Drop";
+            }
+            else
+            {
+                leadStatus =
+                    "TTS Call Patch Immediate Drop";
+            }
+
+            break;
+
+
+        default:
+
+            return BadRequest(new
+            {
+                status = "error",
+                message =
+                    $"Unsupported event type: {payload.EventType}"
+            });
+    }
+
+    // ---------------------------------------------------------
+    // CREATE / UPDATE LEAD
+    // ---------------------------------------------------------
+
+    if (lead == null)
+    {
+        lead = new LeadRecord
+        {
+            Mobile = payload.Mobile!,
+            LeadStatus = leadStatus,
+
+            // Duration final HANGUP par meaningful hai.
+            CallDuration =
+                eventType == "HANGUP"
+                    ? duration
+                    : 0,
+
+            // DTMF event par actual pressed key save.
+            PressedDtmf =
+                eventType == "DTMF" &&
+                !string.IsNullOrWhiteSpace(pressedKey)
+                    ? pressedKey
+                    : null,
+
+            LastEventType = eventType,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.LeadRecords.Add(lead);
+    }
+    else
+    {
+        lead.UpdatedAt = DateTime.UtcNow;
+
+        // -----------------------------------------------------
+        // CONNECTED_CALLS
+        // -----------------------------------------------------
+
+        if (eventType == "CONNECTED_CALLS")
+        {
+            lead.LeadStatus = leadStatus;
+            lead.LastEventType = eventType;
+        }
+
+
+        // -----------------------------------------------------
+        // DTMF
+        //
+        // Actual user pressed key temporary DB me save.
+        // -----------------------------------------------------
+
+        if (eventType == "DTMF")
+        {
+            lead.LeadStatus = leadStatus;
+            lead.LastEventType = eventType;
+
+            if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                lead.PressedDtmf = pressedKey;
+            }
+        }
+
+
+        // -----------------------------------------------------
+        // HANGUP
+        //
+        // Call disconnect hone par final result save.
+        // -----------------------------------------------------
+
+        if (eventType == "HANGUP")
+        {
+            lead.LeadStatus = leadStatus;
+            lead.LastEventType = eventType;
+            lead.CallDuration = duration;
+
+            // Agar HANGUP me key mili to latest key use karo.
+            // Agar blank hai to DTMF event wali DB key already preserved hai.
+            if (!string.IsNullOrWhiteSpace(pressedKey))
+            {
+                lead.PressedDtmf = pressedKey;
+            }
+        }
+    }
+
+    await _context.SaveChangesAsync(cancellationToken);
+
+    // ---------------------------------------------------------
+    // RESPONSE
+    // ---------------------------------------------------------
+
+    return Ok(new
+    {
+        status = "success",
+        templateId = 9,
+        eventType,
+        pressedKey,
+        effectivePressedKey,
+        duration,
+        leadStatus
+    });
+}
+```
+
