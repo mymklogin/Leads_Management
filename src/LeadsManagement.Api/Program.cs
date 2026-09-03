@@ -17,8 +17,17 @@ using LeadsManagement.Api.Services.Strategies;
 
 try
 {
+    // Disable inotify in container environments to prevent limit (128) IOException crash
+    Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "1");
+
     Console.WriteLine("[STARTUP] Initializing Leads Management Backend API...");
     var builder = WebApplication.CreateBuilder(args);
+
+    // Replace default reloadOnChange: true file watchers with static reloadOnChange: false
+    builder.Configuration.Sources.Clear();
+    builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+    builder.Configuration.AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false);
+    builder.Configuration.AddEnvironmentVariables();
 
     // Configure port for Render.com (Render supplies PORT env var)
     var renderPort = Environment.GetEnvironmentVariable("PORT");

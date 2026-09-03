@@ -25,6 +25,7 @@ COPY --from=build /app/publish .
 
 # Essential container environment flags for Render.com virtualized sandbox (Prevents SIGSEGV status 139)
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_USE_POLLING_FILE_WATCHER=1
 ENV DOTNET_EnableDiagnostics=0
 ENV DOTNET_EnableWriteXorExecute=0
 ENV GLIBC_TUNABLES=glibc.pthread.rseq=0
