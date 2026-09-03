@@ -1,0 +1,12 @@
+**/.git
+**/.gitignore
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/scratch
+frontend
+templates
+tests
+*.sln

@@ -17,6 +17,13 @@ using LeadsManagement.Api.Services.Strategies;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure port for Render.com (Render supplies PORT env var)
+var renderPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(renderPort))
+{
+    builder.WebHost.UseUrls($"http://+:{renderPort}");
+}
+
 // 1. Add Controllers with flexible JSON formatting
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
