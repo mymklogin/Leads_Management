@@ -13,9 +13,9 @@ public class DbConnectionHelpers
 
     public string Getdbconnection()
     {
-        return _configuration.GetConnectionString("SqlServerConnection")
+        return _configuration.GetConnectionString("PostgreSqlConnection")
             ?? _configuration.GetConnectionString("DefaultConnection")
-            ?? "Server=localhost;Database=LeadsManagementDb;Trusted_Connection=True;TrustServerCertificate=True;";
+            ?? "Host=localhost;Port=5432;Database=leads_management_db;Username=postgres;Password=postgres;";
     }
 }
 

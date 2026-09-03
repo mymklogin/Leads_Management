@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using LeadsManagement.Api.Helpers;
 using LeadsManagement.Api.Models.Entities;
 using LeadsManagement.Api.Repositories.Interfaces;
@@ -12,21 +12,30 @@ namespace LeadsManagement.Api.Repositories.Implementations;
 
 public class WebhookLogRepository : IWebhookLogRepository
 {
-    private readonly string _Connection;
+    private readonly string _connection;
 
-    public WebhookLogRepository(DbConnectionHelpers Helpers)
+    public WebhookLogRepository(DbConnectionHelpers helpers)
     {
-        _Connection = Helpers.Getdbconnection();
+        _connection = helpers.Getdbconnection();
     }
 
     public async Task<int> InsertWebhookLogAsync(WebhookLog log, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_InsertWebhookLog", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            INSERT INTO webhooklogs (
+                mobile, templateid, eventtype, pressedkey, duration, 
+                computedleadstatus, rawpayload, receivedat, issuccess, errormessage
+            )
+            VALUES (
+                @Mobile, @TemplateId, @EventType, @PressedKey, @Duration, 
+                @ComputedLeadStatus, @RawPayload, CURRENT_TIMESTAMP, @IsSuccess, @ErrorMessage
+            )
+            RETURNING id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Mobile", (object?)log.Mobile ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@TemplateId", (object?)log.TemplateId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@EventType", (object?)log.EventType ?? DBNull.Value);
@@ -37,40 +46,81 @@ public class WebhookLogRepository : IWebhookLogRepository
         cmd.Parameters.AddWithValue("@IsSuccess", log.IsSuccess);
         cmd.Parameters.AddWithValue("@ErrorMessage", (object?)log.ErrorMessage ?? DBNull.Value);
 
-        object? result = await cmd.ExecuteScalarAsync(cancellationToken);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return result != null && int.TryParse(result.ToString(), out int id) ? id : 0;
     }
 
     public async Task<List<WebhookLog>> GetRecentLogsAsync(int limit = 100, CancellationToken cancellationToken = default)
     {
         var list = new List<WebhookLog>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetWebhookLogs", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, mobile, templateid, eventtype, pressedkey, duration, 
+                   computedleadstatus, rawpayload, receivedat, issuccess, errormessage
+            FROM webhooklogs
+            ORDER BY receivedat DESC
+            LIMIT @Limit;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Limit", limit);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(new WebhookLog
             {
-                Id = Convert.ToInt32(dr["Id"]),
-                Mobile = dr["Mobile"] == DBNull.Value ? null : Convert.ToString(dr["Mobile"]),
-                TemplateId = dr["TemplateId"] == DBNull.Value ? null : Convert.ToInt32(dr["TemplateId"]),
-                EventType = dr["EventType"] == DBNull.Value ? null : Convert.ToString(dr["EventType"]),
-                PressedKey = dr["PressedKey"] == DBNull.Value ? null : Convert.ToString(dr["PressedKey"]),
-                Duration = Convert.ToInt32(dr["Duration"]),
-                ComputedLeadStatus = dr["ComputedLeadStatus"] == DBNull.Value ? null : Convert.ToString(dr["ComputedLeadStatus"]),
-                RawPayload = dr["RawPayload"] == DBNull.Value ? null : Convert.ToString(dr["RawPayload"]),
-                ReceivedAt = Convert.ToDateTime(dr["ReceivedAt"]),
-                IsSuccess = Convert.ToBoolean(dr["IsSuccess"]),
-                ErrorMessage = dr["ErrorMessage"] == DBNull.Value ? null : Convert.ToString(dr["ErrorMessage"])
+                Id = Convert.ToInt32(dr["id"]),
+                Mobile = dr["mobile"] == DBNull.Value ? null : Convert.ToString(dr["mobile"]),
+                TemplateId = dr["templateid"] == DBNull.Value ? null : Convert.ToInt32(dr["templateid"]),
+                EventType = dr["eventtype"] == DBNull.Value ? null : Convert.ToString(dr["eventtype"]),
+                PressedKey = dr["pressedkey"] == DBNull.Value ? null : Convert.ToString(dr["pressedkey"]),
+                Duration = Convert.ToInt32(dr["duration"]),
+                ComputedLeadStatus = dr["computedleadstatus"] == DBNull.Value ? null : Convert.ToString(dr["computedleadstatus"]),
+                RawPayload = dr["rawpayload"] == DBNull.Value ? null : Convert.ToString(dr["rawpayload"]),
+                ReceivedAt = Convert.ToDateTime(dr["receivedat"]),
+                IsSuccess = Convert.ToBoolean(dr["issuccess"]),
+                ErrorMessage = dr["errormessage"] == DBNull.Value ? null : Convert.ToString(dr["errormessage"])
+            });
+        }
+        return list;
+    }
+
+    public async Task<List<WebhookLog>> GetLogsByMobileAsync(string mobile, CancellationToken cancellationToken = default)
+    {
+        var list = new List<WebhookLog>();
+        await using var con = new NpgsqlConnection(_connection);
+        await con.OpenAsync(cancellationToken);
+
+        const string query = @"
+            SELECT id, mobile, templateid, eventtype, pressedkey, duration, 
+                   computedleadstatus, rawpayload, receivedat, issuccess, errormessage
+            FROM webhooklogs
+            WHERE mobile = @Mobile
+            ORDER BY receivedat DESC;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
+        cmd.Parameters.AddWithValue("@Mobile", mobile);
+
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await dr.ReadAsync(cancellationToken))
+        {
+            list.Add(new WebhookLog
+            {
+                Id = Convert.ToInt32(dr["id"]),
+                Mobile = dr["mobile"] == DBNull.Value ? null : Convert.ToString(dr["mobile"]),
+                TemplateId = dr["templateid"] == DBNull.Value ? null : Convert.ToInt32(dr["templateid"]),
+                EventType = dr["eventtype"] == DBNull.Value ? null : Convert.ToString(dr["eventtype"]),
+                PressedKey = dr["pressedkey"] == DBNull.Value ? null : Convert.ToString(dr["pressedkey"]),
+                Duration = Convert.ToInt32(dr["duration"]),
+                ComputedLeadStatus = dr["computedleadstatus"] == DBNull.Value ? null : Convert.ToString(dr["computedleadstatus"]),
+                RawPayload = dr["rawpayload"] == DBNull.Value ? null : Convert.ToString(dr["rawpayload"]),
+                ReceivedAt = Convert.ToDateTime(dr["receivedat"]),
+                IsSuccess = Convert.ToBoolean(dr["issuccess"]),
+                ErrorMessage = dr["errormessage"] == DBNull.Value ? null : Convert.ToString(dr["errormessage"])
             });
         }
         return list;
     }
 }
-

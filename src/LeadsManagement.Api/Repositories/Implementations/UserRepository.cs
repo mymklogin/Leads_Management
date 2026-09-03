@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using LeadsManagement.Api.Helpers;
 using LeadsManagement.Api.Models.Entities;
 using LeadsManagement.Api.Models.Enums;
@@ -13,24 +13,28 @@ namespace LeadsManagement.Api.Repositories.Implementations;
 
 public class UserRepository : IUserRepository
 {
-    private readonly string _Connection;
+    private readonly string _connection;
 
-    public UserRepository(DbConnectionHelpers Helpers)
+    public UserRepository(DbConnectionHelpers helpers)
     {
-        _Connection = Helpers.Getdbconnection();
+        _connection = helpers.Getdbconnection();
     }
 
     public async Task<AppUser?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetUserByUsername", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
+                   voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat, lastloginat
+            FROM users 
+            WHERE username = @Username;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Username", username);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await dr.ReadAsync(cancellationToken))
         {
             return MapUser(dr);
@@ -40,15 +44,19 @@ public class UserRepository : IUserRepository
 
     public async Task<AppUser?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetUserById", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
+                   voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat, lastloginat
+            FROM users 
+            WHERE id = @Id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", id);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await dr.ReadAsync(cancellationToken))
         {
             return MapUser(dr);
@@ -59,14 +67,17 @@ public class UserRepository : IUserRepository
     public async Task<List<AppUser>> GetAllUsersAsync(CancellationToken cancellationToken = default)
     {
         var list = new List<AppUser>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetAllUsers", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        const string query = @"
+            SELECT id, username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
+                   voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat, lastloginat
+            FROM users 
+            ORDER BY id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(MapUser(dr));
@@ -77,15 +88,20 @@ public class UserRepository : IUserRepository
     public async Task<List<AppUser>> GetSubordinateUsersAsync(int parentUserId, CancellationToken cancellationToken = default)
     {
         var list = new List<AppUser>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetSubordinateUsers", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
+                   voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat, lastloginat
+            FROM users 
+            WHERE parentuserid = @ParentUserId 
+            ORDER BY id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@ParentUserId", parentUserId);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(MapUser(dr));
@@ -95,12 +111,21 @@ public class UserRepository : IUserRepository
 
     public async Task<int> CreateUserAsync(AppUser user, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_CreateUser", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            INSERT INTO users (
+                username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
+                voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat
+            )
+            VALUES (
+                @Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @Role, @ParentUserId, 
+                @VoiceCredits, @WhatsAppCredits, @RcsCredits, @SmsCredits, @IsActive, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            )
+            RETURNING id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Username", user.Username);
         cmd.Parameters.AddWithValue("@Email", user.Email);
         cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
@@ -114,22 +139,27 @@ public class UserRepository : IUserRepository
         cmd.Parameters.AddWithValue("@SmsCredits", user.SmsCredits);
         cmd.Parameters.AddWithValue("@IsActive", user.IsActive);
 
-        object? result = await cmd.ExecuteScalarAsync(cancellationToken);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return result != null && int.TryParse(result.ToString(), out int id) ? id : 0;
     }
 
     public async Task<bool> UpdateUserAsync(AppUser user, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_UpdateUser", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            UPDATE users 
+            SET email = @Email, fullname = @FullName, phonenumber = @PhoneNumber, 
+                role = @Role, isactive = @IsActive, updatedat = CURRENT_TIMESTAMP
+            WHERE id = @Id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", user.Id);
         cmd.Parameters.AddWithValue("@Email", user.Email);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
         cmd.Parameters.AddWithValue("@PhoneNumber", (object?)user.PhoneNumber ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Role", (int)user.Role);
         cmd.Parameters.AddWithValue("@IsActive", user.IsActive);
 
         int rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -138,12 +168,16 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> UpdateCreditsAsync(int userId, decimal voice, decimal whatsapp, decimal rcs, decimal sms, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_UpdateUserCredits", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            UPDATE users 
+            SET voicecredits = @VoiceCredits, whatsappcredits = @WhatsAppCredits, 
+                rcscredits = @RcsCredits, smscredits = @SmsCredits, updatedat = CURRENT_TIMESTAMP
+            WHERE id = @Id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", userId);
         cmd.Parameters.AddWithValue("@VoiceCredits", voice);
         cmd.Parameters.AddWithValue("@WhatsAppCredits", whatsapp);
@@ -156,12 +190,11 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> UpdateLastLoginAsync(int userId, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_UpdateLastLogin", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = "UPDATE users SET lastloginat = CURRENT_TIMESTAMP WHERE id = @Id;";
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", userId);
 
         int rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -170,10 +203,11 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> UpdatePasswordAsync(int userId, string passwordHash, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        string query = "UPDATE [dbo].[Users] SET [PasswordHash] = @PasswordHash, [UpdatedAt] = GETUTCDATE() WHERE [Id] = @Id";
-        using SqlCommand cmd = new SqlCommand(query, con);
+
+        const string query = "UPDATE users SET passwordhash = @PasswordHash, updatedat = CURRENT_TIMESTAMP WHERE id = @Id;";
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", userId);
         cmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
 
@@ -183,15 +217,14 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        
-        // Cascade delete permissions and user
-        string query = @"
-            DELETE FROM [dbo].[UserMenuPermissions] WHERE [UserId] = @Id;
-            DELETE FROM [dbo].[Users] WHERE [Id] = @Id;
-        ";
-        using SqlCommand cmd = new SqlCommand(query, con);
+
+        const string query = @"
+            DELETE FROM usermenupermissions WHERE userid = @Id;
+            DELETE FROM users WHERE id = @Id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", userId);
 
         int rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -201,62 +234,62 @@ public class UserRepository : IUserRepository
     public async Task<List<int>> GetDownlineUserIdsAsync(int parentId, CancellationToken cancellationToken = default)
     {
         var list = new List<int>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
 
-        string query = @"
-            WITH UserTree AS (
-                SELECT Id FROM [dbo].[Users] WHERE ParentUserId = @ParentUserId
+        const string query = @"
+            WITH RECURSIVE usertree AS (
+                SELECT id FROM users WHERE parentuserid = @ParentUserId
                 UNION ALL
-                SELECT u.Id FROM [dbo].[Users] u
-                INNER JOIN UserTree t ON u.ParentUserId = t.Id
+                SELECT u.id FROM users u
+                INNER JOIN usertree t ON u.parentuserid = t.id
             )
-            SELECT Id FROM UserTree;
-        ";
-        using SqlCommand cmd = new SqlCommand(query, con);
+            SELECT id FROM usertree;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@ParentUserId", parentId);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
-            list.Add(Convert.ToInt32(dr["Id"]));
+            list.Add(Convert.ToInt32(dr["id"]));
         }
         return list;
     }
 
     public async Task<bool> ExistsByUsernameOrEmailAsync(string username, string email, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        string query = "SELECT COUNT(1) FROM [dbo].[Users] WHERE [Username] = @Username OR [Email] = @Email";
-        using SqlCommand cmd = new SqlCommand(query, con);
+
+        const string query = "SELECT COUNT(1) FROM users WHERE username = @Username OR email = @Email;";
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Username", username);
         cmd.Parameters.AddWithValue("@Email", email);
 
-        object? result = await cmd.ExecuteScalarAsync(cancellationToken);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return Convert.ToInt32(result) > 0;
     }
 
-    private static AppUser MapUser(SqlDataReader dr)
+    private static AppUser MapUser(NpgsqlDataReader dr)
     {
         return new AppUser
         {
-            Id = Convert.ToInt32(dr["Id"]),
-            Username = Convert.ToString(dr["Username"]) ?? string.Empty,
-            Email = Convert.ToString(dr["Email"]) ?? string.Empty,
-            PasswordHash = Convert.ToString(dr["PasswordHash"]) ?? string.Empty,
-            FullName = Convert.ToString(dr["FullName"]) ?? string.Empty,
-            PhoneNumber = dr["PhoneNumber"] == DBNull.Value ? null : Convert.ToString(dr["PhoneNumber"]),
-            Role = (UserRole)Convert.ToInt32(dr["Role"]),
-            ParentUserId = dr["ParentUserId"] == DBNull.Value ? null : Convert.ToInt32(dr["ParentUserId"]),
-            IsActive = Convert.ToBoolean(dr["IsActive"]),
-            VoiceCredits = Convert.ToDecimal(dr["VoiceCredits"]),
-            WhatsAppCredits = Convert.ToDecimal(dr["WhatsAppCredits"]),
-            RcsCredits = Convert.ToDecimal(dr["RcsCredits"]),
-            SmsCredits = Convert.ToDecimal(dr["SmsCredits"]),
-            CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-            UpdatedAt = Convert.ToDateTime(dr["UpdatedAt"])
+            Id = Convert.ToInt32(dr["id"]),
+            Username = Convert.ToString(dr["username"]) ?? string.Empty,
+            Email = Convert.ToString(dr["email"]) ?? string.Empty,
+            PasswordHash = Convert.ToString(dr["passwordhash"]) ?? string.Empty,
+            FullName = Convert.ToString(dr["fullname"]) ?? string.Empty,
+            PhoneNumber = dr["phonenumber"] == DBNull.Value ? null : Convert.ToString(dr["phonenumber"]),
+            Role = (UserRole)Convert.ToInt32(dr["role"]),
+            ParentUserId = dr["parentuserid"] == DBNull.Value ? null : Convert.ToInt32(dr["parentuserid"]),
+            IsActive = Convert.ToBoolean(dr["isactive"]),
+            VoiceCredits = Convert.ToDecimal(dr["voicecredits"]),
+            WhatsAppCredits = Convert.ToDecimal(dr["whatsappcredits"]),
+            RcsCredits = Convert.ToDecimal(dr["rcscredits"]),
+            SmsCredits = Convert.ToDecimal(dr["smscredits"]),
+            CreatedAt = Convert.ToDateTime(dr["createdat"]),
+            UpdatedAt = Convert.ToDateTime(dr["updatedat"])
         };
     }
 }
-

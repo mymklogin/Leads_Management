@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using LeadsManagement.Api.Helpers;
 using LeadsManagement.Api.Models.Entities;
 using LeadsManagement.Api.Repositories.Interfaces;
@@ -12,21 +12,30 @@ namespace LeadsManagement.Api.Repositories.Implementations;
 
 public class RcsTransactionRepository : IRcsTransactionRepository
 {
-    private readonly string _Connection;
+    private readonly string _connection;
 
-    public RcsTransactionRepository(DbConnectionHelpers Helpers)
+    public RcsTransactionRepository(DbConnectionHelpers helpers)
     {
-        _Connection = Helpers.Getdbconnection();
+        _connection = helpers.Getdbconnection();
     }
 
     public async Task<int> InsertTransactionAsync(RcsTransactionLog tx, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_InsertRcsTransaction", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            INSERT INTO rcstransactionlogs (
+                transactioncode, createdat, userid, username, performedbyuserid, performedbyusername,
+                servicetype, actiontype, credits, pricepercredit, totalamount, notes, balanceafter
+            )
+            VALUES (
+                @TransactionCode, CURRENT_TIMESTAMP, @UserId, @Username, @PerformedByUserId, @PerformedByUsername,
+                @ServiceType, @ActionType, @Credits, @PricePerCredit, @TotalAmount, @Notes, @BalanceAfter
+            )
+            RETURNING id;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@TransactionCode", tx.TransactionCode);
         cmd.Parameters.AddWithValue("@UserId", tx.UserId);
         cmd.Parameters.AddWithValue("@Username", tx.Username);
@@ -40,41 +49,47 @@ public class RcsTransactionRepository : IRcsTransactionRepository
         cmd.Parameters.AddWithValue("@Notes", (object?)tx.Notes ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@BalanceAfter", tx.BalanceAfter);
 
-        object? result = await cmd.ExecuteScalarAsync(cancellationToken);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken);
         return result != null && int.TryParse(result.ToString(), out int id) ? id : 0;
     }
 
     public async Task<List<RcsTransactionLog>> GetTransactionsByUserIdAsync(int userId, int limit = 50, CancellationToken cancellationToken = default)
     {
         var list = new List<RcsTransactionLog>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetRcsTransactionsByUserId", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, transactioncode, createdat, userid, username, performedbyuserid, performedbyusername,
+                   servicetype, actiontype, credits, pricepercredit, totalamount, notes, balanceafter
+            FROM rcstransactionlogs
+            WHERE userid = @UserId
+            ORDER BY createdat DESC
+            LIMIT @Limit;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@UserId", userId);
         cmd.Parameters.AddWithValue("@Limit", limit);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(new RcsTransactionLog
             {
-                Id = Convert.ToInt32(dr["Id"]),
-                TransactionCode = Convert.ToString(dr["TransactionCode"]) ?? string.Empty,
-                CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-                UserId = Convert.ToInt32(dr["UserId"]),
-                Username = Convert.ToString(dr["Username"]) ?? string.Empty,
-                PerformedByUserId = dr["PerformedByUserId"] == DBNull.Value ? null : Convert.ToInt32(dr["PerformedByUserId"]),
-                PerformedByUsername = dr["PerformedByUsername"] == DBNull.Value ? null : Convert.ToString(dr["PerformedByUsername"]),
-                ServiceType = Convert.ToString(dr["ServiceType"]) ?? "RCS",
-                ActionType = Convert.ToString(dr["ActionType"]) ?? "Credit",
-                Credits = Convert.ToDecimal(dr["Credits"]),
-                PricePerCredit = Convert.ToDecimal(dr["PricePerCredit"]),
-                TotalAmount = Convert.ToDecimal(dr["TotalAmount"]),
-                Notes = dr["Notes"] == DBNull.Value ? null : Convert.ToString(dr["Notes"]),
-                BalanceAfter = Convert.ToDecimal(dr["BalanceAfter"])
+                Id = Convert.ToInt32(dr["id"]),
+                TransactionCode = Convert.ToString(dr["transactioncode"]) ?? string.Empty,
+                CreatedAt = Convert.ToDateTime(dr["createdat"]),
+                UserId = Convert.ToInt32(dr["userid"]),
+                Username = Convert.ToString(dr["username"]) ?? string.Empty,
+                PerformedByUserId = dr["performedbyuserid"] == DBNull.Value ? null : Convert.ToInt32(dr["performedbyuserid"]),
+                PerformedByUsername = dr["performedbyusername"] == DBNull.Value ? null : Convert.ToString(dr["performedbyusername"]),
+                ServiceType = Convert.ToString(dr["servicetype"]) ?? "RCS",
+                ActionType = Convert.ToString(dr["actiontype"]) ?? "Credit",
+                Credits = Convert.ToDecimal(dr["credits"]),
+                PricePerCredit = Convert.ToDecimal(dr["pricepercredit"]),
+                TotalAmount = Convert.ToDecimal(dr["totalamount"]),
+                Notes = dr["notes"] == DBNull.Value ? null : Convert.ToString(dr["notes"]),
+                BalanceAfter = Convert.ToDecimal(dr["balanceafter"])
             });
         }
         return list;
@@ -83,34 +98,39 @@ public class RcsTransactionRepository : IRcsTransactionRepository
     public async Task<List<RcsTransactionLog>> GetAllTransactionsAsync(CancellationToken cancellationToken = default)
     {
         var list = new List<RcsTransactionLog>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        string query = "SELECT * FROM [dbo].[RcsTransactionLogs] ORDER BY [CreatedAt] DESC";
-        using SqlCommand cmd = new SqlCommand(query, con);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        const string query = @"
+            SELECT id, transactioncode, createdat, userid, username, performedbyuserid, performedbyusername,
+                   servicetype, actiontype, credits, pricepercredit, totalamount, notes, balanceafter
+            FROM rcstransactionlogs
+            ORDER BY createdat DESC
+            LIMIT 100;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
+
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(new RcsTransactionLog
             {
-                Id = Convert.ToInt32(dr["Id"]),
-                TransactionCode = Convert.ToString(dr["TransactionCode"]) ?? string.Empty,
-                CreatedAt = Convert.ToDateTime(dr["CreatedAt"]),
-                UserId = Convert.ToInt32(dr["UserId"]),
-                Username = Convert.ToString(dr["Username"]) ?? string.Empty,
-                PerformedByUserId = dr["PerformedByUserId"] == DBNull.Value ? null : Convert.ToInt32(dr["PerformedByUserId"]),
-                PerformedByUsername = dr["PerformedByUsername"] == DBNull.Value ? null : Convert.ToString(dr["PerformedByUsername"]),
-                ServiceType = Convert.ToString(dr["ServiceType"]) ?? "RCS",
-                ActionType = Convert.ToString(dr["ActionType"]) ?? "Credit",
-                Credits = Convert.ToDecimal(dr["Credits"]),
-                PricePerCredit = Convert.ToDecimal(dr["PricePerCredit"]),
-                TotalAmount = Convert.ToDecimal(dr["TotalAmount"]),
-                Notes = dr["Notes"] == DBNull.Value ? null : Convert.ToString(dr["Notes"]),
-                BalanceAfter = Convert.ToDecimal(dr["BalanceAfter"])
+                Id = Convert.ToInt32(dr["id"]),
+                TransactionCode = Convert.ToString(dr["transactioncode"]) ?? string.Empty,
+                CreatedAt = Convert.ToDateTime(dr["createdat"]),
+                UserId = Convert.ToInt32(dr["userid"]),
+                Username = Convert.ToString(dr["username"]) ?? string.Empty,
+                PerformedByUserId = dr["performedbyuserid"] == DBNull.Value ? null : Convert.ToInt32(dr["performedbyuserid"]),
+                PerformedByUsername = dr["performedbyusername"] == DBNull.Value ? null : Convert.ToString(dr["performedbyusername"]),
+                ServiceType = Convert.ToString(dr["servicetype"]) ?? "RCS",
+                ActionType = Convert.ToString(dr["actiontype"]) ?? "Credit",
+                Credits = Convert.ToDecimal(dr["credits"]),
+                PricePerCredit = Convert.ToDecimal(dr["pricepercredit"]),
+                TotalAmount = Convert.ToDecimal(dr["totalamount"]),
+                Notes = dr["notes"] == DBNull.Value ? null : Convert.ToString(dr["notes"]),
+                BalanceAfter = Convert.ToDecimal(dr["balanceafter"])
             });
         }
         return list;
     }
 }
-
-

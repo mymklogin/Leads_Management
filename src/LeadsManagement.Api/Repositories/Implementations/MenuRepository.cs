@@ -4,7 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using LeadsManagement.Api.Helpers;
 using LeadsManagement.Api.Models.Dtos;
 using LeadsManagement.Api.Models.Entities;
@@ -14,46 +14,81 @@ namespace LeadsManagement.Api.Repositories.Implementations;
 
 public class MenuRepository : IMenuRepository
 {
-    private readonly string _Connection;
+    private readonly string _connection;
 
-    public MenuRepository(DbConnectionHelpers Helpers)
+    public MenuRepository(DbConnectionHelpers helpers)
     {
-        _Connection = Helpers.Getdbconnection();
+        _connection = helpers.Getdbconnection();
     }
 
     public async Task<List<MenuTreeNodeDto>> GetMenusByUserIdAsync(int userId, CancellationToken cancellationToken = default)
     {
         var rawItems = new List<(AppMenu menu, bool canView, bool canCreate, bool canEdit, bool canDelete, bool canExport)>();
 
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetMenusByUserId", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
-        cmd.Parameters.AddWithValue("@UserId", userId);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        // Check user role: 1 = SuperAdmin
+        int userRole = 0;
+        const string roleQuery = "SELECT role FROM users WHERE id = @UserId;";
+        await using (var roleCmd = new NpgsqlCommand(roleQuery, con))
+        {
+            roleCmd.Parameters.AddWithValue("@UserId", userId);
+            var roleObj = await roleCmd.ExecuteScalarAsync(cancellationToken);
+            if (roleObj != null && int.TryParse(roleObj.ToString(), out int r))
+            {
+                userRole = r;
+            }
+        }
+
+        string query;
+        if (userRole == 1) // SuperAdmin has access to all active menus
+        {
+            query = @"
+                SELECT m.id, m.servicecode, m.menukey, m.title, m.routepath, m.icon, m.parentmenuid, m.sortorder, m.isactive,
+                       TRUE AS canview, TRUE AS cancreate, TRUE AS canedit, TRUE AS candelete, TRUE AS canexport
+                FROM appmenus m
+                WHERE m.isactive = TRUE
+                ORDER BY m.sortorder;";
+        }
+        else
+        {
+            query = @"
+                SELECT m.id, m.servicecode, m.menukey, m.title, m.routepath, m.icon, m.parentmenuid, m.sortorder, m.isactive,
+                       p.canview, p.cancreate, p.canedit, p.candelete, p.canexport
+                FROM appmenus m
+                INNER JOIN usermenupermissions p ON m.id = p.menuid
+                WHERE p.userid = @UserId AND p.canview = TRUE AND m.isactive = TRUE
+                ORDER BY m.sortorder;";
+        }
+
+        await using var cmd = new NpgsqlCommand(query, con);
+        if (userRole != 1)
+        {
+            cmd.Parameters.AddWithValue("@UserId", userId);
+        }
+
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             var menu = new AppMenu
             {
-                Id = Convert.ToInt32(dr["Id"]),
-                ServiceCode = Convert.ToString(dr["ServiceCode"]) ?? string.Empty,
-                MenuKey = Convert.ToString(dr["MenuKey"]) ?? string.Empty,
-                Title = Convert.ToString(dr["Title"]) ?? string.Empty,
-                RoutePath = Convert.ToString(dr["RoutePath"]) ?? string.Empty,
-                Icon = dr["Icon"] == DBNull.Value ? null : Convert.ToString(dr["Icon"]),
-                ParentMenuId = dr["ParentMenuId"] == DBNull.Value ? null : Convert.ToInt32(dr["ParentMenuId"]),
-                SortOrder = Convert.ToInt32(dr["SortOrder"]),
-                IsActive = Convert.ToBoolean(dr["IsActive"])
+                Id = Convert.ToInt32(dr["id"]),
+                ServiceCode = Convert.ToString(dr["servicecode"]) ?? string.Empty,
+                MenuKey = Convert.ToString(dr["menukey"]) ?? string.Empty,
+                Title = Convert.ToString(dr["title"]) ?? string.Empty,
+                RoutePath = Convert.ToString(dr["routepath"]) ?? string.Empty,
+                Icon = dr["icon"] == DBNull.Value ? null : Convert.ToString(dr["icon"]),
+                ParentMenuId = dr["parentmenuid"] == DBNull.Value ? null : Convert.ToInt32(dr["parentmenuid"]),
+                SortOrder = Convert.ToInt32(dr["sortorder"]),
+                IsActive = Convert.ToBoolean(dr["isactive"])
             };
 
-            bool canView = Convert.ToBoolean(dr["CanView"]);
-            bool canCreate = Convert.ToBoolean(dr["CanCreate"]);
-            bool canEdit = Convert.ToBoolean(dr["CanEdit"]);
-            bool canDelete = Convert.ToBoolean(dr["CanDelete"]);
-            bool canExport = Convert.ToBoolean(dr["CanExport"]);
+            bool canView = Convert.ToBoolean(dr["canview"]);
+            bool canCreate = Convert.ToBoolean(dr["cancreate"]);
+            bool canEdit = Convert.ToBoolean(dr["canedit"]);
+            bool canDelete = Convert.ToBoolean(dr["candelete"]);
+            bool canExport = Convert.ToBoolean(dr["canexport"]);
 
             rawItems.Add((menu, canView, canCreate, canEdit, canDelete, canExport));
         }
@@ -113,14 +148,16 @@ public class MenuRepository : IMenuRepository
     public async Task<List<AppMenu>> GetAllMasterMenusAsync(CancellationToken cancellationToken = default)
     {
         var list = new List<AppMenu>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetAllMasterMenus", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        const string query = @"
+            SELECT id, servicecode, menukey, title, routepath, icon, parentmenuid, sortorder, isactive
+            FROM appmenus
+            ORDER BY sortorder;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(MapMenu(dr));
@@ -130,13 +167,14 @@ public class MenuRepository : IMenuRepository
 
     public async Task<AppMenu?> GetMenuByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        string query = "SELECT * FROM [dbo].[AppMenus] WHERE [Id] = @Id";
-        using SqlCommand cmd = new SqlCommand(query, con);
+
+        const string query = "SELECT id, servicecode, menukey, title, routepath, icon, parentmenuid, sortorder, isactive FROM appmenus WHERE id = @Id;";
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", id);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await dr.ReadAsync(cancellationToken))
         {
             return MapMenu(dr);
@@ -146,12 +184,15 @@ public class MenuRepository : IMenuRepository
 
     public async Task<AppMenu> CreateMasterMenuAsync(AppMenu menu, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_CreateMasterMenu", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            INSERT INTO appmenus (servicecode, menukey, title, routepath, icon, parentmenuid, sortorder, isactive)
+            VALUES (@ServiceCode, @MenuKey, @Title, @RoutePath, @Icon, @ParentMenuId, @SortOrder, @IsActive)
+            RETURNING id, servicecode, menukey, title, routepath, icon, parentmenuid, sortorder, isactive;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@ServiceCode", menu.ServiceCode);
         cmd.Parameters.AddWithValue("@MenuKey", menu.MenuKey);
         cmd.Parameters.AddWithValue("@Title", menu.Title);
@@ -161,7 +202,7 @@ public class MenuRepository : IMenuRepository
         cmd.Parameters.AddWithValue("@SortOrder", menu.SortOrder);
         cmd.Parameters.AddWithValue("@IsActive", menu.IsActive);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await dr.ReadAsync(cancellationToken))
         {
             return MapMenu(dr);
@@ -171,12 +212,23 @@ public class MenuRepository : IMenuRepository
 
     public async Task<AppMenu?> UpdateMasterMenuAsync(AppMenu menu, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_UpdateMasterMenu", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            UPDATE appmenus
+            SET servicecode = @ServiceCode,
+                menukey = COALESCE(@MenuKey, menukey),
+                title = @Title,
+                routepath = @RoutePath,
+                icon = @Icon,
+                parentmenuid = @ParentMenuId,
+                sortorder = @SortOrder,
+                isactive = @IsActive
+            WHERE id = @Id
+            RETURNING id, servicecode, menukey, title, routepath, icon, parentmenuid, sortorder, isactive;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", menu.Id);
         cmd.Parameters.AddWithValue("@ServiceCode", menu.ServiceCode);
         cmd.Parameters.AddWithValue("@MenuKey", (object?)menu.MenuKey ?? DBNull.Value);
@@ -187,7 +239,7 @@ public class MenuRepository : IMenuRepository
         cmd.Parameters.AddWithValue("@SortOrder", menu.SortOrder);
         cmd.Parameters.AddWithValue("@IsActive", menu.IsActive);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         if (await dr.ReadAsync(cancellationToken))
         {
             return MapMenu(dr);
@@ -197,12 +249,11 @@ public class MenuRepository : IMenuRepository
 
     public async Task<bool> DeleteMasterMenuAsync(int id, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_DeleteMasterMenu", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = "DELETE FROM appmenus WHERE id = @Id;";
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@Id", id);
 
         int rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -212,29 +263,32 @@ public class MenuRepository : IMenuRepository
     public async Task<List<UserMenuPermission>> GetUserPermissionsAsync(int userId, CancellationToken cancellationToken = default)
     {
         var list = new List<UserMenuPermission>();
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_GetUserMenuPermissions", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            SELECT id, userid, menuid, canview, cancreate, canedit, candelete, canexport, assignedbyuserid, assignedat
+            FROM usermenupermissions
+            WHERE userid = @UserId;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@UserId", userId);
 
-        using SqlDataReader dr = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
         while (await dr.ReadAsync(cancellationToken))
         {
             list.Add(new UserMenuPermission
             {
-                Id = Convert.ToInt32(dr["Id"]),
-                UserId = Convert.ToInt32(dr["UserId"]),
-                MenuId = Convert.ToInt32(dr["MenuId"]),
-                CanView = Convert.ToBoolean(dr["CanView"]),
-                CanCreate = Convert.ToBoolean(dr["CanCreate"]),
-                CanEdit = Convert.ToBoolean(dr["CanEdit"]),
-                CanDelete = Convert.ToBoolean(dr["CanDelete"]),
-                CanExport = Convert.ToBoolean(dr["CanExport"]),
-                AssignedByUserId = dr["AssignedByUserId"] == DBNull.Value ? null : Convert.ToInt32(dr["AssignedByUserId"]),
-                AssignedAt = Convert.ToDateTime(dr["AssignedAt"])
+                Id = Convert.ToInt32(dr["id"]),
+                UserId = Convert.ToInt32(dr["userid"]),
+                MenuId = Convert.ToInt32(dr["menuid"]),
+                CanView = Convert.ToBoolean(dr["canview"]),
+                CanCreate = Convert.ToBoolean(dr["cancreate"]),
+                CanEdit = Convert.ToBoolean(dr["canedit"]),
+                CanDelete = Convert.ToBoolean(dr["candelete"]),
+                CanExport = Convert.ToBoolean(dr["canexport"]),
+                AssignedByUserId = dr["assignedbyuserid"] == DBNull.Value ? null : Convert.ToInt32(dr["assignedbyuserid"]),
+                AssignedAt = Convert.ToDateTime(dr["assignedat"])
             });
         }
         return list;
@@ -244,12 +298,22 @@ public class MenuRepository : IMenuRepository
         int userId, int menuId, bool canView, bool canCreate, bool canEdit, bool canDelete, bool canExport,
         int? assignedByUserId, CancellationToken cancellationToken = default)
     {
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
-        using SqlCommand cmd = new SqlCommand("sp_SaveUserMenuPermission", con)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
+
+        const string query = @"
+            INSERT INTO usermenupermissions (userid, menuid, canview, cancreate, canedit, candelete, canexport, assignedbyuserid, assignedat)
+            VALUES (@UserId, @MenuId, @CanView, @CanCreate, @CanEdit, @CanDelete, @CanExport, @AssignedByUserId, CURRENT_TIMESTAMP)
+            ON CONFLICT (userid, menuid) DO UPDATE SET 
+                canview = EXCLUDED.canview,
+                cancreate = EXCLUDED.cancreate,
+                canedit = EXCLUDED.canedit,
+                candelete = EXCLUDED.candelete,
+                canexport = EXCLUDED.canexport,
+                assignedbyuserid = EXCLUDED.assignedbyuserid,
+                assignedat = CURRENT_TIMESTAMP;";
+
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@UserId", userId);
         cmd.Parameters.AddWithValue("@MenuId", menuId);
         cmd.Parameters.AddWithValue("@CanView", canView);
@@ -265,45 +329,43 @@ public class MenuRepository : IMenuRepository
 
     public async Task<bool> CascadeRevokePermissionsAsync(int parentUserId, List<int> revokedMenuIds, CancellationToken cancellationToken = default)
     {
-        if (revokedMenuIds == null || !revokedMenuIds.Any()) return true;
+        if (revokedMenuIds == null || revokedMenuIds.Count == 0) return true;
 
-        using SqlConnection con = new SqlConnection(_Connection);
+        await using var con = new NpgsqlConnection(_connection);
         await con.OpenAsync(cancellationToken);
 
-        // Find all subordinate user IDs recursively
-        string query = @"
-            WITH UserTree AS (
-                SELECT Id FROM [dbo].[Users] WHERE ParentUserId = @ParentUserId
+        const string query = @"
+            WITH RECURSIVE subordinates AS (
+                SELECT id FROM users WHERE parentuserid = @ParentUserId
                 UNION ALL
-                SELECT u.Id FROM [dbo].[Users] u
-                INNER JOIN UserTree t ON u.ParentUserId = t.Id
+                SELECT u.id FROM users u
+                INNER JOIN subordinates s ON u.parentuserid = s.id
             )
-            DELETE FROM [dbo].[UserMenuPermissions]
-            WHERE UserId IN (SELECT Id FROM UserTree)
-              AND MenuId IN (" + string.Join(",", revokedMenuIds) + @");
-        ";
+            DELETE FROM usermenupermissions
+            WHERE userid IN (SELECT id FROM subordinates)
+              AND menuid = ANY(@RevokedMenuIds);";
 
-        using SqlCommand cmd = new SqlCommand(query, con);
+        await using var cmd = new NpgsqlCommand(query, con);
         cmd.Parameters.AddWithValue("@ParentUserId", parentUserId);
+        cmd.Parameters.AddWithValue("@RevokedMenuIds", revokedMenuIds.ToArray());
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
         return true;
     }
 
-    private static AppMenu MapMenu(SqlDataReader dr)
+    private static AppMenu MapMenu(NpgsqlDataReader dr)
     {
         return new AppMenu
         {
-            Id = Convert.ToInt32(dr["Id"]),
-            ServiceCode = Convert.ToString(dr["ServiceCode"]) ?? string.Empty,
-            MenuKey = Convert.ToString(dr["MenuKey"]) ?? string.Empty,
-            Title = Convert.ToString(dr["Title"]) ?? string.Empty,
-            RoutePath = Convert.ToString(dr["RoutePath"]) ?? string.Empty,
-            Icon = dr["Icon"] == DBNull.Value ? null : Convert.ToString(dr["Icon"]),
-            ParentMenuId = dr["ParentMenuId"] == DBNull.Value ? null : Convert.ToInt32(dr["ParentMenuId"]),
-            SortOrder = Convert.ToInt32(dr["SortOrder"]),
-            IsActive = Convert.ToBoolean(dr["IsActive"])
+            Id = Convert.ToInt32(dr["id"]),
+            ServiceCode = Convert.ToString(dr["servicecode"]) ?? string.Empty,
+            MenuKey = Convert.ToString(dr["menukey"]) ?? string.Empty,
+            Title = Convert.ToString(dr["title"]) ?? string.Empty,
+            RoutePath = Convert.ToString(dr["routepath"]) ?? string.Empty,
+            Icon = dr["icon"] == DBNull.Value ? null : Convert.ToString(dr["icon"]),
+            ParentMenuId = dr["parentmenuid"] == DBNull.Value ? null : Convert.ToInt32(dr["parentmenuid"]),
+            SortOrder = Convert.ToInt32(dr["sortorder"]),
+            IsActive = Convert.ToBoolean(dr["isactive"])
         };
     }
 }
-
