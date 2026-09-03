@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { BottomNav } from './components/BottomNav';
+import { MobileDrawer } from './components/MobileDrawer';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LeadsCrmPage } from './pages/LeadsCrmPage';
@@ -60,6 +62,7 @@ class ErrorBoundary extends React.Component {
 const MainApp = () => {
   const { isAuthenticated, loading, allowedMenus } = useAuth();
   const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   if (loading) {
     return (
@@ -316,15 +319,36 @@ const MainApp = () => {
 
   return (
     <div className="app-container">
+      {/* Desktop Sidebar (hidden on mobile via CSS) */}
       <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+
+      {/* Mobile Slide-in Drawer */}
+      <MobileDrawer 
+        isOpen={isDrawerOpen} 
+        onClose={() => setIsDrawerOpen(false)} 
+        activeTab={activeTab} 
+        onSelectTab={setActiveTab} 
+      />
+
       <div className="main-wrapper">
-        <Header currentTitle={getActiveTitle()} />
+        <Header 
+          currentTitle={getActiveTitle()} 
+          onOpenDrawer={() => setIsDrawerOpen(true)} 
+        />
         <main className="content-area">
           <ErrorBoundary key={activeTab}>
             {renderActiveContent()}
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Native Mobile Bottom Navigation Bar (hidden on desktop via CSS) */}
+      <BottomNav 
+        activeTab={activeTab} 
+        onSelectTab={setActiveTab} 
+        onOpenDrawer={() => setIsDrawerOpen(prev => !prev)} 
+        isDrawerOpen={isDrawerOpen}
+      />
     </div>
   );
 };
