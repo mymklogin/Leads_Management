@@ -9,11 +9,12 @@ import {
   CheckCircle2, 
   Eye, 
   EyeOff,
-  Laptop,
   Sparkles,
   PhoneCall,
   Send,
-  Users
+  Users,
+  Shield,
+  Check
 } from 'lucide-react';
 
 export const LoginPage = () => {
@@ -48,6 +49,12 @@ export const LoginPage = () => {
     setError('');
   };
 
+  const fillAdmin = () => {
+    setUsername('admin');
+    setPassword('Admin@123');
+    setError('');
+  };
+
   return (
     <div className="login-container">
       {/* Top Navbar */}
@@ -56,13 +63,13 @@ export const LoginPage = () => {
           <div style={{
             width: 38,
             height: 38,
-            borderRadius: '8px',
+            borderRadius: '10px',
             background: '#0a66c2',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(10, 102, 194, 0.3)'
+            boxShadow: '0 2px 8px rgba(10, 102, 194, 0.3)'
           }}>
             <Flame size={22} />
           </div>
@@ -73,15 +80,16 @@ export const LoginPage = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Desktop Navigation Links */}
+        <div className="desktop-login-nav">
           <div style={{ display: 'flex', gap: 18, marginRight: 8, fontSize: '13.5px', color: '#64748b', fontWeight: 600 }}>
-            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <PhoneCall size={14} /> Voice OBD
             </span>
-            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Send size={14} /> RCS Messaging
             </span>
-            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Users size={14} /> Leads CRM
             </span>
           </div>
@@ -99,24 +107,54 @@ export const LoginPage = () => {
               color: '#0a66c2' 
             }}
           >
-            Demo Credentials
+            Autofill Demo
+          </button>
+        </div>
+
+        {/* Mobile Quick Action Pill */}
+        <div className="mobile-login-quick-pill">
+          <button 
+            type="button" 
+            onClick={fillSuperAdmin}
+            style={{
+              background: '#e0f2fe',
+              color: '#0a66c2',
+              border: '1px solid #bae6fd',
+              borderRadius: '20px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <ShieldCheck size={13} />
+            <span>SuperAdmin</span>
           </button>
         </div>
       </header>
 
-      {/* Hero Section: 2 Columns */}
+      {/* Hero Section */}
       <main className="login-hero">
         
-        {/* Left Column: Form & Heading */}
-        <div style={{ maxWidth: '440px', width: '100%' }}>
-          <h1 style={{ 
-            fontSize: '40px', 
-            fontWeight: 500, 
-            color: '#8f5849', 
-            lineHeight: 1.2, 
-            marginBottom: '28px',
-            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          }}>
+        {/* Form Container (Desktop: Left Column | Mobile: Full App Card) */}
+        <div className="login-form-card">
+          
+          {/* Mobile App Header Badge */}
+          <div className="mobile-login-hero-header">
+            <div className="mobile-app-badge">
+              <span className="live-pulse-dot" style={{ width: 6, height: 6 }}></span>
+              <span>Cloud Enterprise Multi-Channel</span>
+            </div>
+            <h1 className="mobile-app-title">Welcome Back</h1>
+            <p className="mobile-app-subtitle">
+              Sign in to manage OBD dialers, RCS bots, SMS gateways, and live CRM leads.
+            </p>
+          </div>
+
+          {/* Desktop Heading */}
+          <h1 className="desktop-login-heading">
             Explore leads and grow your business network
           </h1>
 
@@ -125,76 +163,91 @@ export const LoginPage = () => {
               background: '#fee2e2',
               border: '1px solid #fca5a5',
               color: '#b91c1c',
-              padding: '10px 16px',
+              padding: '10px 14px',
               borderRadius: '12px',
               fontSize: '13px',
-              marginBottom: '20px'
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
             }}>
-              {error}
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Username */}
+            {/* Username Field */}
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                Email or Username
+                Username or Email
               </label>
               <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" 
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px 12px 42px',
-                    borderRadius: '8px',
-                    border: '1px solid #94a3b8',
-                    fontSize: '15px',
-                    color: '#0f172a',
-                    outline: 'none',
-                    transition: 'border-color 0.15s'
-                  }}
-                  placeholder="superadmin"
+                <div style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <User size={18} />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Enter superadmin or admin"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  className="login-input-field"
+                  autoCapitalize="none"
+                  autoComplete="username"
+                  required
                 />
-                <User size={18} style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
               </div>
             </div>
 
-            {/* Password */}
+            {/* Password Field */}
             <div>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: 6 }}>
                 Password
               </label>
               <div style={{ position: 'relative' }}>
-                <input 
+                <div style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#94a3b8',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <Lock size={18} />
+                </div>
+                <input
                   type={showPassword ? 'text' : 'password'}
-                  style={{
-                    width: '100%',
-                    padding: '12px 42px 12px 42px',
-                    borderRadius: '8px',
-                    border: '1px solid #94a3b8',
-                    fontSize: '15px',
-                    color: '#0f172a',
-                    outline: 'none',
-                    transition: 'border-color 0.15s'
-                  }}
-                  placeholder="••••••••"
+                  placeholder="Enter Admin@123"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="login-input-field"
+                  autoComplete="current-password"
+                  required
                 />
-                <Lock size={18} style={{ position: 'absolute', left: 14, top: 14, color: '#64748b' }} />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: 12,
-                    top: 12,
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#64748b',
-                    cursor: 'pointer'
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: 4
                   }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -202,75 +255,71 @@ export const LoginPage = () => {
               </div>
             </div>
 
-            <p style={{ fontSize: '11.5px', color: '#64748b', margin: '4px 0 0 0', lineHeight: 1.4 }}>
-              By clicking Sign in, you agree to the Leads Engine{' '}
-              <span style={{ color: '#0a66c2', fontWeight: 600, cursor: 'pointer' }}>User Agreement</span>,{' '}
-              <span style={{ color: '#0a66c2', fontWeight: 600, cursor: 'pointer' }}>Privacy Policy</span>, and{' '}
-              <span style={{ color: '#0a66c2', fontWeight: 600, cursor: 'pointer' }}>Cookie Policy</span>.
+            {/* Terms text */}
+            <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0 0', lineHeight: 1.4 }}>
+              By continuing, you agree to the LeadsEngine{' '}
+              <span style={{ color: '#0a66c2', fontWeight: 600 }}>Security Policy</span> and Terms.
             </p>
 
-            {/* Primary Sign In Button */}
+            {/* Submit Button */}
             <button 
               type="submit" 
-              className="btn btn-primary" 
-              style={{ 
-                width: '100%', 
-                padding: '13px', 
-                borderRadius: '28px',
-                fontSize: '15px',
-                fontWeight: 700,
-                background: '#0a66c2',
-                borderColor: '#0a66c2',
-                color: '#ffffff',
-                boxShadow: '0 2px 6px rgba(10, 102, 194, 0.3)',
-                marginTop: '6px'
-              }}
+              className="login-submit-btn"
               disabled={loading}
             >
-              {loading ? 'Authenticating...' : 'Sign in'}
+              <span>{loading ? 'Authenticating...' : 'Sign in to Account'}</span>
+              {!loading && <ArrowRight size={18} />}
             </button>
           </form>
 
-          {/* Quick SuperAdmin Button */}
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <button 
-              type="button" 
-              onClick={fillSuperAdmin}
-              style={{
-                width: '100%',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '28px',
-                padding: '10px 16px',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#334155',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              <ShieldCheck size={16} color="#0a66c2" />
-              <span>Use Default SuperAdmin (superadmin / Admin@123)</span>
-            </button>
+          {/* Quick 1-Tap Demo Credentials Selector */}
+          <div className="login-quick-demo-section">
+            <div className="quick-demo-label">ONE-TAP DEMO ACCOUNTS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <button 
+                type="button" 
+                className={`quick-account-card ${username === 'superadmin' ? 'selected' : ''}`}
+                onClick={fillSuperAdmin}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span className="account-role-tag">SuperAdmin</span>
+                  {username === 'superadmin' && <Check size={14} color="#0a66c2" />}
+                </div>
+                <div className="account-user-name">superadmin</div>
+                <div className="account-pass-hint">Admin@123</div>
+              </button>
+
+              <button 
+                type="button" 
+                className={`quick-account-card ${username === 'admin' ? 'selected' : ''}`}
+                onClick={fillAdmin}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                  <span className="account-role-tag" style={{ background: '#e0e7ff', color: '#4338ca' }}>Admin</span>
+                  {username === 'admin' && <Check size={14} color="#4338ca" />}
+                </div>
+                <div className="account-user-name">admin</div>
+                <div className="account-pass-hint">Admin@123</div>
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Bottom Security Pill */}
+          <div className="mobile-login-footer-security">
+            <span>🔒 Neon Cloud PostgreSQL Secured</span>
+            <span>•</span>
+            <span>v2.4 Production</span>
+          </div>
+
         </div>
 
-        {/* Right Column: Chandra Aakar (Crescent / Arched Dome) with Laptop & 100% Delivery */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-          padding: '20px'
-        }}>
+        {/* Right Column: Desktop Illustration (Hidden on Mobile) */}
+        <div className="login-desktop-illustration">
           {/* Semicircular / Arched "Chandra Aakar" Backdrop */}
           <div style={{
             width: '470px',
             height: '500px',
-            borderRadius: '235px 235px 40px 40px', // Chandra Aakar / Crescent Arch
+            borderRadius: '235px 235px 40px 40px',
             background: 'linear-gradient(180deg, #fef3c7 0%, #fef9c3 30%, #e0f2fe 100%)',
             boxShadow: '0 20px 40px -15px rgba(254, 243, 199, 0.8), 0 10px 30px -10px rgba(10, 102, 194, 0.15)',
             position: 'relative',
@@ -281,7 +330,7 @@ export const LoginPage = () => {
             border: '2px solid rgba(255,255,255,0.8)'
           }}>
             
-            {/* Background Decorative Sun / Ambient Element */}
+            {/* Ambient Sun */}
             <div style={{
               position: 'absolute',
               top: '40px',
@@ -293,7 +342,7 @@ export const LoginPage = () => {
               opacity: 0.6
             }} />
 
-            {/* Floating Metric 1 (Top Right) */}
+            {/* Floating Metric 1 */}
             <div style={{
               position: 'absolute',
               top: '45px',
@@ -317,7 +366,7 @@ export const LoginPage = () => {
               <span>4,933 Live RCS Credits</span>
             </div>
 
-            {/* Floating Metric 2 (Mid Left) - 100% Delivery (Jio replaced with 100% Delivery) */}
+            {/* Floating Metric 2 */}
             <div style={{
               position: 'absolute',
               top: '180px',
@@ -349,7 +398,6 @@ export const LoginPage = () => {
               zIndex: 2,
               marginBottom: '28px'
             }}>
-              {/* Laptop Screen & Glow */}
               <div style={{
                 width: '270px',
                 height: '168px',
@@ -363,7 +411,6 @@ export const LoginPage = () => {
                 justifyContent: 'space-between',
                 position: 'relative'
               }}>
-                {/* Simulated UI Screen on Laptop */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: 6 }}>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
@@ -373,7 +420,6 @@ export const LoginPage = () => {
                   <span style={{ fontSize: '8.5px', color: '#94a3b8', fontWeight: 600 }}>Leads Management Hub</span>
                 </div>
 
-                {/* Dashboard graph lines inside laptop */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: '70px', padding: '0 8px' }}>
                   <div style={{ flex: 1, height: '40%', background: '#0a66c2', borderRadius: '3px' }} />
                   <div style={{ flex: 1, height: '70%', background: '#38bdf8', borderRadius: '3px' }} />
@@ -388,7 +434,6 @@ export const LoginPage = () => {
                 </div>
               </div>
 
-              {/* Laptop Keyboard Base */}
               <div style={{
                 width: '330px',
                 height: '14px',
@@ -402,7 +447,6 @@ export const LoginPage = () => {
                 <div style={{ width: '42px', height: '4px', background: '#64748b', borderRadius: '2px' }} />
               </div>
 
-              {/* Desk Surface */}
               <div style={{
                 width: '410px',
                 height: '12px',
@@ -413,7 +457,7 @@ export const LoginPage = () => {
               }} />
             </div>
 
-            {/* Floating Metric 3 (Bottom Right) */}
+            {/* Floating Metric 3 */}
             <div style={{
               position: 'absolute',
               bottom: '40px',

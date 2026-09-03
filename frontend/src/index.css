@@ -640,6 +640,132 @@ body {
   }
 }
 
+/* ------------------------------------------------------------------------------
+   RESPONSIVE LOGIN & HOME PAGE BASE STYLES
+   ------------------------------------------------------------------------------ */
+.desktop-login-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mobile-login-quick-pill {
+  display: none;
+}
+
+.login-form-card {
+  max-width: 440px;
+  width: 100%;
+}
+
+.desktop-login-heading {
+  font-size: 38px;
+  font-weight: 500;
+  color: #8f5849;
+  line-height: 1.2;
+  margin-bottom: 24px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.mobile-login-hero-header {
+  display: none;
+}
+
+.login-input-field {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 14.5px;
+  color: #1e293b;
+  background-color: #ffffff;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.login-input-field:focus {
+  border-color: #0a66c2;
+  box-shadow: 0 0 0 3px rgba(10, 102, 194, 0.15);
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 28px;
+  font-size: 15px;
+  font-weight: 700;
+  background: #0a66c2;
+  border: 1px solid #0a66c2;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(10, 102, 194, 0.3);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-submit-btn:active {
+  transform: scale(0.98);
+  background: #004182;
+}
+
+.login-quick-demo-section {
+  margin-top: 20px;
+}
+
+.quick-demo-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.quick-account-card {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-account-card:hover, .quick-account-card.selected {
+  border-color: #0a66c2;
+  background: #f0f9ff;
+}
+
+.account-role-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.account-user-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.account-pass-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.mobile-login-footer-security {
+  display: none;
+}
+
 /* ==============================================================================
    NATIVE MOBILE APP & BROWSER DESKTOP RESPONSIVE SYSTEM
    ============================================================================== */
@@ -1044,14 +1170,104 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Login page Mobile App Layout */
+  /* ------------------------------------------------------------------------------
+     Mobile Login Page: 100% Native App Feel
+     ------------------------------------------------------------------------------ */
+  .login-container {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: #f8fafc;
+  }
+
   .login-navbar {
     padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .desktop-login-nav {
+    display: none !important;
+  }
+
+  .mobile-login-quick-pill {
+    display: block;
   }
 
   .login-hero {
-    padding: 10px 14px 28px;
-    gap: 16px;
+    padding: 16px 14px 32px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0;
+  }
+
+  .login-desktop-illustration {
+    display: none !important;
+  }
+
+  .login-form-card {
+    max-width: 100%;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 22px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .desktop-login-heading {
+    display: none !important;
+  }
+
+  .mobile-login-hero-header {
+    display: block;
+    margin-bottom: 18px;
+  }
+
+  .mobile-app-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    margin-bottom: 8px;
+  }
+
+  .mobile-app-title {
+    font-size: 23px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+
+  .mobile-app-subtitle {
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  .login-submit-btn {
+    height: 48px;
+    font-size: 15px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0a66c2 0%, #0284c7 100%);
+  }
+
+  .mobile-login-footer-security {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 18px;
+    font-weight: 600;
   }
 }
 
