@@ -29,22 +29,21 @@ export const RcsTemplatesPage = () => {
 
   // Default initial dynamic template state
   const defaultNewTemplate = {
-    templateName: 'Lead_Interest_Survey',
+    templateName: 'pbg_account_status_u',
     templateType: 'PlainText', // PlainText, RichCard, Carousel
-    botId: 'bot_abc123',
-    botName: 'Marketing Bot',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
     imageSource: 'url', // 'upload' or 'url'
     mediaUrl: '',
-    cardTitle: 'Product Partnership & Collaboration',
-    cardDescription: 'Hi! Are you interested in exploring our automated leads & business messaging platform?',
+    cardTitle: 'PBG Account Status Update',
+    cardDescription: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
     buttons: [
-      { id: 1, type: 'reply', label: 'Interested', value: 'Interested' },
-      { id: 2, type: 'reply', label: 'Not Interested', value: 'Not Interested' }
+      { id: 1, type: 'reply', label: 'View Details', value: 'VIEW_DETAILS' }
     ],
     entityId: '1201161304403738311',
-    senderId: 'EXPRSS',
-    smsTemplateId: '1207161545678901237',
-    smsText: 'Hi! Are you interested in exploring our leads platform? Reply YES or NO. Visit: https://leads.io'
+    senderId: 'PBGACC',
+    smsTemplateId: '1207161545678901235',
+    smsText: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.'
   };
 
   const [newTemplate, setNewTemplate] = useState(defaultNewTemplate);
@@ -53,16 +52,16 @@ export const RcsTemplatesPage = () => {
   const [editingTemplate, setEditingTemplate] = useState({
     templateId: '',
     templateName: '',
-    templateType: 'RichCard',
-    botId: 'bot_abc123',
-    botName: 'Marketing Bot',
+    templateType: 'PlainText',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
     imageSource: 'url',
     mediaUrl: '',
     cardTitle: '',
     cardDescription: '',
     buttons: [],
-    entityId: '',
-    senderId: '',
+    entityId: '1201161304403738311',
+    senderId: 'PBGACC',
     smsTemplateId: '',
     smsText: ''
   });

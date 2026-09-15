@@ -23,7 +23,7 @@ import {
 
 export const RcsBotsPage = ({ onNavigateToCampaign }) => {
   const [bots, setBots] = useState([]);
-  const [selectedBotId, setSelectedBotId] = useState('bot_abc123');
+  const [selectedBotId, setSelectedBotId] = useState('3c4fa9a066274cd2');
   const [templates, setTemplates] = useState([]);
   const [searchName, setSearchName] = useState('');
   const [filterType, setFilterType] = useState('All');
@@ -43,7 +43,16 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
   const [newBotWebhook, setNewBotWebhook] = useState('https://yourdomain.com/rcs-webhook');
   const [botActionMsg, setBotActionMsg] = useState('');
 
-  const API_KEY = '130A8005B8EF4D5BB74E96D1A5CC9063993';
+  // 1-to-1 Chat Message State (SendChatMessage)
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatBotId, setChatBotId] = useState('3c4fa9a066274cd2');
+  const [chatMobileNo, setChatMobileNo] = useState('9170304221');
+  const [chatMessageText, setChatMessageText] = useState('Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.');
+  const [chatSending, setChatSending] = useState(false);
+  const [chatResult, setChatResult] = useState(null);
+  const [chatError, setChatError] = useState('');
+
+  const API_KEY = 'A58463AEB7AE41CD9901D23D18BC2482883';
 
   useEffect(() => {
     fetchBots();
@@ -150,6 +159,36 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
     setTimeout(() => setCopiedText(''), 3000);
   };
 
+  // Send 1-to-1 Conversational RCS Bot Message
+  const handleSendChatMessage = async (e) => {
+    if (e) e.preventDefault();
+    setChatSending(true);
+    setChatError('');
+    setChatResult(null);
+
+    try {
+      const payload = {
+        botId: chatBotId || selectedBotId || '3c4fa9a066274cd2',
+        mobileNo: chatMobileNo.trim(),
+        messageText: chatMessageText.trim()
+      };
+      const res = await api.post('/RCSApi/SendChatMessage', payload);
+      if (res.data?.status === 'OK' || res.data?.Status === 'OK') {
+        setChatResult(res.data?.response || res.data?.Response || { message: 'Message sent successfully!' });
+        setTimeout(() => {
+          setChatResult(null);
+          setShowChatModal(false);
+        }, 4000);
+      } else {
+        setChatError(res.data?.response?.message || res.data?.Response?.Message || 'Failed to deliver message.');
+      }
+    } catch (err) {
+      setChatError(err.response?.data?.response?.message || err.message || 'Error sending chat message.');
+    } finally {
+      setChatSending(false);
+    }
+  };
+
   // Live Test an RCS API from PDF
   const handleTestApi = async (endpointKey) => {
     setApiTesting(true);
@@ -164,10 +203,16 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
         res = await api.get(`/RCSApi/GetTemplates?apiKey=${API_KEY}&botId=${selectedBotId}&templateName=${searchName}&templateType=${filterType === 'All' ? '' : filterType}`);
       } else if (endpointKey === 'CreateCampaign') {
         res = await api.post(`/RCSApi/CreateCampaign?apiKey=${API_KEY}`, {
-          templateId: templates[0]?.templateId || 'vendor_tpl_xyz789',
-          campaignName: 'Test_Campaign_API',
-          mobileNumbers: ['9876543210', '9123456789'],
+          templateId: 'YCSLPB_vg',
+          campaignName: 'PBG_Account_Status',
+          mobileNumbers: ['9170304221', '7840095957'],
           enableFallback: false
+        });
+      } else if (endpointKey === 'SendChatMessage') {
+        res = await api.post(`/RCSApi/SendChatMessage?apiKey=${API_KEY}`, {
+          botId: selectedBotId || '3c4fa9a066274cd2',
+          mobileNo: '9170304221',
+          messageText: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.'
         });
       }
       setApiTestResponse(res.data);
@@ -199,14 +244,26 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button 
             className="btn btn-outline"
             onClick={() => setShowApiDocDrawer(!showApiDocDrawer)}
             style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, borderColor: '#6366f1', color: '#4f46e5' }}
           >
             <Code2 size={16} />
-            <span>RCS API Hub & Testing (All 4 Endpoints)</span>
+            <span>RCS API Hub & Testing</span>
+          </button>
+
+          <button 
+            className="btn btn-outline"
+            onClick={() => {
+              setChatBotId(selectedBotId || '3c4fa9a066274cd2');
+              setShowChatModal(true);
+            }}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, borderColor: '#10b981', color: '#059669' }}
+          >
+            <Send size={15} />
+            <span>💬 1-to-1 Bot Message</span>
           </button>
 
           <button 
@@ -289,9 +346,24 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f1f5f9', fontSize: '11px', color: '#64748b' }}>
                   <span>Verified Templates: <b style={{ color: '#0f172a' }}>{b.templateCount ?? templates.length}</b></span>
-                  <span style={{ color: isSelected ? '#4f46e5' : '#64748b', fontWeight: isSelected ? 800 : 500 }}>
-                    {isSelected ? '● Currently Active Filter' : 'Click to Filter →'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      style={{ fontSize: '10px', padding: '2px 8px', color: '#059669', borderColor: '#a7f3d0' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChatBotId(b.botId);
+                        setShowChatModal(true);
+                      }}
+                      title="Send 1-to-1 RCS Chat Message"
+                    >
+                      💬 Chat
+                    </button>
+                    <span style={{ color: isSelected ? '#4f46e5' : '#64748b', fontWeight: isSelected ? 800 : 500 }}>
+                      {isSelected ? '● Active' : 'Filter →'}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
@@ -647,7 +719,8 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
               { key: 'GetTemplates', label: '1. Get RCS Templates (Page 5-8)' },
               { key: 'GetBots', label: '2. Get RCS Bots (Page 9-10)' },
               { key: 'CheckRcsBalance', label: '3. Check RCS Balance (Page 4-5)' },
-              { key: 'CreateCampaign', label: '4. Create Campaign (Page 1-4)' }
+              { key: 'CreateCampaign', label: '4. Create Campaign (Page 1-4)' },
+              { key: 'SendChatMessage', label: '5. Send 1-to-1 Chat Message' }
             ].map(tab => (
               <button 
                 key={tab.key}
@@ -672,6 +745,7 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
                   {activeApiTab === 'GetBots' && 'GET /api/RCSApi/GetBots (Retrieve all registered brand bots)'}
                   {activeApiTab === 'CheckRcsBalance' && 'GET /api/RCSApi/CheckRcsBalance (Check RCS and SMS Balance)'}
                   {activeApiTab === 'CreateCampaign' && 'POST /api/RCSApi/CreateCampaign (Create campaign with optional fallback)'}
+                  {activeApiTab === 'SendChatMessage' && 'POST /api/RCSApi/SendChatMessage (Send 1-to-1 Bot RCS Message)'}
                 </span>
               </div>
 
@@ -680,7 +754,8 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
                 {activeApiTab === 'GetTemplates' && `curl -X GET "http://localhost:5108/api/RCSApi/GetTemplates?apiKey=${API_KEY}&botId=${selectedBotId}&templateName=${searchName}&templateType=${filterType === 'All' ? '' : filterType}"`}
                 {activeApiTab === 'GetBots' && `curl -X GET "http://localhost:5108/api/RCSApi/GetBots?apiKey=${API_KEY}"`}
                 {activeApiTab === 'CheckRcsBalance' && `curl -X GET "http://localhost:5108/api/RCSApi/CheckRcsBalance?apiKey=${API_KEY}"`}
-                {activeApiTab === 'CreateCampaign' && `curl -X POST "http://localhost:5108/api/RCSApi/CreateCampaign?apiKey=${API_KEY}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "TemplateId": "${templates[0]?.templateId || 'vendor_tpl_xyz789'}",\n    "CampaignName": "Sample_Promo_Campaign",\n    "MobileNumbers": ["9876543210", "9123456789"],\n    "EnableFallback": false\n  }'`}
+                {activeApiTab === 'CreateCampaign' && `curl -X POST "http://localhost:5108/api/RCSApi/CreateCampaign?apiKey=${API_KEY}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "TemplateId": "YCSLPB_vg",\n    "CampaignName": "PBG_Account_Status",\n    "MobileNumbers": ["9170304221", "7840095957"],\n    "EnableFallback": false\n  }'`}
+                {activeApiTab === 'SendChatMessage' && `curl -X POST "http://localhost:5108/api/RCSApi/SendChatMessage?apiKey=${API_KEY}" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "BotId": "${selectedBotId || '3c4fa9a066274cd2'}",\n    "MobileNo": "9170304221",\n    "MessageText": "Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details."\n  }'`}
               </pre>
 
               <button 
@@ -814,6 +889,140 @@ export const RcsBotsPage = ({ onNavigateToCampaign }) => {
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1, fontWeight: 800 }}>
                   Register Verified Bot
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: 1-to-1 Conversational RCS Bot Message */}
+      {showChatModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '480px',
+            padding: '24px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+              <div style={{ fontWeight: 800, fontSize: '16px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Send size={18} color="#059669" />
+                <span>Send 1-to-1 Conversational RCS Bot Message</span>
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-outline btn-sm"
+                onClick={() => { setShowChatModal(false); setChatResult(null); setChatError(''); }}
+                style={{ border: 'none' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {chatResult && (
+              <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '12px' }}>
+                <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CheckCircle2 size={16} color="#059669" />
+                  <span>{chatResult.message || chatResult.Message || 'Message Dispatched Successfully!'}</span>
+                </div>
+                {(chatResult.chatMessageId || chatResult.ChatMessageId) && (
+                  <div style={{ marginTop: 4 }}>
+                    Message ID: <code>{String(chatResult.chatMessageId || chatResult.ChatMessageId)}</code>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {chatError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '12px', fontWeight: 700 }}>
+                ⚠️ {chatError}
+              </div>
+            )}
+
+            <form onSubmit={handleSendChatMessage}>
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '12px' }}>Sender Bot</label>
+                <select 
+                  className="form-select"
+                  value={chatBotId}
+                  onChange={(e) => setChatBotId(e.target.value)}
+                >
+                  {bots.map(b => (
+                    <option key={b.botId} value={b.botId}>
+                      {b.botName} ({b.botId})
+                    </option>
+                  ))}
+                  {!bots.some(b => b.botId === '3c4fa9a066274cd2') && (
+                    <option value="3c4fa9a066274cd2">PBG INFO (3c4fa9a066274cd2)</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', margin: 0 }}>Recipient Mobile Number</label>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {['9170304221', '7840095957', '9868040206'].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        style={{ fontSize: '10px', padding: '1px 6px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                        onClick={() => setChatMobileNo(num)}
+                      >
+                        {num.slice(-5)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="10-digit mobile number, e.g. 9170304221"
+                  value={chatMobileNo}
+                  onChange={(e) => setChatMobileNo(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '12px' }}>Message Text</label>
+                <textarea 
+                  className="form-input" 
+                  rows={4}
+                  placeholder="Enter message text to deliver via Google RCS client..."
+                  value={chatMessageText}
+                  onChange={(e) => setChatMessageText(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ flex: 1 }} 
+                  onClick={() => { setShowChatModal(false); setChatResult(null); setChatError(''); }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ flex: 1.5, fontWeight: 800, background: '#059669', borderColor: '#059669' }}
+                  disabled={chatSending}
+                >
+                  {chatSending ? 'Sending...' : 'Send RCS Chat Now'}
                 </button>
               </div>
             </form>

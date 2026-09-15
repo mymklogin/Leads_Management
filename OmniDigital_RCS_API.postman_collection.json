@@ -1,0 +1,192 @@
+{
+	"info": {
+		"_postman_id": "omnidigital-rcs-collection",
+		"name": "OmniDigital RCS API",
+		"description": "Pre-configured collection for OmniDigital RCS API testing with API Key and target mobile 9170304221",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Check RCS & SMS Balance",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://omnidigital.co.in/api/RCSApi/CheckRcsBalance?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"protocol": "https",
+					"host": [
+						"omnidigital",
+						"co",
+						"in"
+					],
+					"path": [
+						"api",
+						"RCSApi",
+						"CheckRcsBalance"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "A58463AEB7AE41CD9901D23D18BC2482883",
+							"description": "Your OmniDigital API Key"
+						}
+					]
+				},
+				"description": "Retrieves your current available RCS and SMS balance."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get Registered RCS Bots",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://omnidigital.co.in/api/RCSApi/GetBots?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"protocol": "https",
+					"host": [
+						"omnidigital",
+						"co",
+						"in"
+					],
+					"path": [
+						"api",
+						"RCSApi",
+						"GetBots"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "A58463AEB7AE41CD9901D23D18BC2482883",
+							"description": "Your OmniDigital API Key"
+						}
+					]
+				},
+				"description": "Retrieves list of all RCS bots registered under your account. Note the BotId from the response to fetch templates."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Get RCS Templates (Replace botId)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=REPLACE_WITH_YOUR_BOT_ID",
+					"protocol": "https",
+					"host": [
+						"omnidigital",
+						"co",
+						"in"
+					],
+					"path": [
+						"api",
+						"RCSApi",
+						"GetTemplates"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "A58463AEB7AE41CD9901D23D18BC2482883"
+						},
+						{
+							"key": "botId",
+							"value": "REPLACE_WITH_YOUR_BOT_ID",
+							"description": "BotId obtained from GetBots endpoint"
+						}
+					]
+				},
+				"description": "Retrieves all approved templates for your bot. Copy the TemplateId of an Active template."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Send RCS Message (Without Fallback)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"TemplateId\": \"REPLACE_WITH_YOUR_TEMPLATE_ID\",\n  \"CampaignName\": \"Test_RCS_Campaign\",\n  \"MobileNumbers\": [\n    \"9170304221\"\n  ],\n  \"EnableFallback\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"protocol": "https",
+					"host": [
+						"omnidigital",
+						"co",
+						"in"
+					],
+					"path": [
+						"api",
+						"RCSApi",
+						"CreateCampaign"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "A58463AEB7AE41CD9901D23D18BC2482883"
+						}
+					]
+				},
+				"description": "Sends an RCS message directly to 9170304221."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Send RCS Message (With SMS Fallback)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"TemplateId\": \"REPLACE_WITH_YOUR_TEMPLATE_ID\",\n  \"CampaignName\": \"PBG_Status_Update\",\n  \"MobileNumbers\": [\n    \"9170304221\"\n  ],\n  \"EnableFallback\": true,\n  \"EntityId\": \"YOUR_DLT_ENTITY_ID\",\n  \"SenderId\": \"YOUR_SENDER_ID\",\n  \"SmsTemplateId\": \"YOUR_SMS_TEMPLATE_ID\",\n  \"SmsText\": \"Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"protocol": "https",
+					"host": [
+						"omnidigital",
+						"co",
+						"in"
+					],
+					"path": [
+						"api",
+						"RCSApi",
+						"CreateCampaign"
+					],
+					"query": [
+						{
+							"key": "apiKey",
+							"value": "A58463AEB7AE41CD9901D23D18BC2482883"
+						}
+					]
+				},
+				"description": "Sends RCS message with SMS fallback text if RCS is not enabled or delivered on recipient handset."
+			},
+			"response": []
+		}
+	]
+}

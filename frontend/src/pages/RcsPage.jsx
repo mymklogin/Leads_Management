@@ -27,47 +27,30 @@ export const RcsPage = ({ onNavigateToOverview }) => {
   const [activeSubTab, setActiveSubTab] = useState('campaign'); // 'campaign', 'templates'
   
   // Balances
-  const [rcsBalance, setRcsBalance] = useState(104997);
-  const [smsBalance, setSmsBalance] = useState(100000);
+  const [rcsBalance, setRcsBalance] = useState(100);
+  const [smsBalance, setSmsBalance] = useState(100.0);
 
   // Templates
   const [templates, setTemplates] = useState([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('tpl_welcome_01');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('YCSLPB_vg');
   const [showAddTemplateModal, setShowAddTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
-    templateName: '',
-    templateType: 'RichCard',
-    botId: 'bot_abc123',
-    botName: 'Marketing Bot',
+    templateName: 'pbg_account_status_u',
+    templateType: 'PlainText',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
     entityId: '1201161304403738311',
-    senderId: 'EXPRSS',
-    smsTemplateId: '',
-    smsText: ''
+    senderId: 'PBGACC',
+    smsTemplateId: '1207161545678901235',
+    smsText: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.'
   });
 
   // Campaign Dispatch Form States
-  const [campaignName, setCampaignName] = useState('Summer Product Launch');
+  const [campaignName, setCampaignName] = useState('PBG_Account_Status');
   const [mobilesText, setMobilesText] = useState(
-`9876543210
-9123456789
-9988776655
-9811223344
-9822334455
-9833445566
-9844556677
-9855667788
-9866778899
-9877889900
-9888990011
-9899001122
-9810111213
-9812131415
-9814151617
-9816171819
-9818192021
-9820212223
-9822232425
-9824252627`
+`9170304221
+7840095957
+9868040206`
   );
   const [enableFallback, setEnableFallback] = useState(true);
   const [entityId, setEntityId] = useState('1201161304403738311');

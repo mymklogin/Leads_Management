@@ -76,6 +76,7 @@ builder.Services.AddScoped<IWebhookProcessorService, WebhookProcessorService>();
 builder.Services.AddScoped<ILeadService, LeadService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddHttpClient<IExpressIvrClient, ExpressIvrClient>();
+builder.Services.AddHttpClient<IOmniDigitalRcsService, OmniDigitalRcsService>();
 
 // 6. Configure JWT Authentication
 string jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? "SUPER_SECRET_LEADS_MANAGEMENT_KEY_9999900000_VERY_SECURE";

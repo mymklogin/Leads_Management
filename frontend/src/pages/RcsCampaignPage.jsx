@@ -17,37 +17,24 @@ export const RcsCampaignPage = () => {
 
   // Templates
   const [templates, setTemplates] = useState([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('tpl_welcome_01');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('YCSLPB_vg');
 
   // Campaign Dispatch Form States
-  const [campaignName, setCampaignName] = useState('Summer Product Launch');
+  const [campaignName, setCampaignName] = useState('PBG_Account_Status');
   const [mobilesText, setMobilesText] = useState(
-`9876543210
-9123456789
-9988776655
-9811223344
-9822334455
-9833445566
-9844556677
-9855667788
-9866778899
-9877889900
-9888990011
-9899001122
-9810111213
-9812131415
-9814151617
-9816171819
-9818192021
-9820212223
-9822232425
-9824252627`
+`9170304221
+7840095957
+9868040206`
   );
-  const [enableFallback, setEnableFallback] = useState(true);
+  const [enableFallback, setEnableFallback] = useState(false);
   const [entityId, setEntityId] = useState('1201161304403738311');
-  const [senderId, setSenderId] = useState('EXPRSS');
+  const [senderId, setSenderId] = useState('PBGACC');
   const [smsTemplateId, setSmsTemplateId] = useState('1207161545678901235');
-  const [smsText, setSmsText] = useState('Summer Exclusive Sale! Claim up to 40% discount on all plans: https://offers.io');
+  const [smsText, setSmsText] = useState('Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.');
+  const [customParam1, setCustomParam1] = useState('');
+  const [customParam2, setCustomParam2] = useState('');
+  const [customParam3, setCustomParam3] = useState('');
+  const [customParam4, setCustomParam4] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -163,7 +150,11 @@ export const RcsCampaignPage = () => {
         entityId: enableFallback ? entityId : undefined,
         senderId: enableFallback ? senderId : undefined,
         smsTemplateId: enableFallback ? smsTemplateId : undefined,
-        smsText: enableFallback ? smsText : undefined
+        smsText: enableFallback ? smsText : undefined,
+        customParam1: customParam1 ? customParam1.trim() : undefined,
+        customParam2: customParam2 ? customParam2.trim() : undefined,
+        customParam3: customParam3 ? customParam3.trim() : undefined,
+        customParam4: customParam4 ? customParam4.trim() : undefined
       };
 
       const res = await api.post('/RCSApi/CreateCampaign', payload);
@@ -339,6 +330,65 @@ export const RcsCampaignPage = () => {
               )}
             </div>
 
+            {/* Custom Parameters for Dynamic Templates */}
+            <div className="card" style={{ padding: '14px 18px', borderLeft: '4px solid #6366f1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0f172a' }}>
+                  Custom Template Parameters (Optional)
+                </div>
+                <span className="badge badge-primary" style={{ fontSize: '10px' }}>CustomParam1-4</span>
+              </div>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 10px 0' }}>
+                Fill these if your template has variables like [custom_param0], [custom_param1]
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Custom Param 1</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                    value={customParam1}
+                    onChange={(e) => setCustomParam1(e.target.value)}
+                    placeholder="e.g. Rahul Sharma"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Custom Param 2</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                    value={customParam2}
+                    onChange={(e) => setCustomParam2(e.target.value)}
+                    placeholder="e.g. Details/ID"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Custom Param 3</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                    value={customParam3}
+                    onChange={(e) => setCustomParam3(e.target.value)}
+                    placeholder="e.g. https://pbg.in/login"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Custom Param 4</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                    value={customParam4}
+                    onChange={(e) => setCustomParam4(e.target.value)}
+                    placeholder="e.g. Extra info"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Card 2: DLT SMS Fallback (Ultra-Compact Auto-Connected) */}
             <div className="card" style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -392,7 +442,17 @@ export const RcsCampaignPage = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline btn-sm"
+                  style={{ fontSize: '11px', padding: '4px 8px', borderColor: '#10b981', color: '#059669' }}
+                  onClick={() => setMobilesText('9170304221\n7840095957\n9868040206')}
+                  title="Load verified test numbers"
+                >
+                  🎯 Verified Numbers
+                </button>
+
                 <button 
                   type="button" 
                   className="btn btn-outline btn-sm"
