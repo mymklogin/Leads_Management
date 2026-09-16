@@ -196,6 +196,44 @@ public class RCSApiController : ControllerBase
     {
         new RcsCampaignReportDto
         {
+            CampaignId = 6422,
+            CampaignName = "PBG_Account_Status",
+            TemplateId = "YCSLPB_vg",
+            TemplateName = "pbg_account_status_u",
+            TemplateType = "PlainText",
+            BotName = "PBG INFO",
+            TotalMobiles = 1,
+            DeliveredRcs = 1,
+            ReadRcs = 1,
+            FallbackSms = 0,
+            Failed = 0,
+            DeliveryRate = 100m,
+            ReadRate = 100m,
+            HasFallback = false,
+            Status = "Completed",
+            CreatedAt = "2026-09-16 10:12"
+        },
+        new RcsCampaignReportDto
+        {
+            CampaignId = 6416,
+            CampaignName = "PBG_Account_Status",
+            TemplateId = "YCSLPB_vg",
+            TemplateName = "pbg_account_status_u",
+            TemplateType = "PlainText",
+            BotName = "PBG INFO",
+            TotalMobiles = 1,
+            DeliveredRcs = 1,
+            ReadRcs = 1,
+            FallbackSms = 0,
+            Failed = 0,
+            DeliveryRate = 100m,
+            ReadRate = 100m,
+            HasFallback = false,
+            Status = "Completed",
+            CreatedAt = "2026-09-16 10:10"
+        },
+        new RcsCampaignReportDto
+        {
             CampaignId = 6320,
             CampaignName = "PBG_Account_Status",
             TemplateId = "YCSLPB_vg",
