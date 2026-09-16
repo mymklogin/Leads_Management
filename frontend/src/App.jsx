@@ -17,6 +17,11 @@ import { RcsTemplatesPage } from './pages/RcsTemplatesPage';
 import { RcsBotsPage } from './pages/RcsBotsPage';
 import { RcsDeliveryReportsPage } from './pages/RcsDeliveryReportsPage';
 import { RcsDlrExportPage } from './pages/RcsDlrExportPage';
+import { RcsMultiSchedulePage } from './pages/RcsMultiSchedulePage';
+import { RcsMisReportPage } from './pages/RcsMisReportPage';
+import { RcsChatPage } from './pages/RcsChatPage';
+import { RcsConsolidateReportPage } from './pages/RcsConsolidateReportPage';
+import { RcsApiDocPage } from './pages/RcsApiDocPage';
 import { LiveWebhookLogsPage } from './pages/LiveWebhookLogsPage';
 import { ServicePlaceholderPage } from './pages/ServicePlaceholderPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
@@ -61,7 +66,7 @@ class ErrorBoundary extends React.Component {
 
 const MainApp = () => {
   const { isAuthenticated, loading, allowedMenus } = useAuth();
-  const [activeTab, setActiveTab] = useState('DASHBOARD');
+  const [activeTab, setActiveTab] = useState('RCS_DASHBOARD');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   if (loading) {
@@ -213,11 +218,31 @@ const MainApp = () => {
           />
         );
 
+      // RCS Multi Schedule Campaign
+      case 'RCS_MULTI_SCHEDULE':
+        return <RcsMultiSchedulePage />;
+
       // RCS Delivery Reports & Overall Campaign Analytics
       case 'RCS_REPORTS':
       case 'REPORTS':
       case 'REPORTS_OVERVIEW':
         return <RcsDeliveryReportsPage onNavigateToCampaign={() => setActiveTab('RCS_CAMPAIGNS')} />;
+
+      // RCS Hourly MIS Matrix Report
+      case 'RCS_MIS_REPORT':
+        return <RcsMisReportPage />;
+
+      // RCS 1-to-1 Live Chat
+      case 'RCS_CHAT':
+        return <RcsChatPage />;
+
+      // RCS Consolidate Data Request & Audit Report
+      case 'RCS_CONSOLIDATE_REPORT':
+        return <RcsConsolidateReportPage />;
+
+      // RCS Developer API Documentation
+      case 'RCS_API_DOC':
+        return <RcsApiDocPage />;
 
       // RCS DLR Export & Bulk Downloads (Protected Menu)
       case 'RCS_DLR_DOWNLOAD':
@@ -294,14 +319,20 @@ const MainApp = () => {
       case 'VOICE_T8_REPORT': return 'Template 8: TTS DTMF Campaign Reports';
       case 'VOICE_T9_REPORT': return 'Template 9: TTS Call Patch Reports';
       case 'VOICE_CALL_LOGS': return 'Voice Call Logs (Audit Feed)';
-      case 'RCS_DASHBOARD': return 'RCS Overview & Balance Ledger';
-      case 'RCS_CAMPAIGNS': return 'RCS Campaign Dispatcher';
+      case 'DASHBOARD':
+      case 'RCS_DASHBOARD': return 'Dashboard';
       case 'RCS_TEMPLATES':
-      case 'RCS_TEMPLATES_MANAGE': return 'Manage RCS Templates';
-      case 'RCS_BOTS': return 'RCS Verified Bots & Directory';
+      case 'RCS_TEMPLATES_MANAGE': return 'Templates';
+      case 'RCS_CAMPAIGNS': return 'Create Campaign';
+      case 'RCS_MULTI_SCHEDULE': return 'Multi Schedule Campaign';
       case 'RCS_REPORTS':
       case 'REPORTS':
-      case 'REPORTS_OVERVIEW': return 'RCS Delivery Reports';
+      case 'REPORTS_OVERVIEW': return 'Campaign Report';
+      case 'RCS_MIS_REPORT': return 'MIS Report';
+      case 'RCS_CHAT': return 'RCS Chat';
+      case 'RCS_CONSOLIDATE_REPORT': return 'Consolidate Report';
+      case 'RCS_API_DOC': return 'API Documentation';
+      case 'RCS_BOTS': return 'RCS Verified Bots & Directory';
       case 'RCS_DLR_DOWNLOAD': return 'RCS DLR Export & Bulk Downloads';
       case 'RCS':
       case 'RCS_MESSAGING': return 'RCS Business Messaging';
