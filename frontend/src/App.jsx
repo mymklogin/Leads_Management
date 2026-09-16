@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -64,10 +64,51 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+const RCS_DOC_HASHES = [
+  'authentication',
+  'create-campaign',
+  'check-balance',
+  'get-templates',
+  'get-bots',
+  'create-bot',
+  'create-template',
+  'send-chat-message',
+  'webhook-payloads',
+  'error-codes',
+  'best-practices',
+  'rcs-api-doc',
+  'api-doc',
+  'doc',
+  'docs'
+];
+
+const getInitialTabFromHash = () => {
+  if (typeof window !== 'undefined' && window.location.hash) {
+    const raw = window.location.hash.replace('#', '').toLowerCase().trim();
+    if (RCS_DOC_HASHES.includes(raw) || raw.includes('error') || raw.includes('rcs') || raw.includes('campaign') || raw.includes('template') || raw.includes('bot')) {
+      return 'RCS_API_DOC';
+    }
+  }
+  return 'RCS_DASHBOARD';
+};
+
 const MainApp = () => {
   const { isAuthenticated, loading, allowedMenus } = useAuth();
-  const [activeTab, setActiveTab] = useState('RCS_DASHBOARD');
+  const [activeTab, setActiveTab] = useState(getInitialTabFromHash);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      if (window.location.hash) {
+        const raw = window.location.hash.replace('#', '').toLowerCase().trim();
+        if (RCS_DOC_HASHES.includes(raw) || raw.includes('error') || raw.includes('rcs') || raw.includes('campaign') || raw.includes('template') || raw.includes('bot')) {
+          setActiveTab('RCS_API_DOC');
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHashNavigation);
+    return () => window.removeEventListener('hashchange', handleHashNavigation);
+  }, []);
 
   if (loading) {
     return (

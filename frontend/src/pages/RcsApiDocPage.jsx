@@ -66,15 +66,83 @@ export function RcsApiDocPage() {
   const [testConsoleResult, setTestConsoleResult] = useState(null);
   const [testConsoleLoading, setTestConsoleLoading] = useState(false);
 
-  // Smooth scroll handler
+  // Smooth scroll handler with URL hash sync and scrollIntoView
   const scrollToSection = (id) => {
     setActiveSection(id);
     const el = document.getElementById(id);
     if (el) {
-      const topOffset = el.getBoundingClientRect().top + window.pageYOffset - 80;
-      window.scrollTo({ top: topOffset, behavior: 'smooth' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (window.location.hash !== `#${id}`) {
+        window.history.pushState(null, '', `#${id}`);
+      }
     }
   };
+
+  // Handle initial URL hash on mount or when hash changes in URL
+  useEffect(() => {
+    const handleScrollToHash = () => {
+      const rawHash = window.location.hash ? window.location.hash.replace('#', '').toLowerCase().trim() : '';
+      if (!rawHash) return;
+
+      const matchingItem = QUICK_NAV_ITEMS.find(
+        (item) => item.id.toLowerCase() === rawHash
+      );
+      const targetId = matchingItem ? matchingItem.id : rawHash;
+
+      setActiveSection(targetId);
+
+      let attempts = 0;
+      const attemptScroll = () => {
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (attempts < 10) {
+          attempts++;
+          setTimeout(attemptScroll, 100);
+        }
+      };
+
+      setTimeout(attemptScroll, 80);
+    };
+
+    handleScrollToHash();
+
+    window.addEventListener('hashchange', handleScrollToHash);
+    return () => window.removeEventListener('hashchange', handleScrollToHash);
+  }, []);
+
+  // Scrollspy to keep quick nav active indicator in sync
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.content-area') || window;
+
+    const handleScrollSpy = () => {
+      if (scrollContainer !== window) {
+        const atBottom =
+          scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 30;
+        if (atBottom) {
+          setActiveSection(QUICK_NAV_ITEMS[QUICK_NAV_ITEMS.length - 1].id);
+          return;
+        }
+      }
+
+      let currentId = null;
+      for (const item of QUICK_NAV_ITEMS) {
+        const el = document.getElementById(item.id);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= 180) {
+            currentId = item.id;
+          }
+        }
+      }
+      if (currentId) {
+        setActiveSection(currentId);
+      }
+    };
+
+    scrollContainer.addEventListener('scroll', handleScrollSpy, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScrollSpy);
+  }, []);
 
   // Live test API endpoint via backend
   const runLiveTest = async (endpoint) => {
@@ -1055,7 +1123,7 @@ export function RcsApiDocPage() {
           </div>
 
           {/* BEST PRACTICES & RATE LIMITS */}
-          <div className="section-card">
+          <div id="best-practices" className="section-card">
             <h2 className="section-title">
               <ShieldCheck size={20} />
               <span>Best Practices &amp; Rate Limits</span>
