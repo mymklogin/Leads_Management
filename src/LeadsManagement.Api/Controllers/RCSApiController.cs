@@ -234,6 +234,25 @@ public class RCSApiController : ControllerBase
         },
         new RcsCampaignReportDto
         {
+            CampaignId = 6324,
+            CampaignName = "PBG_Account_Status",
+            TemplateId = "YCSLPB_vg",
+            TemplateName = "pbg_account_status_u",
+            TemplateType = "PlainText",
+            BotName = "PBG INFO",
+            TotalMobiles = 1,
+            DeliveredRcs = 1,
+            ReadRcs = 1,
+            FallbackSms = 0,
+            Failed = 0,
+            DeliveryRate = 100m,
+            ReadRate = 100m,
+            HasFallback = false,
+            Status = "Completed",
+            CreatedAt = "2026-09-15 14:10"
+        },
+        new RcsCampaignReportDto
+        {
             CampaignId = 6320,
             CampaignName = "PBG_Account_Status",
             TemplateId = "YCSLPB_vg",
@@ -249,7 +268,26 @@ public class RCSApiController : ControllerBase
             ReadRate = 100m,
             HasFallback = false,
             Status = "Completed",
-            CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm")
+            CreatedAt = "2026-09-15 13:45"
+        },
+        new RcsCampaignReportDto
+        {
+            CampaignId = 6318,
+            CampaignName = "Festive_Offer_Launch",
+            TemplateId = "YCSLPB_vg",
+            TemplateName = "pbg_account_status_u",
+            TemplateType = "PlainText",
+            BotName = "PBG INFO",
+            TotalMobiles = 10,
+            DeliveredRcs = 1,
+            ReadRcs = 0,
+            FallbackSms = 0,
+            Failed = 1,
+            DeliveryRate = 10m,
+            ReadRate = 0m,
+            HasFallback = false,
+            Status = "AWAITED",
+            CreatedAt = "2026-09-15 12:30"
         }
     };
 
@@ -257,17 +295,101 @@ public class RCSApiController : ControllerBase
     {
         new RcsDeliveryLogDto
         {
-            LogId = "DLR-6320-1",
-            CampaignId = 6320,
+            LogId = "DLR-6422-1",
+            CampaignId = 6422,
             CampaignName = "PBG_Account_Status",
-            MobileNumber = "7840095957",
+            MobileNumber = "9868040206",
             BotName = "PBG INFO",
-            Status = "Delivered",
-            SentAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-            DeliveredAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+            Status = "DELIVERED",
+            SentAt = "2026-09-16 10:12:00",
+            DeliveredAt = "16-09-2026 10:13:03",
             Latency = "0.7s",
             Carrier = "Jio/Airtel 5G",
             Reason = "Handset ACK: Delivered to Google Messages RCS client"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6416-1",
+            CampaignId = 6416,
+            CampaignName = "PBG_Account_Status",
+            MobileNumber = "9868040206",
+            BotName = "PBG INFO",
+            Status = "DELIVERED",
+            SentAt = "2026-09-16 10:10:00",
+            DeliveredAt = "16-09-2026 10:10:45",
+            Latency = "0.6s",
+            Carrier = "Jio/Airtel 5G",
+            Reason = "Handset ACK: Delivered to Google Messages RCS client"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6324-1",
+            CampaignId = 6324,
+            CampaignName = "PBG_Account_Status",
+            MobileNumber = "9868040206",
+            BotName = "PBG INFO",
+            Status = "DELIVERED",
+            SentAt = "2026-09-15 14:10:00",
+            DeliveredAt = "15-09-2026 14:10:15",
+            Latency = "0.8s",
+            Carrier = "Jio/Airtel 5G",
+            Reason = "Handset ACK: Delivered to Google Messages RCS client"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6320-1",
+            CampaignId = 6320,
+            CampaignName = "PBG_Account_Status",
+            MobileNumber = "9868040206",
+            BotName = "PBG INFO",
+            Status = "DELIVERED",
+            SentAt = "2026-09-15 13:45:00",
+            DeliveredAt = "15-09-2026 13:45:22",
+            Latency = "0.7s",
+            Carrier = "Jio/Airtel 5G",
+            Reason = "Handset ACK: Delivered to Google Messages RCS client"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6318-1",
+            CampaignId = 6318,
+            CampaignName = "Festive_Offer_Launch",
+            MobileNumber = "9170304221",
+            BotName = "PBG INFO",
+            Status = "DELIVERED",
+            SentAt = "2026-09-15 12:30:00",
+            DeliveredAt = "15-09-2026 12:30:10",
+            Latency = "0.5s",
+            Carrier = "Airtel 4G",
+            Reason = "Handset ACK: Delivered successfully"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6318-2",
+            CampaignId = 6318,
+            CampaignName = "Festive_Offer_Launch",
+            MobileNumber = "7840095957",
+            BotName = "PBG INFO",
+            Status = "FAILED",
+            SentAt = "2026-09-15 12:30:00",
+            DeliveredAt = "15-09-2026 12:30:12",
+            Latency = "1.2s",
+            Carrier = "Vi India",
+            Reason = "Carrier ACK: 408 Delivery timeout"
+        },
+        new RcsDeliveryLogDto
+        {
+            LogId = "DLR-6318-3",
+            CampaignId = 6318,
+            CampaignName = "Festive_Offer_Launch",
+            MobileNumber = "9868040206",
+            BotName = "PBG INFO",
+            Status = "AWAITED",
+            SentAt = "2026-09-15 12:30:00",
+            DeliveredAt = "15-09-2026 12:30:15",
+            Latency = "2.0s",
+            Carrier = "Jio 5G",
+            Reason = "Awaiting carrier acknowledgement"
         }
     };
 
@@ -776,7 +898,12 @@ public class RCSApiController : ControllerBase
     /// Retrieves full RCS Campaign delivery analytics report
     /// </summary>
     [HttpGet("GetCampaignReports")]
-    public IActionResult GetCampaignReports([FromQuery] int? campaignId, [FromQuery] string? search)
+    public IActionResult GetCampaignReports(
+        [FromQuery] int? campaignId, 
+        [FromQuery] string? search,
+        [FromQuery] string? fromDate,
+        [FromQuery] string? toDate,
+        [FromQuery] string? bot)
     {
         var query = _campaignReports.AsEnumerable();
 
@@ -789,6 +916,29 @@ public class RCSApiController : ControllerBase
         {
             query = query.Where(c => c.CampaignName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                                      c.TemplateName.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(bot) && !bot.Equals("All Bots", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(c => c.BotName.Equals(bot, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(fromDate))
+        {
+            query = query.Where(c => 
+            {
+                var d = c.CreatedAt?.Length >= 10 ? c.CreatedAt.Substring(0, 10) : "";
+                return string.Compare(d, fromDate, StringComparison.Ordinal) >= 0;
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate))
+        {
+            query = query.Where(c => 
+            {
+                var d = c.CreatedAt?.Length >= 10 ? c.CreatedAt.Substring(0, 10) : "";
+                return string.Compare(d, toDate, StringComparison.Ordinal) <= 0;
+            });
         }
 
         var list = query.ToList();
