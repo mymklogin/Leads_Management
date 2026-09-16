@@ -19,7 +19,7 @@ import {
 
 export const LoginPage = () => {
   const { login } = useAuth();
-  const [username, setUsername] = useState('superadmin');
+  const [username, setUsername] = useState('Abhishaarod');
   const [password, setPassword] = useState('Admin@123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,12 @@ export const LoginPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fillAbhishaarod = () => {
+    setUsername('Abhishaarod');
+    setPassword('Admin@123');
+    setError('');
   };
 
   const fillSuperAdmin = () => {

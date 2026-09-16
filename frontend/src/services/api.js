@@ -1,7 +1,16 @@
 import axios from 'axios';
 
 export const getApiBaseUrl = () => {
-  return import.meta.env.VITE_API_BASE_URL || 'https://leads-management-mohf.onrender.com/api';
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+      return `http://${hostname}:5108/api`;
+    }
+  }
+  return 'http://localhost:5108/api';
 };
 
 const api = axios.create({
