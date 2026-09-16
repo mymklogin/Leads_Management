@@ -13,15 +13,17 @@ import {
   LogOut, 
   Send,
   Flame,
-  Shield
+  Shield,
+  Wallet
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, onSelectTab }) => {
   const { user, logout } = useAuth();
 
-  // Exact 9 Menus matching official OmniDigital RCS Suite
+  // Menus matching official OmniDigital RCS Suite + Payment Manage
   const rcsMenuItems = [
     { key: 'RCS_DASHBOARD', title: 'Dashboard', icon: LayoutDashboard },
+    { key: 'RCS_PAYMENT_MANAGE', title: 'Payment Manage', icon: Wallet },
     { key: 'RCS_TEMPLATES', title: 'Templates', icon: FileCode },
     { key: 'RCS_CAMPAIGNS', title: 'Create Campaign', icon: PlusCircle },
     { key: 'RCS_MULTI_SCHEDULE', title: 'Multi Schedule Campaign', icon: Calendar },
@@ -75,6 +77,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
             return (
               <div 
                 key={item.key}
+                className={`sidebar-menu-item ${isActive ? 'active' : ''}`}
                 onClick={() => onSelectTab(item.key)}
                 style={{
                   display: 'flex',

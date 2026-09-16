@@ -22,6 +22,7 @@ import { RcsMisReportPage } from './pages/RcsMisReportPage';
 import { RcsChatPage } from './pages/RcsChatPage';
 import { RcsConsolidateReportPage } from './pages/RcsConsolidateReportPage';
 import { RcsApiDocPage } from './pages/RcsApiDocPage';
+import { RcsCampaignDashboardPage } from './pages/RcsCampaignDashboardPage';
 import { LiveWebhookLogsPage } from './pages/LiveWebhookLogsPage';
 import { ServicePlaceholderPage } from './pages/ServicePlaceholderPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
@@ -234,10 +235,19 @@ const MainApp = () => {
       case 'REPORTS_WEBHOOK_LOGS':
         return <LiveWebhookLogsPage />;
 
-      // RCS Overview & Balance Ledger (Primary & Dedicated Management Page)
+      // RCS Campaign Dashboard (Primary Dashboard - Default on login)
       case 'RCS':
-      case 'RCS_MESSAGING':
       case 'RCS_DASHBOARD':
+        return (
+          <RcsCampaignDashboardPage 
+            onNavigateToCampaigns={() => setActiveTab('RCS_CAMPAIGNS')}
+            onNavigateToReports={() => setActiveTab('RCS_REPORTS')}
+          />
+        );
+
+      // RCS Payment & Balance Management (Payment Manage)
+      case 'RCS_MESSAGING':
+      case 'RCS_PAYMENT_MANAGE':
         return <RcsOverviewBalancePage />;
 
       // RCS Campaigns (Dedicated Campaign Engine)
@@ -362,6 +372,7 @@ const MainApp = () => {
       case 'VOICE_CALL_LOGS': return 'Voice Call Logs (Audit Feed)';
       case 'DASHBOARD':
       case 'RCS_DASHBOARD': return 'Dashboard';
+      case 'RCS_PAYMENT_MANAGE': return 'Payment Manage';
       case 'RCS_TEMPLATES':
       case 'RCS_TEMPLATES_MANAGE': return 'Templates';
       case 'RCS_CAMPAIGNS': return 'Create Campaign';
