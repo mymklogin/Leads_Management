@@ -422,7 +422,7 @@ public class RCSApiController : ControllerBase
             {
                 RcsBalance = liveBal?.RcsBalance ?? 100,
                 RcsPromotionalBalance = liveBal?.RcsPromotionalBalance ?? 100m,
-                RcsTransactionalBalance = liveBal?.RcsTransactionalBalance ?? 92.0m,
+                RcsTransactionalBalance = liveBal?.RcsTransactionalBalance ?? 85.0m,
                 SmsBalance = liveBal?.SmsBalance ?? 100.0m,
                 UserRcsCredits = (int)rcsBal,
                 UserSmsCredits = (int)smsBal,

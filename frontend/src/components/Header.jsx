@@ -30,11 +30,22 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
     year: 'numeric'
   });
 
-  // Dynamic Live Balances
-  const [balances, setBalances] = useState({
-    sms: 100,
-    rcsP: 100,
-    rcsT: 88
+  // Dynamic Live Balances (Initialized from localStorage cache or fallback without hardcoded 88)
+  const [balances, setBalances] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rcs_live_balances');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.rcsT === 'number') {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return {
+      sms: 100,
+      rcsP: 100,
+      rcsT: 85
+    };
   });
 
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -46,6 +57,17 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
 
   useEffect(() => {
     fetchBalances();
+    // Live polling every 10 seconds so balance stays strictly synchronized
+    const timer = setInterval(fetchBalances, 10000);
+
+    // Event listener for instant balance updates after campaigns or credit changes
+    const onBalanceUpdated = () => fetchBalances();
+    window.addEventListener('rcs_balance_updated', onBalanceUpdated);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('rcs_balance_updated', onBalanceUpdated);
+    };
   }, []);
 
   const fetchBalances = async () => {
@@ -53,11 +75,15 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
       const res = await api.get('/RCSApi/CheckRcsBalance');
       const data = res.data?.response || res.data?.Response;
       if (data) {
-        setBalances({
-          sms: data.smsBalance ?? data.SmsBalance ?? 100,
-          rcsP: data.rcsPromotionalBalance ?? data.RcsPromotionalBalance ?? 100,
-          rcsT: data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 88
-        });
+        const updated = {
+          sms: Number(data.smsBalance ?? data.SmsBalance ?? 100),
+          rcsP: Number(data.rcsPromotionalBalance ?? data.RcsPromotionalBalance ?? 100),
+          rcsT: Number(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 85)
+        };
+        setBalances(updated);
+        try {
+          localStorage.setItem('rcs_live_balances', JSON.stringify(updated));
+        } catch (_) {}
       }
     } catch (err) {
       console.error('Failed to sync header balances', err);
@@ -117,7 +143,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
           <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             
             {/* Live Balances Pill Matching OmniDigital */}
-            <div style={{
+            <div className="header-balance-pill" style={{
               display: 'flex',
               alignItems: 'center',
               gap: '10px',

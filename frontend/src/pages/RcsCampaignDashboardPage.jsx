@@ -75,16 +75,16 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     }, 600);
   };
 
-  // 3. Raw KPI Metrics Data
-  const metrics = {
-    totalCampaigns: 12,
-    totalSubmitted: 12,
-    delivered: 3,
+  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 12 previous + 2 today = 14)
+  const [metrics, setMetrics] = useState({
+    totalCampaigns: 14,
+    totalSubmitted: 14,
+    delivered: 5,
     read: 2,
     clicks: 0,
     failed: 9,
     awaited: 0
-  };
+  });
 
   // 4. Delivery Status Overview (Donut Chart)
   const donutData = useMemo(() => {
@@ -235,12 +235,12 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     if (activeStatuses.delivered) {
       datasets.push({
         label: 'Delivered',
-        data: [0, 0, 0, 0, 0, 0, 1.8, 0],
+        data: [0, 0, 0, 0, 0, 0, 3.0, 2.0],
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [3, 3, 3, 3, 3, 3, 4, 3],
+        pointRadius: [3, 3, 3, 3, 3, 3, 4, 4],
         pointBackgroundColor: '#10b981',
         order: 3
       });
@@ -250,7 +250,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     if (activeStatuses.read) {
       datasets.push({
         label: 'Read',
-        data: [0, 0, 0, 0, 0, 0, 2.2, 0],
+        data: [0, 0, 0, 0, 0, 0, 2.0, 0],
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.85)',
         fill: true,
@@ -354,7 +354,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     labels: ['Plain Text', 'RichCard', 'Carousel'],
     datasets: [
       {
-        data: [12, 0, 0],
+        data: [14, 0, 0],
         backgroundColor: ['#2563eb', '#1e3a8a', '#f59e0b'],
         borderWidth: 1,
         borderColor: '#ffffff'
@@ -375,7 +375,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
           label: function (context) {
             const label = context.label || '';
             const val = context.raw || 0;
-            const pct = val === 12 ? '100%' : '0%';
+            const pct = val === 14 ? '100%' : '0%';
             return ` ${label}: ${val} (${pct})`;
           }
         }
@@ -385,11 +385,11 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
 
   // 8. Recent Activity Feed
   const recentActivities = [
-    { id: 1, name: 'PBG_Account_Status', time: '19 hours ago' },
-    { id: 2, name: 'PBG_Account_Status', time: '19 hours ago' },
-    { id: 3, name: 'ops', time: '19 hours ago' },
-    { id: 4, name: 'pbg', time: '19 hours ago' },
-    { id: 5, name: 'PBG_Account_Status', time: '19 hours ago' }
+    { id: 1, name: 'PBG_Account_Status', time: '10 mins ago' },
+    { id: 2, name: 'PBG_Account_Status', time: '12 mins ago' },
+    { id: 3, name: 'PBG_Account_Status', time: '19 hours ago' },
+    { id: 4, name: 'PBG_Account_Status', time: '19 hours ago' },
+    { id: 5, name: 'Festive_Offer_Launch', time: '20 hours ago' }
   ];
 
   return (
@@ -482,7 +482,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES DELIVERED</span>
             <span className="rcs-kpi-value">{metrics.delivered}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> 25% delivery rate
+              <ArrowUpRight size={13} /> 35.71% delivery rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-green">
@@ -496,7 +496,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES READ</span>
             <span className="rcs-kpi-value">{metrics.read}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> 200% read rate
+              <ArrowUpRight size={13} /> 66.67% read rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-cyan">
@@ -526,7 +526,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">FAILED MESSAGES</span>
             <span className="rcs-kpi-value">{metrics.failed}</span>
             <span className="rcs-kpi-trend trend-red">
-              <ArrowDownRight size={13} /> 75% failure rate
+              <ArrowDownRight size={13} /> 64.29% failure rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-red">

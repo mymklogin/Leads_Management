@@ -22,7 +22,7 @@ export const RcsOverviewBalancePage = () => {
   // Live System Balances
   const [rcsBalance, setRcsBalance] = useState(100);
   const [rcsPromoBalance, setRcsPromoBalance] = useState(100);
-  const [rcsTxnBalance, setRcsTxnBalance] = useState(92.0);
+  const [rcsTxnBalance, setRcsTxnBalance] = useState(85.0);
   const [smsBalance, setSmsBalance] = useState(100.0);
   const [gatewayStatus, setGatewayStatus] = useState({ name: 'OmniDigital Live Cloud', connected: true });
   const [showModal, setShowModal] = useState(false);
@@ -82,7 +82,7 @@ export const RcsOverviewBalancePage = () => {
       if (data) {
         setRcsBalance(data.rcsBalance ?? data.RcsBalance ?? 100);
         setRcsPromoBalance(data.rcsPromotionalBalance ?? data.RcsPromotionalBalance ?? 100);
-        setRcsTxnBalance(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 92.0);
+        setRcsTxnBalance(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 85.0);
         setSmsBalance(data.smsBalance ?? data.SmsBalance ?? 100.0);
         setGatewayStatus({
           name: data.gateway || data.Gateway || 'OmniDigital Live Cloud',
