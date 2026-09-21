@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import api from '../services/api';
 import {
   Send,
   UploadCloud,
@@ -68,60 +69,80 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     }));
   };
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 600);
-  };
-
-  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 26 total, 17 delivered, 8 read, 9 failed)
-  const baseMetrics = {
-    totalCampaigns: 26,
-    totalSubmitted: 26,
-    delivered: 17,
-    read: 8,
+  // 3. Dynamic Dashboard Analytics State (Fetched from Backend API synchronized with OMNI)
+  const [dashboardData, setDashboardData] = useState({
+    totalCampaigns: 32,
+    totalSubmitted: 32,
+    delivered: 23,
+    read: 11,
     clicks: 0,
     failed: 9,
-    awaited: 0
-  };
-
-  const [dynExtra, setDynExtra] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('rcs_dynamic_campaigns') || '[]');
-      const extra = stored.filter(c => c.id !== 6457 && c.id !== 6422 && c.id !== 6416 && c.id !== 6324 && c.id !== 6320 && c.id !== 6318);
-      let count = extra.length;
-      let delivered = extra.reduce((sum, c) => sum + (c.total || 1), 0);
-      return { count, delivered };
-    } catch (_) {
-      return { count: 0, delivered: 0 };
-    }
+    awaited: 0,
+    deliveryRate: 71.88,
+    readRate: 91.67,
+    clickRate: 0.0,
+    failRate: 28.12,
+    awaitRate: 0.0,
+    trend: {
+      dates: ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21'],
+      delivered: [0, 3, 4, 0, 10, 0, 0, 6],
+      read: [0, 3, 4, 0, 1, 0, 0, 3],
+      failed: [0, 9, 0, 0, 0, 0, 0, 0],
+      awaited: [0, 0, 0, 0, 0, 0, 0, 0]
+    },
+    templates: { plainText: 32, richCard: 0, carousel: 0 },
+    recentActivity: []
   });
 
-  React.useEffect(() => {
-    const onCampCreated = () => {
-      try {
-        const stored = JSON.parse(localStorage.getItem('rcs_dynamic_campaigns') || '[]');
-        const extra = stored.filter(c => c.id !== 6457 && c.id !== 6422 && c.id !== 6416 && c.id !== 6324 && c.id !== 6320 && c.id !== 6318);
-        let count = extra.length;
-        let delivered = extra.reduce((sum, c) => sum + (c.total || 1), 0);
-        setDynExtra({ count, delivered });
-      } catch (_) {}
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await api.get('/RCSApi/GetDashboardStats', {
+        params: { from: fromDate, to: toDate }
+      });
+      if (res.data?.ok) {
+        setDashboardData(res.data);
+      }
+    } catch (err) {
+      console.warn('Dashboard stats fetch notice:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fromDate, toDate]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+
+    const onCampaignChanged = () => {
+      fetchDashboardStats();
     };
 
-    window.addEventListener('rcs_campaign_created', onCampCreated);
-    return () => window.removeEventListener('rcs_campaign_created', onCampCreated);
-  }, []);
+    window.addEventListener('rcs_campaign_created', onCampaignChanged);
+    window.addEventListener('rcs_balance_updated', onCampaignChanged);
+    return () => {
+      window.removeEventListener('rcs_campaign_created', onCampaignChanged);
+      window.removeEventListener('rcs_balance_updated', onCampaignChanged);
+    };
+  }, [fetchDashboardStats]);
+
+  const handleRefresh = () => {
+    fetchDashboardStats();
+  };
 
   const metrics = useMemo(() => ({
-    totalCampaigns: baseMetrics.totalCampaigns + dynExtra.count,
-    totalSubmitted: baseMetrics.totalSubmitted + dynExtra.delivered,
-    delivered: baseMetrics.delivered + dynExtra.delivered,
-    read: baseMetrics.read + dynExtra.delivered,
-    clicks: baseMetrics.clicks,
-    failed: baseMetrics.failed,
-    awaited: baseMetrics.awaited
-  }), [dynExtra]);
+    totalCampaigns: dashboardData.totalCampaigns ?? 32,
+    totalSubmitted: dashboardData.totalSubmitted ?? 32,
+    delivered: dashboardData.delivered ?? 23,
+    read: dashboardData.read ?? 11,
+    clicks: dashboardData.clicks ?? 0,
+    failed: dashboardData.failed ?? 9,
+    awaited: dashboardData.awaited ?? 0,
+    deliveryRate: dashboardData.deliveryRate ?? 71.88,
+    readRate: dashboardData.readRate ?? 91.67,
+    clickRate: dashboardData.clickRate ?? 0.0,
+    failRate: dashboardData.failRate ?? 28.12,
+    awaitRate: dashboardData.awaitRate ?? 0.0
+  }), [dashboardData]);
 
   // 4. Delivery Status Overview (Donut Chart)
   const donutData = useMemo(() => {
@@ -254,70 +275,79 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
   };
 
   // 6. Campaign Performance Trend (Stacked Spline Area Chart) Day/Date-Wise
-  const trendLabels = [
-    '2026-09-14',
-    '2026-09-15',
-    '2026-09-16',
-    '2026-09-17',
-    '2026-09-18',
-    '2026-09-19',
-    '2026-09-20',
-    '2026-09-21'
-  ];
+  const trendLabels = useMemo(() => {
+    if (dashboardData.trend?.dates && dashboardData.trend.dates.length > 0) {
+      return dashboardData.trend.dates;
+    }
+    return [
+      '2026-09-14',
+      '2026-09-15',
+      '2026-09-16',
+      '2026-09-17',
+      '2026-09-18',
+      '2026-09-19',
+      '2026-09-20',
+      '2026-09-21'
+    ];
+  }, [dashboardData.trend]);
 
   const trendData = useMemo(() => {
     const datasets = [];
+    const tDelivered = dashboardData.trend?.delivered || [0, 3, 4, 0, 10, 0, 0, 6];
+    const tRead = dashboardData.trend?.read || [0, 3, 4, 0, 1, 0, 0, 3];
+    const tFailed = dashboardData.trend?.failed || [0, 9, 0, 0, 0, 0, 0, 0];
+    const tAwaited = dashboardData.trend?.awaited || [0, 0, 0, 0, 0, 0, 0, 0];
 
-    // Delivered dataset (Green: 3 on Sept 14, 3 on Sept 15, 4 on Sept 16, 7 on Sept 18 = 17)
+    // Delivered dataset
     if (activeStatuses.delivered) {
       datasets.push({
         label: 'Delivered',
-        data: [3.0, 3.0, 4.0, 0, 7.0 + (dynExtra?.delivered || 0), 0, 0, 0],
+        data: tDelivered,
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [3, 3, 3, 0, 4, 0, 0, 0],
+        pointRadius: tDelivered.map(v => v > 0 ? 3 : 0),
         pointBackgroundColor: '#10b981',
         order: 3
       });
     }
 
-    // Read dataset (Blue: 1 on Sept 16, 7 on Sept 18 = 8)
+    // Read dataset
     if (activeStatuses.read) {
       datasets.push({
         label: 'Read',
-        data: [0, 0, 1.0, 0, 7.0, 0, 0, 0],
+        data: tRead,
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [0, 0, 3, 0, 4, 0, 0, 0],
+        pointRadius: tRead.map(v => v > 0 ? 3 : 0),
         pointBackgroundColor: '#0ea5e9',
         order: 2
       });
     }
 
-    // Failed dataset (Red: 9 on Sept 15 = 9)
+    // Failed dataset
     if (activeStatuses.failed) {
       datasets.push({
         label: 'Failed',
-        data: [0, 9.0, 0, 0, 0, 0, 0, 0],
+        data: tFailed,
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [0, 5, 0, 0, 0, 0, 0, 0],
+        pointRadius: tFailed.map(v => v > 0 ? 5 : 0),
         pointBackgroundColor: '#ef4444',
         order: 1
       });
     }
 
-    // Awaited dataset (Yellow: 0)
+    // Awaited dataset
     if (activeStatuses.awaited) {
       datasets.push({
         label: 'Awaited',
-        data: [0, 0, 0, 0, 0, 0, 0, 0],
+        data: tAwaited,
         borderColor: '#f59e0b',
         backgroundColor: 'rgba(245, 158, 11, 0.85)',
         fill: true,
@@ -332,7 +362,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
       labels: trendLabels,
       datasets
     };
-  }, [activeStatuses, dynExtra]);
+  }, [activeStatuses, dashboardData, trendLabels]);
 
   const trendOptions = {
     responsive: true,
@@ -375,7 +405,6 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
       },
       y: {
         beginAtZero: true,
-        max: 9,
         ticks: {
           stepSize: 1,
           font: { size: 11 },
@@ -391,7 +420,11 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     labels: ['Plain Text', 'RichCard', 'Carousel'],
     datasets: [
       {
-        data: [metrics.totalCampaigns, 0, 0],
+        data: [
+          dashboardData.templates?.plainText ?? metrics.totalCampaigns,
+          dashboardData.templates?.richCard ?? 0,
+          dashboardData.templates?.carousel ?? 0
+        ],
         backgroundColor: ['#2563eb', '#1e3a8a', '#f59e0b'],
         borderWidth: 1,
         borderColor: '#ffffff'
@@ -412,7 +445,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
           label: function (context) {
             const label = context.label || '';
             const val = context.raw || 0;
-            const pct = val === metrics.totalCampaigns ? '100%' : '0%';
+            const pct = metrics.totalCampaigns > 0 ? `${((val / metrics.totalCampaigns) * 100).toFixed(0)}%` : '0%';
             return ` ${label}: ${val} (${pct})`;
           }
         }
@@ -421,13 +454,20 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
   };
 
   // 8. Recent Activity Feed
-  const recentActivities = [
-    { id: 1, name: 'PBG_Account_Status', time: '10 mins ago' },
-    { id: 2, name: 'PBG_Account_Status', time: '12 mins ago' },
-    { id: 3, name: 'PBG_Account_Status', time: '19 hours ago' },
-    { id: 4, name: 'PBG_Account_Status', time: '19 hours ago' },
-    { id: 5, name: 'Festive_Offer_Launch', time: '20 hours ago' }
-  ];
+  const recentActivities = (dashboardData.recentActivity && dashboardData.recentActivity.length > 0)
+    ? dashboardData.recentActivity.map((act, i) => ({
+        id: i + 1,
+        title: act.title,
+        time: act.time,
+        type: act.type || 'success'
+      }))
+    : [
+        { id: 1, title: 'Campaign "PBG_Account_Status" launched', time: '10 mins ago', type: 'success' },
+        { id: 2, title: 'Campaign "PBG_Account_Status" launched', time: '12 mins ago', type: 'success' },
+        { id: 3, title: 'Campaign "PBG_Account_Status" launched', time: '19 hours ago', type: 'success' },
+        { id: 4, title: 'Campaign "PBG_Account_Status" launched', time: '19 hours ago', type: 'success' },
+        { id: 5, title: 'Campaign "PBG_Account_Status" has 1 failures', time: '6 days ago', type: 'danger' }
+      ];
 
   return (
     <div className="rcs-dashboard-container">
@@ -519,7 +559,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES DELIVERED</span>
             <span className="rcs-kpi-value">{metrics.delivered}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> {metrics.totalSubmitted > 0 ? ((metrics.delivered / metrics.totalSubmitted) * 100).toFixed(1) : '0'}% delivery rate
+              <ArrowUpRight size={13} /> {metrics.deliveryRate}% delivery rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-green">
@@ -533,7 +573,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES READ</span>
             <span className="rcs-kpi-value">{metrics.read}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> {metrics.delivered > 0 ? ((metrics.read / metrics.delivered) * 100).toFixed(2) : '0'}% read rate
+              <ArrowUpRight size={13} /> {metrics.readRate}% read rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-cyan">
@@ -549,7 +589,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">TOTAL CLICKS</span>
             <span className="rcs-kpi-value">{metrics.clicks}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> 0% click rate
+              <ArrowUpRight size={13} /> {metrics.clickRate}% click rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-amber">
@@ -563,7 +603,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">FAILED MESSAGES</span>
             <span className="rcs-kpi-value">{metrics.failed}</span>
             <span className="rcs-kpi-trend trend-red">
-              <ArrowDownRight size={13} /> {metrics.totalSubmitted > 0 ? ((metrics.failed / metrics.totalSubmitted) * 100).toFixed(1) : '0'}% failure rate
+              <ArrowDownRight size={13} /> {metrics.failRate}% failure rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-red">
@@ -577,7 +617,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">AWAITED MESSAGES</span>
             <span className="rcs-kpi-value">{metrics.awaited}</span>
             <span className="rcs-kpi-trend trend-red">
-              <ArrowDownRight size={13} /> 0% messages awaiting delivery
+              <ArrowDownRight size={13} /> {metrics.awaitRate}% messages awaiting delivery
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-red">
@@ -765,11 +805,15 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             {recentActivities.map((act) => (
               <div key={act.id} className="rcs-activity-item">
                 <div className="rcs-activity-icon">
-                  <CheckCircle2 size={16} />
+                  {act.type === 'danger' ? (
+                    <AlertTriangle size={16} color="#ef4444" />
+                  ) : (
+                    <CheckCircle2 size={16} color="#10b981" />
+                  )}
                 </div>
                 <div className="rcs-activity-content">
                   <div className="rcs-activity-title">
-                    Campaign <strong>"{act.name}"</strong> launched
+                    {act.title || `Campaign "${act.name}" launched`}
                   </div>
                   <div className="rcs-activity-time">{act.time}</div>
                 </div>

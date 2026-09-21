@@ -75,6 +75,9 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
             ? '2026-09-18 13:54:36' 
             : `${postDate}:15`;
 
+          const isFailed = c.failed > 0 || (c.status && c.status.toLowerCase() === 'failed');
+          const isAwaited = (c.status && c.status.toLowerCase() === 'awaited');
+
           return {
             id: c.campaignId,
             name: c.campaignName,
@@ -82,24 +85,24 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
             template: c.templateName || 'pbg_account_status_u',
             total: c.totalMobiles || 1,
             type: c.templateType || 'PlainText',
-            status: c.status || 'Completed',
+            status: isFailed ? 'FAILED' : (isAwaited ? 'AWAITED' : 'Completed'),
             postDateTime: postDate,
-            dlrCount: c.deliveredRcs || c.totalMobiles || 1,
+            dlrCount: c.deliveredRcs || (isFailed ? 0 : (c.totalMobiles || 1)),
             eventsCount: 0,
             dlrStats: {
               sent: 0,
-              delivered: c.deliveryRate || 100,
+              delivered: c.deliveryRate || (isFailed ? 0 : 100),
               read: c.readRate || 0,
-              failed: c.failed > 0 ? Math.round((c.failed / (c.totalMobiles || 1)) * 100) : 0,
-              awaited: c.status === 'AWAITED' ? 70 : 0
+              failed: isFailed ? 100 : 0,
+              awaited: isAwaited ? 100 : 0
             },
             eventsStats: { clicks: 0, replies: 0 },
             dlrLogs: [
               {
                 time: defaultDlrTime,
-                msisdn: '9868040206',
-                status: 'DELIVERED',
-                details: 'Handset ACK: Delivered to Google Messages RCS client'
+                msisdn: isFailed ? '9582476747' : '9868040206',
+                status: isFailed ? 'FAILED' : (c.readRcs > 0 ? 'READ' : 'DELIVERED'),
+                details: isFailed ? 'TTL_EXPIRATION_REVOKED' : 'Handset ACK: Delivered to Google Messages RCS client'
               }
             ],
             eventsLogs: []
@@ -118,15 +121,12 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
   // Helper to parse date from string (YYYY-MM-DD or DD-MM-YYYY)
   const parseCampDate = (str) => {
     if (!str) return '';
-    const trimmed = str.trim();
-    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-      return trimmed.slice(0, 10);
+    if (str.length >= 10 && str.charAt(4) === '-') return str.slice(0, 10);
+    const parts = str.split(' ')[0].split('-');
+    if (parts.length === 3 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
-    const ddmmyyyy = trimmed.match(/^(\d{2})[-/](\d{2})[-/](\d{4})/);
-    if (ddmmyyyy) {
-      return `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
-    }
-    return '';
+    return str.slice(0, 10);
   };
 
   // Filtered campaigns according to applied filters
@@ -156,20 +156,13 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
     let awaited = 0;
 
     filteredCampaigns.forEach(c => {
-      const tot = Number(c.total) || 0;
+      const tot = Number(c.total) || 1;
       submitted += tot;
-      if (c.status === 'Completed' || c.status === 'DELIVERED') {
-        delivered += tot;
-      } else if (c.status === 'FAILED') {
+      const st = (c.status || '').toUpperCase();
+      if (st === 'FAILED' || (c.dlrStats && c.dlrStats.failed > 0)) {
         failed += tot;
-      } else if (c.status === 'AWAITED') {
-        if (c.id === 6318) {
-          delivered += 1;
-          failed += 1;
-          awaited += 8;
-        } else {
-          awaited += tot;
-        }
+      } else if (st === 'AWAITED' || (c.dlrStats && c.dlrStats.awaited > 0)) {
+        awaited += tot;
       } else {
         delivered += tot;
       }
