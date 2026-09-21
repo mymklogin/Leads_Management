@@ -130,7 +130,7 @@ const FluffyCloud = ({ width = 140, height = 75, opacity = 0.85, style = {}, cla
 );
 
 // Evening Sunset: Silhouette Bird in Flight with Flapping Wings
-const SilhouetteBird = ({ width = 28, height = 15, style = {}, flapDuration = '0.8s' }) => (
+const SilhouetteBird = ({ width = 34, height = 18, style = {}, flapDuration = '0.75s' }) => (
   <div style={{ ...style, display: 'inline-block' }}>
     <svg
       width={width}
@@ -138,13 +138,13 @@ const SilhouetteBird = ({ width = 28, height = 15, style = {}, flapDuration = '0
       viewBox="0 0 44 24"
       fill="none"
       style={{
-        filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.45))',
+        filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.6))',
         animation: `birdWingFlap ${flapDuration} ease-in-out infinite alternate`
       }}
     >
       <path
-        d="M22 14 C16 7 8 4 0 8 C6 12 14 14 20 20 C21 21 23 21 24 20 C30 14 38 12 44 8 C36 4 28 7 22 14 Z"
-        fill="#12051d"
+        d="M22 14 C16 6 8 3 0 7 C7 12 15 14 20 20 C21 21 23 21 24 20 C29 14 37 12 44 7 C36 3 28 6 22 14 Z"
+        fill="#140420"
       />
     </svg>
   </div>
@@ -695,34 +695,39 @@ export const LoginPage = () => {
       {/* Evening Sunset: Flock of Flying Birds Traversal Across Sunset Horizon */}
       {activeThemeKey === 'evening' && (
         <div className="omni-evening-birds" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}>
-          {/* Bird 1: Flock Leader */}
-          <div style={{ position: 'absolute', top: '16%', left: 0, animation: 'birdFlyAcross1 22s linear infinite' }}>
+          {/* Bird 1: Flock Leader (mid-flight across upper center) */}
+          <div style={{ position: 'absolute', top: '15%', left: 0, animation: 'birdFlyAcross1 22s linear infinite', animationDelay: '-8s' }}>
+            <SilhouetteBird width={36} height={19} flapDuration="0.7s" />
+          </div>
+
+          {/* Bird 2: Wingman High (already traversing right side) */}
+          <div style={{ position: 'absolute', top: '11%', left: 0, animation: 'birdFlyAcross2 24s linear infinite', animationDelay: '-14s' }}>
             <SilhouetteBird width={30} height={16} flapDuration="0.75s" />
           </div>
 
-          {/* Bird 2: Wingman High */}
-          <div style={{ position: 'absolute', top: '13%', left: 0, animation: 'birdFlyAcross2 24s linear infinite 1.4s' }}>
-            <SilhouetteBird width={26} height={14} flapDuration="0.8s" />
-          </div>
-
-          {/* Bird 3: Wingman Low */}
-          <div style={{ position: 'absolute', top: '20%', left: 0, animation: 'birdFlyAcross3 23s linear infinite 1.8s' }}>
-            <SilhouetteBird width={25} height={13} flapDuration="0.7s" />
+          {/* Bird 3: Wingman Low (gliding mid-left) */}
+          <div style={{ position: 'absolute', top: '19%', left: 0, animation: 'birdFlyAcross3 23s linear infinite', animationDelay: '-4s' }}>
+            <SilhouetteBird width={28} height={15} flapDuration="0.65s" />
           </div>
 
           {/* Bird 4: Trail High */}
-          <div style={{ position: 'absolute', top: '11%', left: 0, animation: 'birdFlyAcross1 25s linear infinite 3.5s' }}>
-            <SilhouetteBird width={22} height={12} flapDuration="0.85s" />
+          <div style={{ position: 'absolute', top: '9%', left: 0, animation: 'birdFlyAcross1 25s linear infinite', animationDelay: '-18s' }}>
+            <SilhouetteBird width={24} height={13} flapDuration="0.8s" />
           </div>
 
           {/* Bird 5: Trail Low */}
-          <div style={{ position: 'absolute', top: '23%', left: 0, animation: 'birdFlyAcross2 26s linear infinite 3.8s' }}>
-            <SilhouetteBird width={23} height={12} flapDuration="0.9s" />
+          <div style={{ position: 'absolute', top: '22%', left: 0, animation: 'birdFlyAcross2 26s linear infinite', animationDelay: '-11s' }}>
+            <SilhouetteBird width={26} height={14} flapDuration="0.85s" />
           </div>
 
           {/* Bird 6: Distant Lone Glider */}
-          <div style={{ position: 'absolute', top: '32%', left: 0, animation: 'birdFlyAcross3 29s linear infinite 8s' }}>
-            <SilhouetteBird width={19} height={10} flapDuration="1.1s" />
+          <div style={{ position: 'absolute', top: '30%', left: 0, animation: 'birdFlyAcross3 28s linear infinite', animationDelay: '-22s' }}>
+            <SilhouetteBird width={22} height={12} flapDuration="1.0s" />
+          </div>
+
+          {/* Bird 7: High Altitude Wanderer */}
+          <div style={{ position: 'absolute', top: '6%', left: 0, animation: 'birdFlyAcross1 26s linear infinite', animationDelay: '-2s' }}>
+            <SilhouetteBird width={20} height={11} flapDuration="0.9s" />
           </div>
         </div>
       )}
