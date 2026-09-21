@@ -130,6 +130,8 @@ const DEFAULT_MENU_TREE = [
     isActive: true,
     subMenus: []
   },
+  /*
+  // --- TEMPORARILY COMMENTED OUT - CAN BE RE-ENABLED LATER ---
   {
     id: 'menu-smsbox',
     title: 'SMS BOX',
@@ -157,6 +159,8 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-click-track', parentId: 'menu-clicker', title: 'Click Stream Tracking', menuKey: 'CLICKER_ANALYTICS', routePath: '/clicker/analytics', icon: 'BarChart3', sortOrder: 2, isActive: true }
     ]
   },
+  // -------------------------------------------------------------
+  */
   {
     id: 'menu-rcs',
     title: 'RCS',
@@ -318,7 +322,7 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
       const res = await api.get('/DynamicMenus/tree');
       if (res.data?.success && Array.isArray(res.data.menus) && res.data.menus.length > 0) {
         const activeTree = res.data.menus
-          .filter(m => m.isActive !== false && m.IsActive !== false)
+          .filter(m => m.isActive !== false && m.IsActive !== false && m.id !== 'menu-smsbox' && m.id !== 'menu-clicker' && m.menuKey !== 'SMS_BOX' && m.menuKey !== 'CLICKER')
           .map(m => ({
             ...m,
             subMenus: (m.subMenus || m.SubMenus || []).filter(s => s.isActive !== false && s.IsActive !== false)
