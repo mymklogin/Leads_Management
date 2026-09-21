@@ -291,3 +291,132 @@ ON CONFLICT (userid, menuid) DO UPDATE SET
     canedit = TRUE,
     candelete = TRUE,
     canexport = TRUE;
+
+-- ==============================================================================
+-- 3. RCS BOTS & TEMPLATES TABLES AND SEEDS
+-- ==============================================================================
+
+-- 3.1 RCS BOTS TABLE
+CREATE TABLE IF NOT EXISTS rcs_bots (
+    id SERIAL PRIMARY KEY,
+    bot_id VARCHAR(100) UNIQUE NOT NULL,
+    bot_name VARCHAR(200) NOT NULL,
+    message_type VARCHAR(50) DEFAULT 'Transactional',
+    brand_name VARCHAR(200),
+    logo_url TEXT,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'Verified',
+    webhook_url TEXT,
+    color VARCHAR(20) DEFAULT '#0a66c2',
+    contact_phone VARCHAR(50),
+    contact_email VARCHAR(150),
+    website_url TEXT,
+    terms_url TEXT,
+    privacy_url TEXT,
+    contact_person VARCHAR(150),
+    contact_designation VARCHAR(150),
+    dlt_entity_id VARCHAR(100),
+    gst_url TEXT,
+    pan_url TEXT,
+    banner_url TEXT,
+    user_id INT DEFAULT 1,
+    created_date VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_rcs_bots_bot_id ON rcs_bots(bot_id);
+CREATE INDEX IF NOT EXISTS ix_rcs_bots_status ON rcs_bots(status);
+
+-- 3.2 RCS TEMPLATES TABLE
+CREATE TABLE IF NOT EXISTS rcs_templates (
+    id SERIAL PRIMARY KEY,
+    template_id VARCHAR(100) UNIQUE NOT NULL,
+    template_name VARCHAR(200) NOT NULL,
+    template_type VARCHAR(50) DEFAULT 'PlainText',
+    bot_id VARCHAR(100) NOT NULL,
+    bot_name VARCHAR(200),
+    vendor_template_id VARCHAR(100),
+    template_status VARCHAR(50) DEFAULT 'Active',
+    entity_id VARCHAR(100),
+    sender_id VARCHAR(50),
+    sms_template_id VARCHAR(100),
+    sms_text TEXT,
+    card_title VARCHAR(250),
+    card_description TEXT,
+    media_url TEXT,
+    button_label VARCHAR(100),
+    button_url TEXT,
+    buttons_json TEXT,
+    cards_json TEXT,
+    user_id INT DEFAULT 1,
+    created_date VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_rcs_templates_template_id ON rcs_templates(template_id);
+CREATE INDEX IF NOT EXISTS ix_rcs_templates_bot_id ON rcs_templates(bot_id);
+CREATE INDEX IF NOT EXISTS ix_rcs_templates_status ON rcs_templates(template_status);
+
+-- 3.3 SEED RCS BOTS
+INSERT INTO rcs_bots (
+    bot_id, bot_name, message_type, brand_name, description, status,
+    color, contact_phone, contact_email, website_url, dlt_entity_id, user_id, created_date
+)
+VALUES (
+    '3c4fa9a066274cd2', 'PBG INFO', 'Transactional', 'PBG INFO TECH PVT LTD',
+    'Official Google-Verified Brand Bot for PBG Account Updates & Service Alerts', 'Verified',
+    '#0a66c2', '+919868040206', 'support@rcsflow.io', 'https://rcsflow.io', '1201161304403738311', 1, '2026-09-18 10:00'
+)
+ON CONFLICT (bot_id) DO UPDATE SET 
+    bot_name = EXCLUDED.bot_name,
+    status = EXCLUDED.status,
+    dlt_entity_id = EXCLUDED.dlt_entity_id;
+
+-- 3.4 SEED APPROVED RCS TEMPLATES
+INSERT INTO rcs_templates (
+    template_id, template_name, template_type, bot_id, bot_name, vendor_template_id,
+    template_status, entity_id, sender_id, sms_template_id, sms_text,
+    card_title, card_description, media_url, button_label, buttons_json, user_id, created_date
+)
+VALUES 
+(
+    'YCSLPB_vg', 'pbg_account_status_u', 'PlainText', '3c4fa9a066274cd2', 'PBG INFO', 'YCSLPB_vg',
+    'Active', '1201161304403738311', 'PBGACC', '1207161545678901235',
+    'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    'PBG Account Status Update',
+    'Dear Customer, your PBG account status has been updated. Please log in to your portal to check your statements.',
+    NULL, 'Check Status',
+    '[{"type":"OpenUrl","title":"Check Status","url":"https://pbginfo.in/status"},{"type":"Dial","title":"Support Call","phoneNumber":"+919868040206"}]',
+    1, '2026-09-18 10:00'
+),
+(
+    'pbg_promo_card_01', 'PBG_Special_Offer_Card', 'RichCard', '3c4fa9a066274cd2', 'PBG INFO', 'pbg_promo_card_01',
+    'Active', '1201161304403738311', 'PBGACC', '1207161545678901236',
+    'Exclusive 50% cashback on all recharges this week. Claim now at https://pbginfo.in/offer',
+    'Exclusive 50% Cashback on All Services!',
+    'Recharge your account today and enjoy instant high-priority routing and 50% bonus credits.',
+    'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80',
+    'Claim Offer',
+    '[{"type":"OpenUrl","title":"Claim Offer","url":"https://pbginfo.in/offer"},{"type":"Reply","title":"Interested","postbackData":"OPT_IN_OFFER"}]',
+    1, '2026-09-18 10:00'
+),
+(
+    'pbg_otp_alert_02', 'PBG_OTP_Verification_Alert', 'PlainText', '3c4fa9a066274cd2', 'PBG INFO', 'pbg_otp_alert_02',
+    'Active', '1201161304403738311', 'PBGACC', '1207161545678901237',
+    'Your PBG verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    'PBG OTP Security Alert',
+    'Your PBG Verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    NULL, 'Copy OTP',
+    '[{"type":"Reply","title":"Copy OTP","postbackData":"COPY_OTP"}]',
+    1, '2026-09-18 10:00'
+)
+ON CONFLICT (template_id) DO UPDATE SET 
+    template_name = EXCLUDED.template_name,
+    template_type = EXCLUDED.template_type,
+    template_status = EXCLUDED.template_status,
+    card_title = EXCLUDED.card_title,
+    card_description = EXCLUDED.card_description,
+    buttons_json = EXCLUDED.buttons_json;
+

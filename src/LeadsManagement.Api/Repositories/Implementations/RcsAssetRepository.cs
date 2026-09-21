@@ -113,6 +113,56 @@ public class RcsAssetRepository : IRcsAssetRepository
                 _templates[pbgTemplate.TemplateId] = pbgTemplate;
             }
 
+            if (!_templates.ContainsKey("pbg_promo_card_01"))
+            {
+                var promoTemplate = new RcsTemplateRecord
+                {
+                    TemplateId = "pbg_promo_card_01",
+                    TemplateName = "PBG_Special_Offer_Card",
+                    TemplateType = "RichCard",
+                    BotId = "3c4fa9a066274cd2",
+                    BotName = "PBG INFO",
+                    VendorTemplateId = "pbg_promo_card_01",
+                    TemplateStatus = "Active",
+                    EntityId = "1201161304403738311",
+                    SenderId = "PBGACC",
+                    SmsTemplateId = "1207161545678901236",
+                    SmsText = "Exclusive 50% cashback on all recharges this week. Claim now at https://pbginfo.in/offer",
+                    CardTitle = "Exclusive 50% Cashback on All Services!",
+                    CardDescription = "Recharge your account today and enjoy instant high-priority routing and 50% bonus credits.",
+                    MediaUrl = "https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80",
+                    ButtonLabel = "Claim Offer",
+                    ButtonUrl = "https://pbginfo.in/offer",
+                    ButtonsJson = "[{\"type\":\"OpenUrl\",\"title\":\"Claim Offer\",\"url\":\"https://pbginfo.in/offer\"},{\"type\":\"Reply\",\"title\":\"Interested\",\"postbackData\":\"OPT_IN_OFFER\"}]",
+                    CreatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm")
+                };
+                _templates[promoTemplate.TemplateId] = promoTemplate;
+            }
+
+            if (!_templates.ContainsKey("pbg_otp_alert_02"))
+            {
+                var otpTemplate = new RcsTemplateRecord
+                {
+                    TemplateId = "pbg_otp_alert_02",
+                    TemplateName = "PBG_OTP_Verification_Alert",
+                    TemplateType = "PlainText",
+                    BotId = "3c4fa9a066274cd2",
+                    BotName = "PBG INFO",
+                    VendorTemplateId = "pbg_otp_alert_02",
+                    TemplateStatus = "Active",
+                    EntityId = "1201161304403738311",
+                    SenderId = "PBGACC",
+                    SmsTemplateId = "1207161545678901237",
+                    SmsText = "Your PBG verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.",
+                    CardTitle = "PBG OTP Security Alert",
+                    CardDescription = "Your PBG Verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.",
+                    ButtonLabel = "Copy OTP",
+                    ButtonsJson = "[{\"type\":\"Reply\",\"title\":\"Copy OTP\",\"postbackData\":\"COPY_OTP\"}]",
+                    CreatedDate = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm")
+                };
+                _templates[otpTemplate.TemplateId] = otpTemplate;
+            }
+
             SaveLocalState();
         }
         catch (Exception ex)

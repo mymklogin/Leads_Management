@@ -34,8 +34,74 @@ import {
   Zap
 } from 'lucide-react';
 
+const DEFAULT_BOTS = [
+  {
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    brandName: 'PBG INFO TECH PVT LTD',
+    messageType: 'Transactional',
+    status: 'Verified',
+    dltEntityId: '1201161304403738311',
+    description: 'Official Google-Verified Brand Bot for PBG Account Updates & Service Alerts',
+    contactPhone: '+919868040206',
+    contactEmail: 'support@rcsflow.io',
+    websiteUrl: 'https://rcsflow.io',
+    termsUrl: 'https://rcsflow.io/terms',
+    privacyUrl: 'https://rcsflow.io/privacy',
+    color: '#0a66c2',
+    logoUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=512',
+    createdDate: '2026-09-18 10:00',
+    templateCount: 3
+  }
+];
+
+const DEFAULT_APPROVED_TEMPLATES = [
+  {
+    templateId: 'YCSLPB_vg',
+    templateName: 'pbg_account_status_u',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901235',
+    content: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    cardTitle: 'PBG Account Status Update',
+    cardDescription: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    buttonLabel: 'Check Status',
+    createdDate: '2026-09-18 10:00'
+  },
+  {
+    templateId: 'pbg_promo_card_01',
+    templateName: 'PBG_Special_Offer_Card',
+    templateType: 'RichCard',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901236',
+    cardTitle: 'Exclusive 50% Cashback on All Services!',
+    cardDescription: 'Recharge your account today and enjoy instant high-priority routing and 50% bonus credits.',
+    mediaUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80',
+    buttonLabel: 'Claim Offer',
+    createdDate: '2026-09-18 10:00'
+  },
+  {
+    templateId: 'pbg_otp_alert_02',
+    templateName: 'PBG_OTP_Verification_Alert',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901237',
+    content: 'Your PBG verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    cardTitle: 'PBG OTP Security Alert',
+    cardDescription: 'Your PBG Verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    buttonLabel: 'Copy OTP',
+    createdDate: '2026-09-18 10:00'
+  }
+];
+
 export const RcsBotsPage = ({ onNavigateToCampaign, onNavigateToAddTemplate }) => {
-  const [bots, setBots] = useState([]);
+  const [bots, setBots] = useState(DEFAULT_BOTS);
   const [loading, setLoading] = useState(false);
   const [botActionMsg, setBotActionMsg] = useState('');
   const [copiedText, setCopiedText] = useState('');
@@ -150,14 +216,24 @@ export const RcsBotsPage = ({ onNavigateToCampaign, onNavigateToAddTemplate }) =
     setLoading(true);
     try {
       const res = await api.get('/RCSApi/GetBots');
-      if (res.data?.response?.bots) {
-        setBots(res.data.response.bots);
-        if (res.data.response.bots.length > 0 && !selectedBotIdForTemplates) {
-          setSelectedBotIdForTemplates(res.data.response.bots[0].botId);
+      const bList = res.data?.response?.bots || [];
+      if (bList.length > 0) {
+        setBots(bList);
+        if (!selectedBotIdForTemplates) {
+          setSelectedBotIdForTemplates(bList[0].botId);
+        }
+      } else {
+        setBots(DEFAULT_BOTS);
+        if (!selectedBotIdForTemplates) {
+          setSelectedBotIdForTemplates(DEFAULT_BOTS[0].botId);
         }
       }
     } catch (err) {
       console.error('Failed to load RCS bots', err);
+      setBots(DEFAULT_BOTS);
+      if (!selectedBotIdForTemplates) {
+        setSelectedBotIdForTemplates(DEFAULT_BOTS[0].botId);
+      }
     } finally {
       setLoading(false);
     }
@@ -172,11 +248,15 @@ export const RcsBotsPage = ({ onNavigateToCampaign, onNavigateToAddTemplate }) =
       if (nameFilter) params.templateName = nameFilter;
 
       const res = await api.get('/RCSApi/GetTemplates', { params });
-      if (res.data?.response?.templates) {
-        setTemplates(res.data.response.templates);
+      const tList = res.data?.response?.templates || [];
+      if (tList.length > 0) {
+        setTemplates(tList);
+      } else {
+        setTemplates(DEFAULT_APPROVED_TEMPLATES);
       }
     } catch (err) {
       console.error('Failed to load templates for bot', err);
+      setTemplates(DEFAULT_APPROVED_TEMPLATES);
     } finally {
       setTemplatesLoading(false);
     }

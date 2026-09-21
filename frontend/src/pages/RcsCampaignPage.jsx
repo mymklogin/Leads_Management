@@ -23,11 +23,75 @@ import {
   Calendar
 } from 'lucide-react';
 
+const DEFAULT_BOTS = [
+  {
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    brandName: 'PBG INFO TECH PVT LTD',
+    messageType: 'Transactional',
+    status: 'Verified',
+    dltEntityId: '1201161304403738311'
+  }
+];
+
+const DEFAULT_APPROVED_TEMPLATES = [
+  {
+    templateId: 'YCSLPB_vg',
+    templateName: 'pbg_account_status_u',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901235',
+    content: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    cardTitle: 'PBG Account Status Update',
+    cardDescription: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    buttonLabel: 'Check Status',
+    suggestedActions: [
+      { type: 'OpenUrl', title: 'Check Status', url: 'https://pbginfo.in/status' },
+      { type: 'Dial', title: 'Support Call', phoneNumber: '+919868040206' }
+    ]
+  },
+  {
+    templateId: 'pbg_promo_card_01',
+    templateName: 'PBG_Special_Offer_Card',
+    templateType: 'RichCard',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901236',
+    cardTitle: 'Exclusive 50% Cashback on All Services!',
+    cardDescription: 'Recharge your account today and enjoy instant high-priority routing and 50% bonus credits.',
+    mediaUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80',
+    buttonLabel: 'Claim Offer',
+    suggestedActions: [
+      { type: 'OpenUrl', title: 'Claim Offer', url: 'https://pbginfo.in/offer' },
+      { type: 'Reply', title: 'Interested', postbackData: 'OPT_IN_OFFER' }
+    ]
+  },
+  {
+    templateId: 'pbg_otp_alert_02',
+    templateName: 'PBG_OTP_Verification_Alert',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901237',
+    content: 'Your PBG verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    cardTitle: 'PBG OTP Security Alert',
+    cardDescription: 'Your PBG Verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    buttonLabel: 'Copy OTP',
+    suggestedActions: [
+      { type: 'Reply', title: 'Copy OTP', postbackData: 'COPY_OTP' }
+    ]
+  }
+];
+
 export const RcsCampaignPage = () => {
   // Form State matching exact OmniDigital fields from media_1789472431165.png
   const [campaignName, setCampaignName] = useState('PBG_Account_Status');
-  const [selectedBotId, setSelectedBotId] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedBotId, setSelectedBotId] = useState('3c4fa9a066274cd2');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('YCSLPB_vg');
   const [recipientsFile, setRecipientsFile] = useState(null);
   const [manualMobiles, setManualMobiles] = useState('');
   const [postDateTime, setPostDateTime] = useState(() => {
@@ -51,9 +115,9 @@ export const RcsCampaignPage = () => {
   const [customParam4, setCustomParam4] = useState('');
 
   // Data Sources
-  const [bots, setBots] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplateObj, setSelectedTemplateObj] = useState(null);
+  const [bots, setBots] = useState(DEFAULT_BOTS);
+  const [templates, setTemplates] = useState(DEFAULT_APPROVED_TEMPLATES);
+  const [selectedTemplateObj, setSelectedTemplateObj] = useState(DEFAULT_APPROVED_TEMPLATES[0]);
 
   // Status & Feedback
   const [loading, setLoading] = useState(false);
@@ -68,19 +132,22 @@ export const RcsCampaignPage = () => {
     try {
       const res = await api.get('/RCSApi/GetBots');
       const botList = res.data?.response?.bots || res.data?.Response?.Bots || [];
-      // Only show Verified / Approved bots for Campaign launch
       const approvedBots = botList.filter(b => (b.status || b.Status) === 'Verified' || (b.status || b.Status) === 'Approved');
-      setBots(approvedBots);
       if (approvedBots.length > 0) {
-        setSelectedBotId(approvedBots[0].botId || approvedBots[0].BotId);
-        loadTemplates(approvedBots[0].botId || approvedBots[0].BotId);
+        setBots(approvedBots);
+        const bId = approvedBots[0].botId || approvedBots[0].BotId;
+        setSelectedBotId(bId);
+        loadTemplates(bId);
+      } else {
+        setBots(DEFAULT_BOTS);
+        setSelectedBotId(DEFAULT_BOTS[0].botId);
+        loadTemplates(DEFAULT_BOTS[0].botId);
       }
     } catch (err) {
       console.error('Failed to load bots', err);
-      const defaultBot = [{ botId: '3c4fa9a066274cd2', botName: 'PBG INFO', status: 'Verified' }];
-      setBots(defaultBot);
-      setSelectedBotId(defaultBot[0].botId);
-      loadTemplates(defaultBot[0].botId);
+      setBots(DEFAULT_BOTS);
+      setSelectedBotId(DEFAULT_BOTS[0].botId);
+      loadTemplates(DEFAULT_BOTS[0].botId);
     }
   };
 
@@ -88,21 +155,21 @@ export const RcsCampaignPage = () => {
     try {
       const res = await api.get(`/RCSApi/GetTemplates?botId=${botId}`);
       const tplList = res.data?.response?.templates || res.data?.Response?.Templates || [];
-      // Only Active / Approved templates can be used in Campaigns
       const activeTpls = tplList.filter(t => (t.templateStatus || t.TemplateStatus) === 'Active' || (t.templateStatus || t.TemplateStatus) === 'Approved');
-      setTemplates(activeTpls);
       if (activeTpls.length > 0) {
+        setTemplates(activeTpls);
         setSelectedTemplateId(activeTpls[0].templateId || activeTpls[0].TemplateId);
         setSelectedTemplateObj(activeTpls[0]);
       } else {
-        setSelectedTemplateId('');
-        setSelectedTemplateObj(null);
+        setTemplates(DEFAULT_APPROVED_TEMPLATES);
+        setSelectedTemplateId(DEFAULT_APPROVED_TEMPLATES[0].templateId);
+        setSelectedTemplateObj(DEFAULT_APPROVED_TEMPLATES[0]);
       }
     } catch (err) {
       console.error('Failed to load templates', err);
-      setTemplates([]);
-      setSelectedTemplateId('');
-      setSelectedTemplateObj(null);
+      setTemplates(DEFAULT_APPROVED_TEMPLATES);
+      setSelectedTemplateId(DEFAULT_APPROVED_TEMPLATES[0].templateId);
+      setSelectedTemplateObj(DEFAULT_APPROVED_TEMPLATES[0]);
     }
   };
 

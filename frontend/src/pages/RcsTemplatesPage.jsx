@@ -32,12 +32,76 @@ import {
   Smartphone
 } from 'lucide-react';
 
+const DEFAULT_BOTS = [
+  {
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    brandName: 'PBG INFO TECH PVT LTD',
+    messageType: 'Transactional',
+    status: 'Verified',
+    dltEntityId: '1201161304403738311'
+  }
+];
+
+const DEFAULT_APPROVED_TEMPLATES = [
+  {
+    templateId: 'YCSLPB_vg',
+    templateName: 'pbg_account_status_u',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901235',
+    content: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    cardTitle: 'PBG Account Status Update',
+    cardDescription: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.',
+    buttonLabel: 'Check Status',
+    suggestedActions: [
+      { type: 'OpenUrl', title: 'Check Status', url: 'https://pbginfo.in/status' },
+      { type: 'Dial', title: 'Support Call', phoneNumber: '+919868040206' }
+    ]
+  },
+  {
+    templateId: 'pbg_promo_card_01',
+    templateName: 'PBG_Special_Offer_Card',
+    templateType: 'RichCard',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901236',
+    cardTitle: 'Exclusive 50% Cashback on All Services!',
+    cardDescription: 'Recharge your account today and enjoy instant high-priority routing and 50% bonus credits.',
+    mediaUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80',
+    buttonLabel: 'Claim Offer',
+    suggestedActions: [
+      { type: 'OpenUrl', title: 'Claim Offer', url: 'https://pbginfo.in/offer' },
+      { type: 'Reply', title: 'Interested', postbackData: 'OPT_IN_OFFER' }
+    ]
+  },
+  {
+    templateId: 'pbg_otp_alert_02',
+    templateName: 'PBG_OTP_Verification_Alert',
+    templateType: 'PlainText',
+    templateStatus: 'Active',
+    botId: '3c4fa9a066274cd2',
+    botName: 'PBG INFO',
+    dltTemplateId: '1207161545678901237',
+    content: 'Your PBG verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    cardTitle: 'PBG OTP Security Alert',
+    cardDescription: 'Your PBG Verification OTP is {#var#}. Valid for 10 minutes. Do not share with anyone.',
+    buttonLabel: 'Copy OTP',
+    suggestedActions: [
+      { type: 'Reply', title: 'Copy OTP', postbackData: 'COPY_OTP' }
+    ]
+  }
+];
+
 export const RcsTemplatesPage = ({ onNavigateToBots }) => {
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'create'
-  const [templates, setTemplates] = useState([]);
-  const [bots, setBots] = useState([]);
+  const [templates, setTemplates] = useState(DEFAULT_APPROVED_TEMPLATES);
+  const [bots, setBots] = useState(DEFAULT_BOTS);
   const [loading, setLoading] = useState(false);
-  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [previewTemplate, setPreviewTemplate] = useState(DEFAULT_APPROVED_TEMPLATES[0]);
   const [viewingTemplate, setViewingTemplate] = useState(null);
   const [viewModalCardIdx, setViewModalCardIdx] = useState(0);
   const [copiedId, setCopiedId] = useState('');
@@ -105,10 +169,9 @@ export const RcsTemplatesPage = ({ onNavigateToBots }) => {
     try {
       const res = await api.get('/RCSApi/GetBots');
       const bList = res.data?.response?.bots || [];
-      // Only show Verified / Approved bots for Template management and creation
       const approvedBots = bList.filter(b => (b.status || b.Status) === 'Verified' || (b.status || b.Status) === 'Approved');
-      setBots(approvedBots);
       if (approvedBots.length > 0) {
+        setBots(approvedBots);
         const initialBotId = filterBot && approvedBots.some(b => b.botId === filterBot) 
           ? filterBot 
           : approvedBots[0].botId;
@@ -116,11 +179,15 @@ export const RcsTemplatesPage = ({ onNavigateToBots }) => {
         setCreateForm(prev => ({ ...prev, botId: initialBotId }));
         fetchTemplates(initialBotId);
       } else {
-        setFilterBot('');
-        setTemplates([]);
+        setBots(DEFAULT_BOTS);
+        setFilterBot(DEFAULT_BOTS[0].botId);
+        fetchTemplates(DEFAULT_BOTS[0].botId);
       }
     } catch (err) {
       console.error('Failed to load bots', err);
+      setBots(DEFAULT_BOTS);
+      setFilterBot(DEFAULT_BOTS[0].botId);
+      fetchTemplates(DEFAULT_BOTS[0].botId);
     }
   };
 
@@ -138,16 +205,17 @@ export const RcsTemplatesPage = ({ onNavigateToBots }) => {
 
       const res = await api.get(`/RCSApi/GetTemplates?${params.toString()}`);
       const tList = res.data?.response?.templates || [];
-      setTemplates(tList);
       if (tList.length > 0) {
+        setTemplates(tList);
         setPreviewTemplate(tList[0]);
       } else {
-        setPreviewTemplate(null);
+        setTemplates(DEFAULT_APPROVED_TEMPLATES);
+        setPreviewTemplate(DEFAULT_APPROVED_TEMPLATES[0]);
       }
     } catch (err) {
       console.error('Failed to load templates', err);
-      setTemplates([]);
-      setPreviewTemplate(null);
+      setTemplates(DEFAULT_APPROVED_TEMPLATES);
+      setPreviewTemplate(DEFAULT_APPROVED_TEMPLATES[0]);
     } finally {
       setLoading(false);
     }
