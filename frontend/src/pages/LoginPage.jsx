@@ -314,6 +314,44 @@ export const LoginPage = () => {
         .omni-theme-pill:hover {
           transform: translateY(-1px);
         }
+
+        /* Responsive Mobile Layout (Width < 768px) */
+        @media (max-width: 768px) {
+          .omni-login-card {
+            flex-direction: column !important;
+            width: 92% !important;
+            max-width: 440px !important;
+            margin: 15px auto !important;
+            border-radius: 22px !important;
+            box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.15) !important;
+          }
+          .omni-left-panel {
+            display: none !important;
+          }
+          .omni-right-panel {
+            width: 100% !important;
+            padding: 28px 20px 24px !important;
+          }
+          .omni-input-wrapper {
+            height: 48px !important;
+            border-radius: 10px !important;
+          }
+          .omni-input-field {
+            font-size: 15px !important;
+            height: 48px !important;
+            letter-spacing: 0.3px !important;
+          }
+          .omni-floating-theme-bar {
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+            bottom: 10px !important;
+            max-width: 95vw !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            padding: 4px 10px !important;
+          }
+        }
       `}</style>
 
       {/* 1. CELESTIAL ORB (SUN / MOON WITH REALISTIC 3D GLOW) */}
@@ -372,7 +410,7 @@ export const LoginPage = () => {
       </div>
 
       {/* 3. CENTER DUAL-PANEL LOGIN CARD (MATCHING EXACT OMNIDIGITAL GEOMETRY) */}
-      <div style={{
+      <div className="omni-login-card" style={{
         position: 'relative',
         zIndex: 10,
         maxWidth: '840px',
@@ -387,7 +425,7 @@ export const LoginPage = () => {
       }}>
 
         {/* LEFT COLUMN: VIBRANT DYNAMIC HERO PANEL */}
-        <div style={{
+        <div className="omni-left-panel" style={{
           width: '45%',
           background: activeTheme.leftCardBg,
           padding: '36px 30px',
@@ -544,7 +582,7 @@ export const LoginPage = () => {
         </div>
 
         {/* RIGHT COLUMN: LOGIN FORM */}
-        <div style={{
+        <div className="omni-right-panel" style={{
           width: '55%',
           background: '#ffffff',
           padding: '36px 36px 30px',
@@ -613,7 +651,7 @@ export const LoginPage = () => {
               }}>
                 USERNAME
               </label>
-              <div style={{
+              <div className="omni-input-wrapper" style={{
                 position: 'relative',
                 background: '#f1f5f9',
                 borderRadius: '8px',
@@ -623,22 +661,23 @@ export const LoginPage = () => {
                 transition: 'border-color 0.2s ease, background 0.2s ease'
               }}>
                 <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                  <User size={16} />
+                  <User size={18} />
                 </div>
                 <input
                   type="text"
+                  className="omni-input-field"
                   placeholder="Enter Username"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   required
                   style={{
                     width: '100%',
-                    height: '40px',
+                    height: '42px',
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
                     padding: '0 12px',
-                    fontSize: '13px',
+                    fontSize: '14px',
                     color: '#1e293b',
                     fontWeight: 500
                   }}
@@ -658,7 +697,7 @@ export const LoginPage = () => {
               }}>
                 PASSWORD
               </label>
-              <div style={{
+              <div className="omni-input-wrapper" style={{
                 position: 'relative',
                 background: '#f1f5f9',
                 borderRadius: '8px',
@@ -668,22 +707,23 @@ export const LoginPage = () => {
                 transition: 'border-color 0.2s ease, background 0.2s ease'
               }}>
                 <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                  <Lock size={16} />
+                  <Lock size={18} />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  className="omni-input-field"
                   placeholder="Enter Password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
                   style={{
                     width: '100%',
-                    height: '40px',
+                    height: '42px',
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
-                    padding: '0 36px 0 12px',
-                    fontSize: '13px',
+                    padding: '0 38px 0 12px',
+                    fontSize: '14px',
                     color: '#1e293b',
                     fontWeight: 500
                   }}
@@ -700,11 +740,11 @@ export const LoginPage = () => {
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    padding: 4
+                    padding: 6
                   }}
                   title={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
@@ -827,7 +867,7 @@ export const LoginPage = () => {
       </div>
 
       {/* 4. SLEEK FLOATING THEME TIME CONTROLLER & STATUS PILL */}
-      <div style={{
+      <div className="omni-floating-theme-bar" style={{
         position: 'fixed',
         bottom: '16px',
         right: '16px',
