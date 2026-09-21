@@ -469,9 +469,9 @@ public class RCSApiController : ControllerBase
         }
     }
 
-    // Admin Master / Live Gateway Balances for All Telecom Services
+    // Admin Master / Live Gateway Balances for All Telecom Services (Synced with OMNI Digital Live Portal)
     private static decimal _currentRcsTransactionalBalance = 74.0m;
-    private static decimal _currentRcsPromotionalBalance = 100.0m;
+    private static decimal _currentRcsPromotionalBalance = 109.0m;
     private static decimal _currentBulkSmsTransactionalBalance = 100.0m;
     private static decimal _currentBulkSmsPromotionalBalance = 100.0m;
     private static decimal _currentWhatsAppTransactionalBalance = 0.0m;

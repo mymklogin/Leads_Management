@@ -81,11 +81,15 @@ builder.Services.AddScoped<IWebhookProcessorService, WebhookProcessorService>();
 builder.Services.AddScoped<ILeadService, LeadService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddHttpClient<IExpressIvrClient, ExpressIvrClient>();
-builder.Services.AddHttpClient<IRcsGatewayService, RcsGatewayService>()
-    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-    {
-        ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
-    });
+builder.Services.AddHttpClient<IRcsGatewayService, RcsGatewayService>(client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    client.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+});
 
 // 6. Configure JWT Authentication
 string jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? "SUPER_SECRET_LEADS_MANAGEMENT_KEY_9999900000_VERY_SECURE";

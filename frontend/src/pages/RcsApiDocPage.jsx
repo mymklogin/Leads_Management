@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import api from '../services/api';
 import {
   Key, Globe, Send, Wallet, FileText, Bot, PlusCircle, Code, MessageSquare,
   Bell, AlertTriangle, ShieldCheck, Check, Copy, ExternalLink, Search,
@@ -182,15 +183,20 @@ export function RcsApiDocPage() {
   }, []);
 
   // Live test API endpoint via backend
-  const runLiveTest = async (endpoint) => {
+  const runLiveTest = async (endpoint, postBody = null) => {
     setTestConsoleLoading(true);
     setTestConsoleResult(null);
     try {
-      const res = await fetch(`http://localhost:5108/api/RCSApi/${endpoint}?apiKey=${activeApiKey}`);
-      const data = await res.json();
-      setTestConsoleResult({ status: res.status, ok: res.ok, data });
+      let res;
+      if (postBody) {
+        res = await api.post(`/RCSApi/${endpoint}?apiKey=${activeApiKey}`, postBody);
+      } else {
+        res = await api.get(`/RCSApi/${endpoint}?apiKey=${activeApiKey}`);
+      }
+      setTestConsoleResult({ status: res.status, ok: true, data: res.data });
     } catch (err) {
-      setTestConsoleResult({ status: 500, ok: false, data: { error: err.message } });
+      const errData = err.response?.data || { error: err.message };
+      setTestConsoleResult({ status: err.response?.status || 500, ok: false, data: errData });
     } finally {
       setTestConsoleLoading(false);
     }
@@ -1405,6 +1411,19 @@ export function RcsApiDocPage() {
                   </button>
                   <button className="doc-tab-btn" onClick={() => runLiveTest('GetTemplates')} disabled={testConsoleLoading}>
                     Test GetTemplates
+                  </button>
+                  <button
+                    className="doc-tab-btn"
+                    style={{ background: '#0284c7', color: '#fff', fontWeight: 'bold' }}
+                    onClick={() => runLiveTest('CreateCampaign', {
+                      TemplateId: 'YCSLPB_vg',
+                      CampaignName: 'Test_Campaign_9868040206',
+                      MobileNumbers: ['9868040206'],
+                      EnableFallback: false
+                    })}
+                    disabled={testConsoleLoading}
+                  >
+                    🚀 Test Send to 9868040206
                   </button>
                 </div>
               </div>
