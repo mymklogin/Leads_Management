@@ -459,11 +459,11 @@ export const RcsOverviewBalancePage = () => {
   const bulkTAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && ((t.serviceType || '').toUpperCase().includes('BULKSMS-T') || (t.serviceType || '').toUpperCase() === 'SMS') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
   const bulkPAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && (t.serviceType || '').toUpperCase().includes('BULKSMS-P') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
 
-  // Dynamic values requested by user (Option 1 Master Quota Deduction Model)
-  const mainRcsT = 84;
-  const mainRcsP = 109;
-  const availRcsT = ledgerSummary?.rcsT?.currentAvailable ?? Math.max(0, 84 - rcsTCredited + rcsTRevoked - rcsTAdminUsed);
-  const availRcsP = ledgerSummary?.rcsP?.currentAvailable ?? Math.max(0, 109 - rcsPCredited + rcsPRevoked - rcsPAdminUsed);
+  // Dynamic values connected to live gateway and ledger
+  const mainRcsT = adminBalances.rcsT ?? 0;
+  const mainRcsP = adminBalances.rcsP ?? 0;
+  const availRcsT = ledgerSummary?.rcsT?.currentAvailable ?? Math.max(0, mainRcsT - rcsTCredited + rcsTRevoked - rcsTAdminUsed);
+  const availRcsP = ledgerSummary?.rcsP?.currentAvailable ?? Math.max(0, mainRcsP - rcsPCredited + rcsPRevoked - rcsPAdminUsed);
   const revokedRcsTStr = rcsTRevoked > 0 ? `-${rcsTRevoked}` : '0';
   const revokedRcsPStr = rcsPRevoked > 0 ? `-${rcsPRevoked}` : '0';
 
@@ -1335,7 +1335,7 @@ export const RcsOverviewBalancePage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7' }}>
                     <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance BULKSMS-T</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>100 <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>{adminBalances.bulkSmsT.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
                   </div>
                   <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
                     <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available BULKSMS-T</div>
@@ -1349,7 +1349,7 @@ export const RcsOverviewBalancePage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div style={{ background: '#f5f3ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ddd6fe', borderLeft: '4px solid #8b5cf6' }}>
                     <div style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance BULKSMS-P</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>100 <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>{adminBalances.bulkSmsP.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
                   </div>
                   <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
                     <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available BULKSMS-P</div>
@@ -1369,7 +1369,7 @@ export const RcsOverviewBalancePage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7' }}>
                     <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance WhatsApp-T</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>0 <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>{adminBalances.whatsAppT.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
                   </div>
                   <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
                     <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available WhatsApp-T</div>
@@ -1383,7 +1383,7 @@ export const RcsOverviewBalancePage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                   <div style={{ background: '#f5f3ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ddd6fe', borderLeft: '4px solid #8b5cf6' }}>
                     <div style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance WhatsApp-P</div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>0 <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>{adminBalances.whatsAppP.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
                   </div>
                   <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
                     <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available WhatsApp-P</div>
