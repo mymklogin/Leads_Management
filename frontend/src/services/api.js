@@ -1,20 +1,11 @@
 import axios from 'axios';
 
 export const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
-      return `http://${hostname}:5108/api`;
-    }
-  }
   return '/api';
 };
 
 const api = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   }
