@@ -820,7 +820,7 @@ export const LoginPage = () => {
           <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <button
               type="button"
-              onClick={() => alert(`Password recovery: Please contact your enterprise administrator or ${branding?.supportEmail || 'support@leadsengine.com'} (${branding?.supportPhone || '+91 9170304221'}).`)}
+              onClick={() => alert(`Password recovery: Please contact your enterprise administrator or ${branding?.supportEmail || 'support@rcsflow.io'} (${branding?.supportPhone || '+91 9170304221'}).`)}
               style={{
                 background: 'none',
                 border: 'none',

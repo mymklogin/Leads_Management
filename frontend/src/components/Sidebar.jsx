@@ -130,8 +130,6 @@ const DEFAULT_MENU_TREE = [
     isActive: true,
     subMenus: []
   },
-  /*
-  // [TEMPORARILY HIDDEN / COMMENTED: SMS BOX]
   {
     id: 'menu-smsbox',
     title: 'SMS BOX',
@@ -139,14 +137,13 @@ const DEFAULT_MENU_TREE = [
     routePath: '/sms-box',
     icon: 'Send',
     sortOrder: 2,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-sms-quick', parentId: 'menu-smsbox', title: 'Quick SMS Sender', menuKey: 'VOICE_SINGLE_CALL', routePath: '/voice/single', icon: 'Send', sortOrder: 1, isActive: false },
-      { id: 'sub-sms-bulk', parentId: 'menu-smsbox', title: 'Bulk SMS Campaign', menuKey: 'VOICE_BULK_OBD', routePath: '/voice/bulk', icon: 'Layers', sortOrder: 2, isActive: false },
-      { id: 'sub-sms-tpl', parentId: 'menu-smsbox', title: 'SMS DLT Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 3, isActive: false }
+      { id: 'sub-sms-quick', parentId: 'menu-smsbox', title: 'Quick SMS Sender', menuKey: 'VOICE_SINGLE_CALL', routePath: '/voice/single', icon: 'Send', sortOrder: 1, isActive: true },
+      { id: 'sub-sms-bulk', parentId: 'menu-smsbox', title: 'Bulk SMS Campaign', menuKey: 'VOICE_BULK_OBD', routePath: '/voice/bulk', icon: 'Layers', sortOrder: 2, isActive: true },
+      { id: 'sub-sms-tpl', parentId: 'menu-smsbox', title: 'SMS DLT Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 3, isActive: true }
     ]
   },
-  // [TEMPORARILY HIDDEN / COMMENTED: CLICKER]
   {
     id: 'menu-clicker',
     title: 'CLICKER',
@@ -154,13 +151,12 @@ const DEFAULT_MENU_TREE = [
     routePath: '/clicker',
     icon: 'MousePointer',
     sortOrder: 3,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-click-short', parentId: 'menu-clicker', title: 'Smart URL Shortener', menuKey: 'CLICKER_SHORTENER', routePath: '/clicker/shortener', icon: 'Globe', sortOrder: 1, isActive: false },
-      { id: 'sub-click-track', parentId: 'menu-clicker', title: 'Click Stream Tracking', menuKey: 'CLICKER_ANALYTICS', routePath: '/clicker/analytics', icon: 'BarChart3', sortOrder: 2, isActive: false }
+      { id: 'sub-click-short', parentId: 'menu-clicker', title: 'Smart URL Shortener', menuKey: 'CLICKER_SHORTENER', routePath: '/clicker/shortener', icon: 'Globe', sortOrder: 1, isActive: true },
+      { id: 'sub-click-track', parentId: 'menu-clicker', title: 'Click Stream Tracking', menuKey: 'CLICKER_ANALYTICS', routePath: '/clicker/analytics', icon: 'BarChart3', sortOrder: 2, isActive: true }
     ]
   },
-  */
   {
     id: 'menu-rcs',
     title: 'RCS',
@@ -171,14 +167,15 @@ const DEFAULT_MENU_TREE = [
     isActive: true,
     subMenus: [
       { id: 'sub-rcs-dash', parentId: 'menu-rcs', title: 'Dashboard', menuKey: 'RCS_DASHBOARD', routePath: '/dashboard', icon: 'Gauge', sortOrder: 1, isActive: true },
-      { id: 'sub-rcs-tpl', parentId: 'menu-rcs', title: 'Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 2, isActive: true },
-      { id: 'sub-rcs-create', parentId: 'menu-rcs', title: 'Create Campaign', menuKey: 'RCS_CAMPAIGNS', routePath: '/rcs/campaign', icon: 'PlusCircle', sortOrder: 3, isActive: true },
-      { id: 'sub-rcs-multi', parentId: 'menu-rcs', title: 'Multi Schedule Campaign', menuKey: 'RCS_MULTI_SCHEDULE', routePath: '/rcs/multi-schedule', icon: 'Calendar', sortOrder: 4, isActive: true },
-      { id: 'sub-rcs-rep', parentId: 'menu-rcs', title: 'Campaign Report', menuKey: 'RCS_REPORTS', routePath: '/rcs/reports', icon: 'BarChart3', sortOrder: 5, isActive: true },
-      { id: 'sub-rcs-mis', parentId: 'menu-rcs', title: 'MIS Report', menuKey: 'RCS_MIS_REPORT', routePath: '/rcs-mis', icon: 'PieChart', sortOrder: 6, isActive: true },
-      { id: 'sub-rcs-chat', parentId: 'menu-rcs', title: 'RCS Chat', menuKey: 'RCS_CHAT', routePath: '/rcs/chat', icon: 'MessageSquare', sortOrder: 7, isActive: true },
-      { id: 'sub-rcs-cons', parentId: 'menu-rcs', title: 'Consolidate Report', menuKey: 'RCS_CONSOLIDATE_REPORT', routePath: '/rcs/consolidate-report', icon: 'Database', sortOrder: 8, isActive: true },
-      { id: 'sub-rcs-doc', parentId: 'menu-rcs', title: 'API Documentation', menuKey: 'RCS_API_DOC', routePath: '/rcs/api-doc', icon: 'BookOpen', sortOrder: 9, isActive: true }
+      { id: 'sub-rcs-bots', parentId: 'menu-rcs', title: 'Manage Bots / Bot ID', menuKey: 'RCS_BOTS', routePath: '/rcs/bots', icon: 'Bot', sortOrder: 2, isActive: true },
+      { id: 'sub-rcs-tpl', parentId: 'menu-rcs', title: 'Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 3, isActive: true },
+      { id: 'sub-rcs-create', parentId: 'menu-rcs', title: 'Create Campaign', menuKey: 'RCS_CAMPAIGNS', routePath: '/rcs/campaign', icon: 'PlusCircle', sortOrder: 4, isActive: true },
+      { id: 'sub-rcs-multi', parentId: 'menu-rcs', title: 'Multi Schedule Campaign', menuKey: 'RCS_MULTI_SCHEDULE', routePath: '/rcs/multi-schedule', icon: 'Calendar', sortOrder: 5, isActive: true },
+      { id: 'sub-rcs-rep', parentId: 'menu-rcs', title: 'Campaign Report', menuKey: 'RCS_REPORTS', routePath: '/rcs/reports', icon: 'BarChart3', sortOrder: 6, isActive: true },
+      { id: 'sub-rcs-mis', parentId: 'menu-rcs', title: 'MIS Report', menuKey: 'RCS_MIS_REPORT', routePath: '/rcs-mis', icon: 'PieChart', sortOrder: 7, isActive: true },
+      { id: 'sub-rcs-chat', parentId: 'menu-rcs', title: 'RCS Chat', menuKey: 'RCS_CHAT', routePath: '/rcs/chat', icon: 'MessageSquare', sortOrder: 8, isActive: true },
+      { id: 'sub-rcs-cons', parentId: 'menu-rcs', title: 'Consolidate Report', menuKey: 'RCS_CONSOLIDATE_REPORT', routePath: '/rcs/consolidate-report', icon: 'Database', sortOrder: 9, isActive: true },
+      { id: 'sub-rcs-doc', parentId: 'menu-rcs', title: 'API Documentation', menuKey: 'RCS_API_DOC', routePath: '/rcs/api-doc', icon: 'BookOpen', sortOrder: 10, isActive: true }
     ]
   },
   {
@@ -225,11 +222,9 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-mng-leads', parentId: 'menu-manage', title: 'Leads CRM', menuKey: 'LEADS_CRM', routePath: '/leads', icon: 'Users', sortOrder: 1, isActive: true, badgeText: 'AI LEADS', badgeColor: '#0284c7' },
       { id: 'sub-mng-users', parentId: 'menu-manage', title: 'User Management', menuKey: 'USER_MANAGEMENT', routePath: '/user-management', icon: 'Users', sortOrder: 2, isActive: true },
       { id: 'sub-mng-pay', parentId: 'menu-manage', title: 'Payment & Credits', menuKey: 'RCS_PAYMENT_MANAGE', routePath: '/payment-manage', icon: 'Wallet', sortOrder: 3, isActive: true },
-      { id: 'sub-mng-builder', parentId: 'menu-manage', title: 'Dynamic Menu Builder', menuKey: 'MENU_BUILDER', routePath: '/menu-builder', icon: 'Sliders', sortOrder: 4, isActive: true }
+      { id: 'sub-mng-builder', parentId: 'menu-manage', title: 'Dynamic Menu & Submenu Management', menuKey: 'MENU_BUILDER', routePath: '/menu-builder', icon: 'Sliders', sortOrder: 4, isActive: true }
     ]
   },
-  /*
-  // [TEMPORARILY HIDDEN / COMMENTED: RESELLER]
   {
     id: 'menu-reseller',
     title: 'RESELLER',
@@ -237,14 +232,13 @@ const DEFAULT_MENU_TREE = [
     routePath: '/reseller',
     icon: 'Briefcase',
     sortOrder: 8,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-res-smpp', parentId: 'menu-reseller', title: 'Inbound SMPP Server (Port 2775)', menuKey: 'RESELLER_SMPP', routePath: '/reseller-smpp', icon: 'Server', sortOrder: 1, isActive: false },
-      { id: 'sub-res-cname', parentId: 'menu-reseller', title: 'Reseller Custom Domains', menuKey: 'RESELLER_DOMAINS', routePath: '/reseller-domains', icon: 'Globe', sortOrder: 2, isActive: false },
-      { id: 'sub-res-users', parentId: 'menu-reseller', title: 'Reseller User Accounts', menuKey: 'USER_MANAGEMENT', routePath: '/user-management', icon: 'Users', sortOrder: 3, isActive: false }
+      { id: 'sub-res-smpp', parentId: 'menu-reseller', title: 'Dedicated SMPP Gateway', menuKey: 'RESELLER_SMPP', routePath: '/reseller-smpp', icon: 'Server', sortOrder: 1, isActive: true },
+      { id: 'sub-res-cname', parentId: 'menu-reseller', title: 'White Label Domain', menuKey: 'RESELLER_DOMAINS', routePath: '/reseller-domains', icon: 'Globe', sortOrder: 2, isActive: true },
+      { id: 'sub-res-users', parentId: 'menu-reseller', title: 'Reseller Management', menuKey: 'USER_MANAGEMENT', routePath: '/user-management', icon: 'Users', sortOrder: 3, isActive: true }
     ]
   },
-  */
   {
     id: 'menu-http',
     title: 'HTTP API',
@@ -257,22 +251,19 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-api-doc', parentId: 'menu-http', title: 'REST API Documentation', menuKey: 'RCS_API_DOC', routePath: '/rcs/api-doc', icon: 'BookOpen', sortOrder: 1, isActive: true }
     ]
   },
-  /*
-  // [TEMPORARILY HIDDEN / COMMENTED: SECURITY & IP / TWO FACTOR AUTHENTICATION]
   {
     id: 'menu-2fa',
-    title: 'SECURITY & IP',
+    title: 'TWO FACTOR AUTHENTICATION',
     menuKey: 'TWO_FACTOR_AUTH',
     routePath: '/security/2fa',
     icon: 'Key',
     sortOrder: 10,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-sec-ip', parentId: 'menu-2fa', title: 'IP & Domain Whitelist', menuKey: 'IP_SECURITY', routePath: '/ip-whitelist', icon: 'ShieldCheck', sortOrder: 1, isActive: false },
-      { id: 'sub-sec-otp', parentId: 'menu-2fa', title: 'Two Factor Authentication', menuKey: 'TWO_FACTOR_AUTH', routePath: '/security/2fa', icon: 'Key', sortOrder: 2, isActive: false }
+      { id: 'sub-sec-ip', parentId: 'menu-2fa', title: 'IP Security & Firewall', menuKey: 'IP_SECURITY', routePath: '/ip-whitelist', icon: 'ShieldCheck', sortOrder: 1, isActive: true },
+      { id: 'sub-sec-otp', parentId: 'menu-2fa', title: 'Two Factor Authentication', menuKey: 'TWO_FACTOR_AUTH', routePath: '/security/2fa', icon: 'Key', sortOrder: 2, isActive: true }
     ]
   },
-  // [TEMPORARILY HIDDEN / COMMENTED: JSON API]
   {
     id: 'menu-json',
     title: 'JSON API',
@@ -280,12 +271,11 @@ const DEFAULT_MENU_TREE = [
     routePath: '/json-api',
     icon: 'FileCode',
     sortOrder: 11,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-json-spec', parentId: 'menu-json', title: 'JSON Webhook & Payload API', menuKey: 'RCS_API_DOC', routePath: '/json-api', icon: 'FileCode', sortOrder: 1, isActive: false }
+      { id: 'sub-json-spec', parentId: 'menu-json', title: 'JSON Webhook & Payload API', menuKey: 'RCS_API_DOC', routePath: '/json-api', icon: 'FileCode', sortOrder: 1, isActive: true }
     ]
   },
-  // [TEMPORARILY HIDDEN / COMMENTED: UTILITIES]
   {
     id: 'menu-util',
     title: 'UTILITIES',
@@ -293,12 +283,11 @@ const DEFAULT_MENU_TREE = [
     routePath: '/utilities',
     icon: 'Wrench',
     sortOrder: 12,
-    isActive: false,
+    isActive: true,
     subMenus: [
-      { id: 'sub-util-ping', parentId: 'menu-util', title: 'SMPP & IP Ping Diagnostics', menuKey: 'IP_SECURITY', routePath: '/utilities/ping', icon: 'Sliders', sortOrder: 1, isActive: false }
+      { id: 'sub-util-ping', parentId: 'menu-util', title: 'SMPP & IP Ping Diagnostics', menuKey: 'IP_SECURITY', routePath: '/utilities/ping', icon: 'Sliders', sortOrder: 1, isActive: true }
     ]
   },
-  */
   {
     id: 'menu-help',
     title: 'HELP DESK',
@@ -317,14 +306,16 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
   const [menus, setMenus] = useState(DEFAULT_MENU_TREE);
-  const [expandedMenus, setExpandedMenus] = useState({});
+  const [expandedMenus, setExpandedMenus] = useState({
+    'menu-rcs': true
+  });
 
   const companyTitle = branding?.companyName || 'SAAS';
 
   // Fetch dynamic menus from Backend API
   const loadMenus = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:5108/api/DynamicMenus/tree');
+      const res = await api.get('/DynamicMenus/tree');
       if (res.data?.success && Array.isArray(res.data.menus) && res.data.menus.length > 0) {
         const activeTree = res.data.menus
           .filter(m => m.isActive !== false && m.IsActive !== false)

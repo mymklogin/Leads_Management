@@ -361,6 +361,33 @@ public class RCSApiController : ControllerBase
                 Status = "Completed",
                 CreatedAt = "2026-09-15 13:12"
             });
+
+            // Sept 14 (3 campaigns to reach 26 total campaigns and 17 delivered)
+            var sept14 = new (int id, string name, string time)[]
+            {
+                (6290, "PBG_Account_Status", "2026-09-14 11:30"),
+                (6285, "PBG_Account_Status", "2026-09-14 10:15"),
+                (6280, "PBG_Account_Status", "2026-09-14 09:40")
+            };
+            foreach (var c in sept14)
+            {
+                _campaignReports.Add(new RcsCampaignReportDto
+                {
+                    CampaignId = c.id,
+                    CampaignName = c.name,
+                    TemplateId = "YCSLPB_vg",
+                    TemplateName = "pbg_account_status_u",
+                    TemplateType = "PlainText",
+                    BotName = "PBG INFO",
+                    TotalMobiles = 1,
+                    DeliveredRcs = 1,
+                    ReadRcs = 0,
+                    DeliveryRate = 100,
+                    ReadRate = 0,
+                    Status = "Completed",
+                    CreatedAt = c.time
+                });
+            }
         }
 
         if (_deliveryLogs.Count == 0)
@@ -443,7 +470,7 @@ public class RCSApiController : ControllerBase
     }
 
     // Admin Master / Live Gateway Balances for All Telecom Services
-    private static decimal _currentRcsTransactionalBalance = 85.0m;
+    private static decimal _currentRcsTransactionalBalance = 74.0m;
     private static decimal _currentRcsPromotionalBalance = 100.0m;
     private static decimal _currentBulkSmsTransactionalBalance = 100.0m;
     private static decimal _currentBulkSmsPromotionalBalance = 100.0m;

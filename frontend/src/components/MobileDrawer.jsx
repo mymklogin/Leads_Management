@@ -79,9 +79,9 @@ export const MobileDrawer = ({ isOpen, onClose, activeTab, onSelectTab }) => {
             </div>
             <div>
               <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
-                Leads<span style={{ color: '#0a66c2' }}>Engine</span>
+                SAAS
               </div>
-              <div style={{ fontSize: '11px', color: '#64748b' }}>Cloud Enterprise App</div>
+              <div style={{ fontSize: '11px', color: '#64748b' }}>Enterprise Cloud Suite</div>
             </div>
           </div>
           <button type="button" className="drawer-close-btn" onClick={onClose}>

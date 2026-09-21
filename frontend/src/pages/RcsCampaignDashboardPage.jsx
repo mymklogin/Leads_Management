@@ -48,9 +48,9 @@ ChartJS.register(
 );
 
 export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToReports }) {
-  // 1. Date Filters matching official screenshot
-  const [fromDate, setFromDate] = useState('2026-09-09');
-  const [toDate, setToDate] = useState('2026-09-16');
+  // 1. Date Filters matching official screenshot (14-09-2026 to 21-09-2026)
+  const [fromDate, setFromDate] = useState('2026-09-14');
+  const [toDate, setToDate] = useState('2026-09-21');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 2. Interactive Status Filter Toggles (Green=Delivered, Red=Failed, Blue=Read, Yellow=Awaited)
@@ -75,12 +75,12 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     }, 600);
   };
 
-  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 12 on Sept 15 + 3 today Sept 16 = 15)
+  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 26 total, 17 delivered, 8 read, 9 failed)
   const baseMetrics = {
-    totalCampaigns: 15,
-    totalSubmitted: 15,
-    delivered: 6,
-    read: 6,
+    totalCampaigns: 26,
+    totalSubmitted: 26,
+    delivered: 17,
+    read: 8,
     clicks: 0,
     failed: 9,
     awaited: 0
@@ -255,65 +255,65 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
 
   // 6. Campaign Performance Trend (Stacked Spline Area Chart) Day/Date-Wise
   const trendLabels = [
-    '2026-09-09',
-    '2026-09-10',
-    '2026-09-11',
-    '2026-09-12',
-    '2026-09-13',
     '2026-09-14',
     '2026-09-15',
-    '2026-09-16'
+    '2026-09-16',
+    '2026-09-17',
+    '2026-09-18',
+    '2026-09-19',
+    '2026-09-20',
+    '2026-09-21'
   ];
 
   const trendData = useMemo(() => {
     const datasets = [];
 
-    // Delivered dataset (Green)
+    // Delivered dataset (Green: 3 on Sept 14, 3 on Sept 15, 4 on Sept 16, 7 on Sept 18 = 17)
     if (activeStatuses.delivered) {
       datasets.push({
         label: 'Delivered',
-        data: [0, 0, 0, 0, 0, 0, 3.0, 3.0 + (dynExtra?.delivered || 0)],
+        data: [3.0, 3.0, 4.0, 0, 7.0 + (dynExtra?.delivered || 0), 0, 0, 0],
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [3, 3, 3, 3, 3, 3, 4, 4],
+        pointRadius: [3, 3, 3, 0, 4, 0, 0, 0],
         pointBackgroundColor: '#10b981',
         order: 3
       });
     }
 
-    // Read dataset (Blue)
+    // Read dataset (Blue: 1 on Sept 16, 7 on Sept 18 = 8)
     if (activeStatuses.read) {
       datasets.push({
         label: 'Read',
-        data: [0, 0, 0, 0, 0, 0, 2.0, 0],
+        data: [0, 0, 1.0, 0, 7.0, 0, 0, 0],
         borderColor: '#0ea5e9',
         backgroundColor: 'rgba(14, 165, 233, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [0, 0, 0, 0, 0, 0, 4, 0],
+        pointRadius: [0, 0, 3, 0, 4, 0, 0, 0],
         pointBackgroundColor: '#0ea5e9',
         order: 2
       });
     }
 
-    // Failed dataset (Red)
+    // Failed dataset (Red: 9 on Sept 15 = 9)
     if (activeStatuses.failed) {
       datasets.push({
         label: 'Failed',
-        data: [0, 0, 0, 0, 0, 0, 9.0, 0],
+        data: [0, 9.0, 0, 0, 0, 0, 0, 0],
         borderColor: '#ef4444',
         backgroundColor: 'rgba(239, 68, 68, 0.85)',
         fill: true,
         tension: 0.4,
-        pointRadius: [0, 0, 0, 0, 0, 0, 5, 0],
+        pointRadius: [0, 5, 0, 0, 0, 0, 0, 0],
         pointBackgroundColor: '#ef4444',
         order: 1
       });
     }
 
-    // Awaited dataset (Yellow)
+    // Awaited dataset (Yellow: 0)
     if (activeStatuses.awaited) {
       datasets.push({
         label: 'Awaited',

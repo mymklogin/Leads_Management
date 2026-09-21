@@ -46,7 +46,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
     return {
       sms: 100,
       rcsP: 100,
-      rcsT: 85
+      rcsT: 74
     };
   });
 
@@ -94,7 +94,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
         const updated = {
           sms: Number(data.smsBalance ?? data.SmsBalance ?? 100),
           rcsP: Number(data.rcsPromotionalBalance ?? data.RcsPromotionalBalance ?? 100),
-          rcsT: Number(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 85)
+          rcsT: Number(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 74)
         };
         setBalances(updated);
         try {
