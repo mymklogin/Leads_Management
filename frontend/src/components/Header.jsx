@@ -46,7 +46,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
     return {
       sms: 100,
       rcsP: 109,
-      rcsT: 66
+      rcsT: 57
     };
   });
 
