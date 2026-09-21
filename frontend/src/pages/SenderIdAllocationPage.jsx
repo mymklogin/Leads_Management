@@ -41,7 +41,7 @@ export function SenderIdAllocationPage() {
   const fetchSenderIds = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://127.0.0.1:5108/api/ResellerConnectivity/sender-ids');
+      const res = await axios.get('/api/ResellerConnectivity/sender-ids');
       if (res.data.success) {
         setSenderIds(res.data.senderIds || []);
       }
@@ -80,7 +80,7 @@ export function SenderIdAllocationPage() {
     e.preventDefault();
     try {
       setSaveError('');
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/sender-ids', form);
+      const res = await axios.post('/api/ResellerConnectivity/sender-ids', form);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowModal(false);
@@ -95,7 +95,7 @@ export function SenderIdAllocationPage() {
   const handleDelete = async (id, headerName) => {
     if (!window.confirm(`Delete Sender ID allocation for '${headerName}'?`)) return;
     try {
-      const res = await axios.delete(`http://127.0.0.1:5108/api/ResellerConnectivity/sender-ids/${id}`);
+      const res = await axios.delete(`/api/ResellerConnectivity/sender-ids/${id}`);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchSenderIds();
@@ -110,7 +110,7 @@ export function SenderIdAllocationPage() {
     try {
       setVerifyingId(sid.id);
       setVerifyResult(null);
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/verify-header', {
+      const res = await axios.post('/api/ResellerConnectivity/verify-header', {
         senderId: sid.senderId,
         entityId: sid.dltEntityId
       });
@@ -128,7 +128,7 @@ export function SenderIdAllocationPage() {
     try {
       setLookupLoading(true);
       setVerifyResult(null);
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/verify-header', {
+      const res = await axios.post('/api/ResellerConnectivity/verify-header', {
         senderId: lookupHeader,
         entityId: lookupEntity || '1201159123456789012'
       });
