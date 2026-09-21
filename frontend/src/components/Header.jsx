@@ -38,7 +38,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
       const cached = localStorage.getItem('rcs_live_balances');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed && typeof parsed.rcsT === 'number') {
+        if (parsed && typeof parsed.rcsT === 'number' && parsed.rcsT !== 74) {
           return parsed;
         }
       }
