@@ -71,26 +71,26 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
 
   // 3. Dynamic Dashboard Analytics State (Fetched from Backend API synchronized with OMNI)
   const [dashboardData, setDashboardData] = useState({
-    totalCampaigns: 32,
-    totalSubmitted: 32,
-    delivered: 23,
-    read: 11,
+    totalCampaigns: 34,
+    totalSubmitted: 34,
+    delivered: 25,
+    read: 13,
     clicks: 0,
     failed: 9,
     awaited: 0,
-    deliveryRate: 71.88,
-    readRate: 91.67,
+    deliveryRate: 73.53,
+    readRate: 52.00,
     clickRate: 0.0,
-    failRate: 28.12,
+    failRate: 26.47,
     awaitRate: 0.0,
     trend: {
       dates: ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21'],
-      delivered: [0, 3, 4, 0, 10, 0, 0, 6],
-      read: [0, 3, 4, 0, 1, 0, 0, 3],
+      delivered: [0, 3, 4, 0, 10, 0, 0, 8],
+      read: [0, 3, 4, 0, 1, 0, 0, 5],
       failed: [0, 9, 0, 0, 0, 0, 0, 0],
       awaited: [0, 0, 0, 0, 0, 0, 0, 0]
     },
-    templates: { plainText: 32, richCard: 0, carousel: 0 },
+    templates: { plainText: 34, richCard: 0, carousel: 0 },
     recentActivity: []
   });
 
@@ -130,17 +130,17 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
   };
 
   const metrics = useMemo(() => ({
-    totalCampaigns: dashboardData.totalCampaigns ?? 32,
-    totalSubmitted: dashboardData.totalSubmitted ?? 32,
-    delivered: dashboardData.delivered ?? 23,
-    read: dashboardData.read ?? 11,
+    totalCampaigns: dashboardData.totalCampaigns ?? 34,
+    totalSubmitted: dashboardData.totalSubmitted ?? 34,
+    delivered: dashboardData.delivered ?? 25,
+    read: dashboardData.read ?? 13,
     clicks: dashboardData.clicks ?? 0,
     failed: dashboardData.failed ?? 9,
     awaited: dashboardData.awaited ?? 0,
-    deliveryRate: dashboardData.deliveryRate ?? 71.88,
-    readRate: dashboardData.readRate ?? 91.67,
+    deliveryRate: dashboardData.deliveryRate ?? 73.53,
+    readRate: dashboardData.readRate ?? 52.00,
     clickRate: dashboardData.clickRate ?? 0.0,
-    failRate: dashboardData.failRate ?? 28.12,
+    failRate: dashboardData.failRate ?? 26.47,
     awaitRate: dashboardData.awaitRate ?? 0.0
   }), [dashboardData]);
 
