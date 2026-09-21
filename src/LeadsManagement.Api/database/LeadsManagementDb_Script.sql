@@ -692,9 +692,9 @@ GO
 -- 3. SEED INITIAL DATA
 -- ==============================================================================
 
--- 3.1 DEFAULT SUPERADMIN (Username: superadmin / Password: Admin@123)
+-- 3.1 DEFAULT SUPERADMIN (Username: Abhishaarod / Password: admin@@123)
 -- Hash generated using SHA-256 PBKDF2
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Username] = 'superadmin')
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Username] = 'Abhishaarod')
 BEGIN
     INSERT INTO [dbo].[Users] (
         [Username], [Email], [PasswordHash], [FullName], [PhoneNumber],
@@ -702,9 +702,9 @@ BEGIN
         [RcsCredits], [SmsCredits], [IsActive], [CreatedAt], [UpdatedAt]
     )
     VALUES (
-        'superadmin', 'superadmin@expressivr.com', 
-        '10000.v3iR9W5NqX9cO1fP7bM4dA==.Xw2qT8vZ6eN0pL3mS5jK8uV9yW1xQ3zR5sP7tO9nL1k=', -- PasswordHasher format
-        'Super Administrator', '9999900000',
+        'Abhishaarod', 'Abhishaarod@rcsflow.io', 
+        '1vamnhZezWXosmOFtnAsFQ==:QoE4vlU2sxwsWP/JDcCyCHjlnfyqz5bjWKT0+x/IFH0=', -- PasswordHasher format for admin@@123
+        'Abhishaarod', '9999900000',
         1, NULL, 100000, 100000, 100000, 100000, 1, GETUTCDATE(), GETUTCDATE()
     );
 END

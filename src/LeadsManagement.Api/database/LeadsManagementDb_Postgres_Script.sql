@@ -174,9 +174,9 @@ INSERT INTO users (
     rcscredits, smscredits, isactive, createdat, updatedat
 )
 VALUES (
-    'superadmin', 'superadmin@expressivr.com',
-    'JqMuDjIJeWSe+AaCirDtXA==:AvugawUe0x8H9Ml1wRg7BYOl2n5iYzA6IyAEdLiFYSA=',
-    'Super Administrator', '9999900000',
+    'Abhishaarod', 'Abhishaarod@rcsflow.io',
+    '1vamnhZezWXosmOFtnAsFQ==:QoE4vlU2sxwsWP/JDcCyCHjlnfyqz5bjWKT0+x/IFH0=',
+    'Abhishaarod', '9999900000',
     1, NULL, 100000, 100000, 100000, 100000, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
 ON CONFLICT (username) DO NOTHING;
@@ -284,7 +284,7 @@ SELECT
     CURRENT_TIMESTAMP
 FROM users u
 CROSS JOIN appmenus m
-WHERE u.username = 'superadmin'
+WHERE u.username = 'Abhishaarod'
 ON CONFLICT (userid, menuid) DO UPDATE SET 
     canview = TRUE,
     cancreate = TRUE,

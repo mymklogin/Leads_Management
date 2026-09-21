@@ -100,7 +100,7 @@ export const MobileDrawer = ({ isOpen, onClose, activeTab, onSelectTab }) => {
                 {user?.fullName || user?.username}
               </div>
               <div style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.email || 'user@expressivr.com'}
+                {user?.email || 'Abhishaarod@rcsflow.io'}
               </div>
             </div>
             <span className={`user-role-tag ${getRoleClass(user?.role)}`}>

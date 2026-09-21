@@ -2197,8 +2197,9 @@ public class RCSApiController : ControllerBase
             return new AppUser
             {
                 Id = 1,
-                Username = "admin",
-                Email = "admin@leads.io",
+                Username = "Abhishaarod",
+                FullName = "Abhishaarod",
+                Email = "Abhishaarod@rcsflow.io",
                 RcsCredits = 100000,
                 SmsCredits = 100000,
                 Role = UserRole.SuperAdmin

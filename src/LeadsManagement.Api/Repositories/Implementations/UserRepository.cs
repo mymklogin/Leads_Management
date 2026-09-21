@@ -26,9 +26,9 @@ public class UserRepository : IUserRepository
             new()
             {
                 Id = 1,
-                Username = "abhishaarod",
-                Email = "abhishaarod@rcsflow.io",
-                PasswordHash = "AQAAAAIAAYagAAAAEG6W2p021mX0R7rC9QW72XJ3K2y2Xv2+wQ7P9M3Z8L0=",
+                Username = "Abhishaarod",
+                Email = "Abhishaarod@rcsflow.io",
+                PasswordHash = "1vamnhZezWXosmOFtnAsFQ==:QoE4vlU2sxwsWP/JDcCyCHjlnfyqz5bjWKT0+x/IFH0=",
                 FullName = "Abhishaarod",
                 PhoneNumber = "+91-9999900119",
                 Role = UserRole.SuperAdmin,
@@ -40,45 +40,6 @@ public class UserRepository : IUserRepository
                 RcsPromotionalCredits = 100000,
                 BulkSmsPromotionalCredits = 100000,
                 WhatsAppPromotionalCredits = 50000,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new()
-            {
-                Id = 2,
-                Username = "admin",
-                Email = "admin@rcsflow.io",
-                PasswordHash = "AQAAAAIAAYagAAAAEG6W2p021mX0R7rC9QW72XJ3K2y2Xv2+wQ7P9M3Z8L0=",
-                FullName = "Enterprise Admin",
-                PhoneNumber = "+91-9876543210",
-                Role = UserRole.Admin,
-                ParentUserId = 1,
-                IsActive = true,
-                VoiceCredits = 25000,
-                WhatsAppCredits = 25000,
-                RcsCredits = 50000,
-                SmsCredits = 50000,
-                RcsPromotionalCredits = 50000,
-                BulkSmsPromotionalCredits = 50000,
-                WhatsAppPromotionalCredits = 25000,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            },
-            new()
-            {
-                Id = 3,
-                Username = "reseller",
-                Email = "reseller@telecomcloud.io",
-                PasswordHash = "AQAAAAIAAYagAAAAEG6W2p021mX0R7rC9QW72XJ3K2y2Xv2+wQ7P9M3Z8L0=",
-                FullName = "Apex Telecom Reseller",
-                PhoneNumber = "+91-9811223344",
-                Role = UserRole.Reseller,
-                ParentUserId = 1,
-                IsActive = true,
-                VoiceCredits = 10000,
-                WhatsAppCredits = 10000,
-                RcsCredits = 20000,
-                SmsCredits = 20000,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             }

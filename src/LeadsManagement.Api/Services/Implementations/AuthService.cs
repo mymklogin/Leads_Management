@@ -69,19 +69,18 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            if (identifier.Equals("superadmin", StringComparison.OrdinalIgnoreCase) || 
-                identifier.Equals("admin", StringComparison.OrdinalIgnoreCase) || 
-                identifier.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase))
+            if (identifier.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase) || 
+                identifier.Equals("abhishaarod@rcsflow.io", StringComparison.OrdinalIgnoreCase))
             {
                 user = new AppUser
                 {
                     Id = 1,
-                    Username = identifier.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase) ? "Abhishaarod" : (identifier.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "admin" : "superadmin"),
-                    FullName = identifier.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase) ? "Abhishaarod" : "Administrator",
-                    Email = $"{identifier}@rcsflow.io",
+                    Username = "Abhishaarod",
+                    FullName = "Abhishaarod",
+                    Email = "Abhishaarod@rcsflow.io",
                     Role = UserRole.SuperAdmin,
                     IsActive = true,
-                    PasswordHash = _passwordHasher.HashPassword("Admin@123"),
+                    PasswordHash = _passwordHasher.HashPassword("admin@@123"),
                     RcsCredits = 100000,
                     SmsCredits = 100000,
                     VoiceCredits = 50000,
@@ -99,12 +98,9 @@ public class AuthService : IAuthService
         {
             isPasswordValid = true;
         }
-        if (!isPasswordValid && (user.Username.Equals("superadmin", StringComparison.OrdinalIgnoreCase) || 
-            user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
-            user.Username.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase)))
+        if (!isPasswordValid && user.Username.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase))
         {
-            if (request.Password.Equals("Admin@123", StringComparison.OrdinalIgnoreCase) || 
-                request.Password.Equals("SuperAdmin@123", StringComparison.OrdinalIgnoreCase))
+            if (request.Password == "admin@@123")
             {
                 isPasswordValid = true;
             }

@@ -90,24 +90,32 @@ export const AuthProvider = ({ children }) => {
 
       return response.data;
     } catch (err) {
-      console.warn('API login failed, utilizing fallback session:', err.message);
+      console.warn('API login failed, checking fallback credentials:', err.message);
 
-      // Resilient Client Fallback for Live Vercel Demo
-      const fallbackToken = 'demo-jwt-token-' + Date.now();
+      const normalizedInput = (usernameOrEmail || '').trim().toLowerCase();
+      const isUserValid = normalizedInput === 'abhishaarod' || normalizedInput === 'abhishaarod@rcsflow.io';
+      const isPassValid = password === 'admin@@123';
+
+      if (!isUserValid || !isPassValid) {
+        throw new Error('Invalid username or password.');
+      }
+
+      // Resilient Client Fallback for Live Vercel Demo with Abhishaarod Master Account
+      const fallbackToken = 'jwt-token-abhishaarod-' + Date.now();
       const fallbackUser = {
         id: 1,
-        username: usernameOrEmail.trim() || 'admin',
-        fullName: 'Abhishaarod Enterprise Administrator',
-        email: 'admin@enterprisecloud.com',
+        username: 'Abhishaarod',
+        fullName: 'Abhishaarod',
+        email: 'Abhishaarod@rcsflow.io',
         phoneNumber: '9999900000',
-        companyName: 'SAAS Enterprise Cloud',
+        companyName: 'OmniDigital Telecom Cloud',
         role: 'SuperAdmin',
         isActive: true,
-        rcsCredits: 100,
-        rcsPromotionalCredits: 100,
-        smsCredits: 100,
-        voiceCredits: 100,
-        whatsAppCredits: 85
+        rcsCredits: 100000,
+        rcsPromotionalCredits: 100000,
+        smsCredits: 100000,
+        voiceCredits: 50000,
+        whatsAppCredits: 50000
       };
 
       setToken(fallbackToken);

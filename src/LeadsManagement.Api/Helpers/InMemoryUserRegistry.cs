@@ -15,23 +15,23 @@ public static class InMemoryUserRegistry
 
     static InMemoryUserRegistry()
     {
-        // Seed single master SuperAdmin account
+        // Seed single master SuperAdmin account: Abhishaarod
         var admin = new AppUser
         {
             Id = 1,
-            Username = "admin",
-            FullName = "System Administrator",
-            Email = "admin@enterprisecloud.com",
+            Username = "Abhishaarod",
+            FullName = "Abhishaarod",
+            Email = "Abhishaarod@rcsflow.io",
             PhoneNumber = "9999900000",
             CompanyName = "Enterprise Telecom Cloud",
             DltEntityId = "",
             Role = UserRole.SuperAdmin,
             IsActive = true,
-            RcsCredits = 0, // Admin owns the gateway balance
-            RcsPromotionalCredits = 0,
-            SmsCredits = 0,
-            VoiceCredits = 0,
-            WhatsAppCredits = 0,
+            RcsCredits = 100000,
+            RcsPromotionalCredits = 100000,
+            SmsCredits = 100000,
+            VoiceCredits = 50000,
+            WhatsAppCredits = 50000,
             AllowedServices = new List<string> { "RCS-T", "RCS-P", "BULKSMS-T", "BULKSMS-P", "WHATSAPP-T", "WHATSAPP-P" },
             CreatedAt = DateTime.UtcNow.AddMonths(-1),
             UpdatedAt = DateTime.UtcNow,

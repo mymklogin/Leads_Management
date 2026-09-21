@@ -135,7 +135,7 @@ export const LoginPage = () => {
   
   // Credentials matching OmniDigital live mockups
   const [username, setUsername] = useState('Abhishaarod');
-  const [password, setPassword] = useState('Admin@123');
+  const [password, setPassword] = useState('admin@@123');
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
   
@@ -803,7 +803,7 @@ export const LoginPage = () => {
               type="button"
               onClick={() => {
                 setUsername('Abhishaarod');
-                setPassword('Admin@123');
+                setPassword('admin@@123');
                 setAgreeTerms(true);
               }}
               style={{
