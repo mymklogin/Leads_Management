@@ -1,8 +1,7 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using LeadsManagement.Api.Data;
 using LeadsManagement.Api.Models.Dtos;
 using LeadsManagement.Api.Models.Entities;
 using LeadsManagement.Api.Services.Implementations;
@@ -12,19 +11,12 @@ namespace LeadsManagement.Tests;
 
 public class LeadServiceTests
 {
-    private LeadDbContext CreateInMemoryDbContext()
-    {
-        var options = new DbContextOptionsBuilder<LeadDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        return new LeadDbContext(options);
-    }
-
     [Fact]
     public async Task CreateLead_SuccessfullyAddsLeadToDatabase()
     {
-        using var context = CreateInMemoryDbContext();
-        var service = new LeadService(context);
+        var leadRepo = new FakeLeadRepository();
+        var userRepo = new FakeUserRepository();
+        var service = new LeadService(leadRepo, userRepo);
 
         var dto = new CreateLeadDto
         {
@@ -42,22 +34,20 @@ public class LeadServiceTests
         Assert.Equal("Rajesh Kumar", result.CustomerName);
         Assert.Equal("New", result.LeadStatus);
 
-        var dbLead = await context.LeadRecords.FirstOrDefaultAsync(x => x.Mobile == "9876543210");
+        var dbLead = await leadRepo.GetLeadByMobileAsync("9876543210");
         Assert.NotNull(dbLead);
     }
 
     [Fact]
     public async Task GetLeads_WithFilteringAndPagination_ReturnsMatchingLeads()
     {
-        using var context = CreateInMemoryDbContext();
-        var service = new LeadService(context);
+        var leadRepo = new FakeLeadRepository();
+        var userRepo = new FakeUserRepository();
+        var service = new LeadService(leadRepo, userRepo);
 
-        context.LeadRecords.AddRange(
-            new LeadRecord { Mobile = "9111111111", CustomerName = "Amit", LeadStatus = "Hot Lead", TemplateId = 1, CallDuration = 40 },
-            new LeadRecord { Mobile = "9222222222", CustomerName = "Sumit", LeadStatus = "Cold Lead", TemplateId = 1, CallDuration = 5 },
-            new LeadRecord { Mobile = "9333333333", CustomerName = "Rahul", LeadStatus = "Hot Lead", TemplateId = 2, CallDuration = 55 }
-        );
-        await context.SaveChangesAsync();
+        await leadRepo.CreateOrUpdateLeadAsync(new LeadRecord { Mobile = "9111111111", CustomerName = "Amit", LeadStatus = "Hot Lead", TemplateId = 1, CallDuration = 40 });
+        await leadRepo.CreateOrUpdateLeadAsync(new LeadRecord { Mobile = "9222222222", CustomerName = "Sumit", LeadStatus = "Cold Lead", TemplateId = 1, CallDuration = 5 });
+        await leadRepo.CreateOrUpdateLeadAsync(new LeadRecord { Mobile = "9333333333", CustomerName = "Rahul", LeadStatus = "Hot Lead", TemplateId = 2, CallDuration = 55 });
 
         var filter = new LeadFilterDto
         {
@@ -71,18 +61,17 @@ public class LeadServiceTests
 
         Assert.Single(pagedResult.Items);
         Assert.Equal(1, pagedResult.TotalCount);
-        Assert.Equal("9111111111", pagedResult.Items.GetEnumerator().Current?.Mobile ?? "9111111111");
+        Assert.Equal("9111111111", pagedResult.Items.First().Mobile);
     }
 
     [Fact]
     public async Task UpdateLeadStatus_UpdatesStatusAndNotes()
     {
-        using var context = CreateInMemoryDbContext();
-        var service = new LeadService(context);
+        var leadRepo = new FakeLeadRepository();
+        var userRepo = new FakeUserRepository();
+        var service = new LeadService(leadRepo, userRepo);
 
-        var lead = new LeadRecord { Mobile = "9999999999", LeadStatus = "New" };
-        context.LeadRecords.Add(lead);
-        await context.SaveChangesAsync();
+        var leadId = await leadRepo.CreateOrUpdateLeadAsync(new LeadRecord { Mobile = "9999999999", LeadStatus = "New" });
 
         var updateDto = new UpdateLeadStatusDto
         {
@@ -90,7 +79,7 @@ public class LeadServiceTests
             Notes = "Customer purchased premium plan"
         };
 
-        var updated = await service.UpdateLeadStatusAsync(lead.Id, updateDto, CancellationToken.None);
+        var updated = await service.UpdateLeadStatusAsync(leadId, updateDto, CancellationToken.None);
 
         Assert.NotNull(updated);
         Assert.Equal("Converted to Sale", updated.LeadStatus);
@@ -100,17 +89,17 @@ public class LeadServiceTests
     [Fact]
     public async Task ExportCsv_ReturnsValidCsvBytes()
     {
-        using var context = CreateInMemoryDbContext();
-        var service = new LeadService(context);
+        var leadRepo = new FakeLeadRepository();
+        var userRepo = new FakeUserRepository();
+        var service = new LeadService(leadRepo, userRepo);
 
-        context.LeadRecords.Add(new LeadRecord
+        await leadRepo.CreateOrUpdateLeadAsync(new LeadRecord
         {
             Mobile = "9876500000",
             CustomerName = "Priya Sharma",
             LeadStatus = "Interested Lead",
             CallDuration = 30
         });
-        await context.SaveChangesAsync();
 
         var csvBytes = await service.ExportLeadsCsvAsync(new LeadFilterDto(), CancellationToken.None);
 

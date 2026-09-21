@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using LeadsManagement.Api.Data;
 using LeadsManagement.Api.Models.Dtos;
 using LeadsManagement.Api.Models.Entities;
 using LeadsManagement.Api.Models.Enums;
@@ -14,25 +12,15 @@ namespace LeadsManagement.Tests;
 
 public class UserHierarchyAndMenuTests
 {
-    private LeadDbContext CreateInMemoryDbContext()
-    {
-        var options = new DbContextOptionsBuilder<LeadDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        var context = new LeadDbContext(options);
-        LeadDbContext.SeedInitialData(context);
-        return context;
-    }
-
     [Fact]
     public async Task HierarchyValidation_ResellerCannotCreateAdmin_ThrowsUnauthorizedAccessException()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
+        var userRepo = new FakeUserRepository();
+        var menuRepo = new FakeMenuRepository { UserRepo = userRepo };
         var hasher = new PasswordHasher();
-        var menuService = new MenuService(context);
-        var userService = new UserManagementService(context, hasher, menuService);
+        var menuService = new MenuService(menuRepo, userRepo);
+        var userService = new UserManagementService(userRepo, menuRepo, hasher, menuService);
 
         // Create an Admin under SuperAdmin (ID 1)
         var admin = await userService.CreateUserAsync(1, new CreateUserDto
@@ -71,14 +59,15 @@ public class UserHierarchyAndMenuTests
     public async Task DynamicMenu_UserOnlySeesAllowedMenusInSidebarTree()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
+        var userRepo = new FakeUserRepository();
+        var menuRepo = new FakeMenuRepository { UserRepo = userRepo };
         var hasher = new PasswordHasher();
-        var menuService = new MenuService(context);
-        var userService = new UserManagementService(context, hasher, menuService);
+        var menuService = new MenuService(menuRepo, userRepo);
+        var userService = new UserManagementService(userRepo, menuRepo, hasher, menuService);
 
         // SuperAdmin creates a User and only grants WhatsApp Service and Broadcast
-        var waRoot = context.AppMenus.First(m => m.MenuKey == "WHATSAPP");
-        var waSub = context.AppMenus.First(m => m.MenuKey == "WHATSAPP_BROADCAST");
+        var waRoot = menuRepo.Menus.First(m => m.MenuKey == "WHATSAPP");
+        var waSub = menuRepo.Menus.First(m => m.MenuKey == "WHATSAPP_BROADCAST");
 
         var user = await userService.CreateUserAsync(1, new CreateUserDto
         {
@@ -106,15 +95,16 @@ public class UserHierarchyAndMenuTests
     public async Task CascadingRevocation_WhenParentLosesMenu_DownlineUsersLoseMenuAutomatically()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
+        var userRepo = new FakeUserRepository();
+        var menuRepo = new FakeMenuRepository { UserRepo = userRepo };
         var hasher = new PasswordHasher();
-        var menuService = new MenuService(context);
-        var userService = new UserManagementService(context, hasher, menuService);
+        var menuService = new MenuService(menuRepo, userRepo);
+        var userService = new UserManagementService(userRepo, menuRepo, hasher, menuService);
 
-        var waRoot = context.AppMenus.First(m => m.MenuKey == "WHATSAPP");
-        var waSub = context.AppMenus.First(m => m.MenuKey == "WHATSAPP_BROADCAST");
-        var voiceRoot = context.AppMenus.First(m => m.MenuKey == "VOICE_OBD");
-        var voiceSub = context.AppMenus.First(m => m.MenuKey == "VOICE_SINGLE_CALL");
+        var waRoot = menuRepo.Menus.First(m => m.MenuKey == "WHATSAPP");
+        var waSub = menuRepo.Menus.First(m => m.MenuKey == "WHATSAPP_BROADCAST");
+        var voiceRoot = menuRepo.Menus.First(m => m.MenuKey == "VOICE_OBD");
+        var voiceSub = menuRepo.Menus.First(m => m.MenuKey == "VOICE_SINGLE_CALL");
 
         // 1. SuperAdmin creates Admin with WhatsApp and Voice
         var admin = await userService.CreateUserAsync(1, new CreateUserDto
@@ -154,7 +144,7 @@ public class UserHierarchyAndMenuTests
         Assert.Single(agentMenusBefore);
         Assert.Equal("WHATSAPP", agentMenusBefore[0].ServiceCode);
 
-        // 4. 🔥 Admin REVOKES WhatsApp from Reseller (unchecks 6 & 7, leaves empty or other)
+        // 4. 🔥 Admin REVOKES WhatsApp from Reseller (unchecks all permissions)
         await menuService.AssignPermissionsAsync(admin.Id, new AssignMenuPermissionsDto
         {
             TargetUserId = reseller.Id,
@@ -174,11 +164,13 @@ public class UserHierarchyAndMenuTests
     public async Task DataScoping_UserOnlySeesAssignedLeads_WhileSuperAdminSeesAllLeads()
     {
         // Arrange
-        using var context = CreateInMemoryDbContext();
-        var leadService = new LeadService(context);
+        var leadRepo = new FakeLeadRepository();
+        var userRepo = new FakeUserRepository();
+        var menuRepo = new FakeMenuRepository { UserRepo = userRepo };
+        var leadService = new LeadService(leadRepo, userRepo);
         var hasher = new PasswordHasher();
-        var menuService = new MenuService(context);
-        var userService = new UserManagementService(context, hasher, menuService);
+        var menuService = new MenuService(menuRepo, userRepo);
+        var userService = new UserManagementService(userRepo, menuRepo, hasher, menuService);
 
         // Create User 1 & User 2
         var user1 = await userService.CreateUserAsync(1, new CreateUserDto

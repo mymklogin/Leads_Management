@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using LeadsManagement.Api.Data;
 using LeadsManagement.Api.Models.Dtos;
 using LeadsManagement.Api.Services.Implementations;
 using LeadsManagement.Api.Services.Interfaces;
@@ -16,18 +15,11 @@ namespace LeadsManagement.Tests;
 
 public class WebhookProcessorServiceTests
 {
-    private LeadDbContext CreateInMemoryDbContext()
-    {
-        var options = new DbContextOptionsBuilder<LeadDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-        return new LeadDbContext(options);
-    }
-
     [Fact]
     public async Task ProcessWebhook_RoutesToCorrectStrategyAndLogsAuditTrail()
     {
-        using var context = CreateInMemoryDbContext();
+        var webhookLogRepo = new FakeWebhookLogRepository();
+        var leadRepo = new FakeLeadRepository();
         var cache = new MemoryCache(new MemoryCacheOptions());
 
         var strategies = new List<ITemplateWebhookStrategy>
@@ -44,7 +36,8 @@ public class WebhookProcessorServiceTests
         };
 
         var processor = new WebhookProcessorService(
-            context,
+            webhookLogRepo,
+            leadRepo,
             strategies,
             NullLogger<WebhookProcessorService>.Instance);
 
@@ -64,7 +57,7 @@ public class WebhookProcessorServiceTests
         Assert.Equal("Interested Lead - Pressed 1", result.LeadStatus);
 
         // Verify WebhookLog is saved
-        var log = await context.WebhookLogs.FirstOrDefaultAsync(x => x.Mobile == "9112233445");
+        var log = webhookLogRepo.Logs.FirstOrDefault(x => x.Mobile == "9112233445");
         Assert.NotNull(log);
         Assert.True(log.IsSuccess);
         Assert.Equal("Interested Lead - Pressed 1", log.ComputedLeadStatus);
