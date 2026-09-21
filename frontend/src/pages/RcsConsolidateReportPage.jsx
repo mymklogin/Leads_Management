@@ -88,19 +88,47 @@ export const RcsConsolidateReportPage = () => {
 
   return (
     <div style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto' }}>
-      {/* Breadcrumb Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: 500 }}>
-          Home / <span style={{ color: '#0a66c2' }}>RCS Consolidate Report</span>
-        </div>
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Database size={24} color="#0a66c2" />
-            Consolidate Report
-          </h1>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-            Request aggregated bulk audit logs and export multi-day historical deliverability archives.
-          </p>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Database size={20} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                RCS Consolidate Audit Report
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                BULK ARCHIVE
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Request aggregated bulk audit logs and export multi-day historical deliverability archives
+            </p>
+          </div>
         </div>
       </div>
 

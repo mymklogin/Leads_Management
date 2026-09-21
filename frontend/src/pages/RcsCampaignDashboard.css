@@ -12,12 +12,12 @@
 
 /* 1. TOP BANNER */
 .rcs-dash-banner {
-  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
   color: #ffffff;
   border-radius: 12px;
-  padding: 22px 28px;
+  padding: 12px 20px;
   margin-bottom: 20px;
-  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.18);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -26,34 +26,33 @@
 .rcs-dash-banner-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .rcs-dash-banner-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .rcs-dash-banner-text h1 {
-  margin: 0 0 4px 0;
-  font-size: 24px;
+  margin: 0;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  letter-spacing: 0.3px;
   color: #ffffff;
 }
 
 .rcs-dash-banner-text p {
-  margin: 0;
-  font-size: 13.5px;
-  color: #bfdbfe;
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 500;
 }
 

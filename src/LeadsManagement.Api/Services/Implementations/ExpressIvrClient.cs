@@ -20,21 +20,22 @@ public class ExpressIvrClient : IExpressIvrClient
     private readonly HttpClient _httpClient;
     private readonly ICampaignRepository _campaignRepository;
     private readonly ILeadRepository _leadRepository;
+    private readonly IGatewayConfigService _gatewayConfigService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ExpressIvrClient> _logger;
-
-    private const string DefaultSmsConfig = "{\"CALL_CONNECTED\":{\"url\":\"https://api.XXXXXX.io/api/v1/send?username=XXXXXXXXXX&password=XXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=1201161304403738311&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":8,\"sms_text\":\"hello connect\"},\"CALL_FAILED\":{\"url\":\"https://api.XXXXXXXXXX.io/api/v1/send?username=XXXXXXXXX&password=XXXXXXXX&to={PHONE}&from=XXXXXX&dltPrincipalEntityId=XXXXXXXXXX&dltContentId=XXXXXXXX&corelationId=XXXXXXXX&text=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&unicode=false&issurl=true\",\"duration\":0,\"sms_text\":\"hello failed\"}}";
 
     public ExpressIvrClient(
         HttpClient httpClient,
         ICampaignRepository campaignRepository,
         ILeadRepository leadRepository,
+        IGatewayConfigService gatewayConfigService,
         IConfiguration configuration,
         ILogger<ExpressIvrClient> logger)
     {
         _httpClient = httpClient;
         _campaignRepository = campaignRepository;
         _leadRepository = leadRepository;
+        _gatewayConfigService = gatewayConfigService;
         _configuration = configuration;
         _logger = logger;
     }
@@ -51,24 +52,27 @@ public class ExpressIvrClient : IExpressIvrClient
 
     public ExpressIvrSingleCallPayload BuildPayload(AdvancedCallRequestDto request)
     {
+        var voiceConfig = _gatewayConfigService.GetVoiceConfig();
+
         string webhookBase = request.WebhookBaseUrl
-            ?? _configuration["ExpressIvr:WebhookBaseUrl"]
-            ?? "http://localhost:2014";
+            ?? (!string.IsNullOrWhiteSpace(voiceConfig.WebhookBaseUrl) ? voiceConfig.WebhookBaseUrl : (_configuration["ExpressIvr:WebhookBaseUrl"] ?? "http://localhost:5108"));
 
         string webhookUrl = $"{webhookBase.TrimEnd('/')}/api/v1/GetRoutingInfo";
         string webhooksJson = $"{{\"HANGUP\":{{\"url\":\"{webhookUrl}\"}},\"DTMF\":{{\"url\":\"{webhookUrl}\"}},\"CONNECTED_CALLS\":{{\"url\":\"{webhookUrl}\"}}}}";
 
-        int defaultUserId = request.TemplateId >= 7 ? 500002 : _configuration.GetValue<int>("ExpressIvr:DefaultUserId", 50002);
-        string defaultCli = request.TemplateId >= 7 ? "" : (_configuration["ExpressIvr:DefaultCli"] ?? "9999900119");
+        int defaultUserId = request.UserId ?? voiceConfig.DefaultUserId;
+        string defaultCli = request.Cli ?? voiceConfig.DefaultCli;
+        string countryCode = voiceConfig.CountryCode ?? "91";
+        string smsConfig = voiceConfig.DefaultSmsConfigJson ?? "{}";
 
         var payload = new ExpressIvrSingleCallPayload
         {
-            UserId = request.UserId ?? defaultUserId,
+            UserId = defaultUserId,
             TemplateId = request.TemplateId,
             Mobile = request.Mobile,
-            Cli = request.Cli ?? defaultCli,
-            CountryCode = "91",
-            Sms = DefaultSmsConfig,
+            Cli = defaultCli,
+            CountryCode = countryCode,
+            Sms = smsConfig,
             Webhooks = webhooksJson
         };
 
@@ -194,8 +198,9 @@ public class ExpressIvrClient : IExpressIvrClient
         var payload = BuildPayload(request);
         string json = JsonSerializer.Serialize(payload);
 
-        string apiUrl = _configuration["ExpressIvr:ApiUrl"] ?? "https://obd3api.expressivr.com/api/obd/singlecall";
-        string apiKey = _configuration["ExpressIvr:ApiKey"] ?? "TEST_API_KEY";
+        var voiceConfig = _gatewayConfigService.GetVoiceConfig();
+        string apiUrl = !string.IsNullOrWhiteSpace(voiceConfig.ApiUrl) ? voiceConfig.ApiUrl : (_configuration["ExpressIvr:ApiUrl"] ?? "http://localhost:2014");
+        string apiKey = !string.IsNullOrWhiteSpace(voiceConfig.ApiKey) ? voiceConfig.ApiKey : (_configuration["ExpressIvr:ApiKey"] ?? "");
 
         var campaignRecord = new CampaignRecord
         {
@@ -211,7 +216,10 @@ public class ExpressIvrClient : IExpressIvrClient
         try
         {
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, apiUrl);
-            httpRequest.Headers.Add("Api-Key", apiKey);
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                httpRequest.Headers.Add("Api-Key", apiKey);
+            }
             httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
@@ -248,7 +256,7 @@ public class ExpressIvrClient : IExpressIvrClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send single call to ExpressIVR for mobile {Mobile}", request.Mobile);
+            _logger.LogError(ex, "Failed to send single call to Voice Gateway for mobile {Mobile}", request.Mobile);
             campaignRecord.DispatchStatus = "Error";
             campaignRecord.ApiResponse = ex.Message;
             await _campaignRepository.CreateCampaignAsync(campaignRecord, cancellationToken);
@@ -285,7 +293,7 @@ public class ExpressIvrClient : IExpressIvrClient
             SamplePayload = BuildPayload(new AdvancedCallRequestDto
             {
                 TemplateId = t.id,
-                Mobile = t.id >= 7 ? "9065968937_Rohit,1232" : "8571844348",
+                Mobile = "9868040206",
                 WebhookBaseUrl = webhookBaseUrl
             })
         });

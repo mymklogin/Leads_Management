@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "omnidigital-rcs-collection",
-		"name": "OmniDigital RCS API",
-		"description": "Pre-configured collection for OmniDigital RCS API testing with API Key and target mobile 9170304221",
+		"_postman_id": "rcsflow-enterprise-rcs-collection",
+		"name": "RCSFLOW Enterprise RCS API",
+		"description": "Pre-configured collection for RCSFLOW Enterprise RCS API testing with API Key and target mobile 9170304221",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -12,12 +12,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://omnidigital.co.in/api/RCSApi/CheckRcsBalance?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"raw": "https://gateway.rcsflow.io/api/RCSApi/CheckRcsBalance?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
 					"protocol": "https",
 					"host": [
-						"omnidigital",
-						"co",
-						"in"
+						"gateway",
+						"rcsflow",
+						"io"
 					],
 					"path": [
 						"api",
@@ -28,7 +28,7 @@
 						{
 							"key": "apiKey",
 							"value": "A58463AEB7AE41CD9901D23D18BC2482883",
-							"description": "Your OmniDigital API Key"
+							"description": "Your RCSFLOW API Key"
 						}
 					]
 				},
@@ -42,12 +42,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://omnidigital.co.in/api/RCSApi/GetBots?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"raw": "https://gateway.rcsflow.io/api/RCSApi/GetBots?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
 					"protocol": "https",
 					"host": [
-						"omnidigital",
-						"co",
-						"in"
+						"gateway",
+						"rcsflow",
+						"io"
 					],
 					"path": [
 						"api",
@@ -58,7 +58,7 @@
 						{
 							"key": "apiKey",
 							"value": "A58463AEB7AE41CD9901D23D18BC2482883",
-							"description": "Your OmniDigital API Key"
+							"description": "Your RCSFLOW API Key"
 						}
 					]
 				},
@@ -72,12 +72,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=REPLACE_WITH_YOUR_BOT_ID",
+					"raw": "https://gateway.rcsflow.io/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=REPLACE_WITH_YOUR_BOT_ID",
 					"protocol": "https",
 					"host": [
-						"omnidigital",
-						"co",
-						"in"
+						"gateway",
+						"rcsflow",
+						"io"
 					],
 					"path": [
 						"api",
@@ -121,12 +121,12 @@
 					}
 				},
 				"url": {
-					"raw": "https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"raw": "https://gateway.rcsflow.io/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
 					"protocol": "https",
 					"host": [
-						"omnidigital",
-						"co",
-						"in"
+						"gateway",
+						"rcsflow",
+						"io"
 					],
 					"path": [
 						"api",
@@ -165,12 +165,12 @@
 					}
 				},
 				"url": {
-					"raw": "https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
+					"raw": "https://gateway.rcsflow.io/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883",
 					"protocol": "https",
 					"host": [
-						"omnidigital",
-						"co",
-						"in"
+						"gateway",
+						"rcsflow",
+						"io"
 					],
 					"path": [
 						"api",

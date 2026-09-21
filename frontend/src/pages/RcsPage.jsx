@@ -32,31 +32,27 @@ export const RcsPage = ({ onNavigateToOverview }) => {
 
   // Templates
   const [templates, setTemplates] = useState([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('YCSLPB_vg');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [showAddTemplateModal, setShowAddTemplateModal] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
-    templateName: 'pbg_account_status_u',
+    templateName: '',
     templateType: 'PlainText',
-    botId: '3c4fa9a066274cd2',
-    botName: 'PBG INFO',
-    entityId: '1201161304403738311',
-    senderId: 'PBGACC',
-    smsTemplateId: '1207161545678901235',
-    smsText: 'Dear User, your PBG account status has been updated. Please log in to your dashboard to review your current details.'
+    botId: '',
+    botName: '',
+    entityId: '',
+    senderId: '',
+    smsTemplateId: '',
+    smsText: ''
   });
 
   // Campaign Dispatch Form States
-  const [campaignName, setCampaignName] = useState('PBG_Account_Status');
-  const [mobilesText, setMobilesText] = useState(
-`9170304221
-7840095957
-9868040206`
-  );
-  const [enableFallback, setEnableFallback] = useState(true);
-  const [entityId, setEntityId] = useState('1201161304403738311');
-  const [senderId, setSenderId] = useState('EXPRSS');
-  const [smsTemplateId, setSmsTemplateId] = useState('1207161545678901235');
-  const [smsText, setSmsText] = useState('Summer Exclusive Sale! Claim up to 40% discount on all plans: https://offers.io');
+  const [campaignName, setCampaignName] = useState('');
+  const [mobilesText, setMobilesText] = useState('');
+  const [enableFallback, setEnableFallback] = useState(false);
+  const [entityId, setEntityId] = useState('');
+  const [senderId, setSenderId] = useState('');
+  const [smsTemplateId, setSmsTemplateId] = useState('');
+  const [smsText, setSmsText] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -161,11 +157,11 @@ export const RcsPage = ({ onNavigateToOverview }) => {
         fetchTemplates();
         setNewTemplate({
           templateName: '',
-          templateType: 'RichCard',
-          botId: 'bot_abc123',
-          botName: 'Marketing Bot',
-          entityId: '1201161304403738311',
-          senderId: 'EXPRSS',
+          templateType: 'PlainText',
+          botId: '',
+          botName: '',
+          entityId: '',
+          senderId: '',
           smsTemplateId: '',
           smsText: ''
         });
@@ -218,6 +214,11 @@ export const RcsPage = ({ onNavigateToOverview }) => {
         }
         setMobilesText(''); // Numbers cleared after successful send!
 
+        // Immediately update Header balance
+        window.dispatchEvent(new CustomEvent('rcs_balance_updated', {
+          detail: { deducted: numbers.length }
+        }));
+
         // Auto-dismiss success notification after 8 seconds
         setTimeout(() => {
           setResult(null);
@@ -238,57 +239,102 @@ export const RcsPage = ({ onNavigateToOverview }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       
-      {/* Top Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>RCS Business Messaging Engine</h2>
-            <span className="badge badge-hot" style={{ fontSize: '11px' }}>Rich Communication Services</span>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        flexWrap: 'wrap',
+        gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Send size={20} color="#ffffff" />
           </div>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: 2 }}>
-            Official verified RCS messaging with PlainText, Rich Cards, Carousels & 100% DLT SMS Fallback
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                RCS Business Messaging Engine
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                ENTERPRISE SUITE
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Official verified RCS messaging with PlainText, Rich Cards, Carousels & 100% DLT SMS Fallback
+            </p>
+          </div>
         </div>
 
         {/* Live Balance Chips & Shortcut to Overview */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ 
-            background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)', 
-            border: '1px solid #c7d2fe', 
-            padding: '6px 14px', 
-            borderRadius: '10px', 
-            fontSize: '12px', 
-            color: '#3730a3' 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
+            padding: '5px 12px', 
+            borderRadius: '8px', 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#6366f1', display: 'block', fontWeight: 700 }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.8)', display: 'block', fontWeight: 700 }}>
               RCS Balance
             </span>
-            <span style={{ fontSize: '15px', fontWeight: 800 }}>{rcsBalance.toLocaleString()} Credits</span>
+            <span style={{ fontSize: '13px', fontWeight: 800 }}>{rcsBalance.toLocaleString()} Credits</span>
           </div>
 
           <div style={{ 
-            background: 'linear-gradient(135deg, #fefce8, #fef08a)', 
-            border: '1px solid #fde047', 
-            padding: '6px 14px', 
-            borderRadius: '10px', 
-            fontSize: '12px', 
-            color: '#854d0e' 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
+            padding: '5px 12px', 
+            borderRadius: '8px', 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#ca8a04', display: 'block', fontWeight: 700 }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.8)', display: 'block', fontWeight: 700 }}>
               SMS Fallback Balance
             </span>
-            <span style={{ fontSize: '15px', fontWeight: 800 }}>{smsBalance.toLocaleString()} Credits</span>
+            <span style={{ fontSize: '13px', fontWeight: 800 }}>{smsBalance.toLocaleString()} Credits</span>
           </div>
 
           {onNavigateToOverview && (
             <button 
-              className="btn btn-primary" 
-              style={{ padding: '8px 14px', fontWeight: 700 }}
+              type="button" 
+              style={{ 
+                background: '#ffffff',
+                color: '#0284c7',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 14px', 
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+              }}
               onClick={onNavigateToOverview}
               title="Navigate to RCS Overview & Balance Ledger"
             >
               <Wallet size={14} />
-              <span>RCS Overview & Balance ➔</span>
+              <span>Overview ➔</span>
             </button>
           )}
         </div>

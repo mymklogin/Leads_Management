@@ -10,7 +10,7 @@ export const getApiBaseUrl = () => {
       return `http://${hostname}:5108/api`;
     }
   }
-  return 'http://localhost:5108/api';
+  return '/api';
 };
 
 const api = axios.create({

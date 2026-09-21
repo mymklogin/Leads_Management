@@ -86,6 +86,9 @@ public class UserManagementService : IUserManagementService
                 WhatsAppCredits = u.WhatsAppCredits,
                 RcsCredits = u.RcsCredits,
                 SmsCredits = u.SmsCredits,
+            RcsPromotionalCredits = u.RcsPromotionalCredits,
+            BulkSmsPromotionalCredits = u.BulkSmsPromotionalCredits,
+            WhatsAppPromotionalCredits = u.WhatsAppPromotionalCredits,
                 AllowedMenusCount = menuCount,
                 SubordinatesCount = subCount,
                 CreatedAt = u.CreatedAt,
@@ -144,6 +147,9 @@ public class UserManagementService : IUserManagementService
             WhatsAppCredits = targetUser.WhatsAppCredits,
             RcsCredits = targetUser.RcsCredits,
             SmsCredits = targetUser.SmsCredits,
+            RcsPromotionalCredits = targetUser.RcsPromotionalCredits,
+            BulkSmsPromotionalCredits = targetUser.BulkSmsPromotionalCredits,
+            WhatsAppPromotionalCredits = targetUser.WhatsAppPromotionalCredits,
             AllowedMenusCount = menuCount,
             SubordinatesCount = subCount,
             CreatedAt = targetUser.CreatedAt,
@@ -266,6 +272,10 @@ public class UserManagementService : IUserManagementService
         {
             targetUser.Email = dto.Email.Trim();
         }
+        if (dto.Documents != null)
+        {
+            targetUser.Documents = dto.Documents;
+        }
         targetUser.UpdatedAt = DateTime.UtcNow;
 
         await _userRepository.UpdateUserAsync(targetUser, cancellationToken);
@@ -288,10 +298,14 @@ public class UserManagementService : IUserManagementService
             ParentUserId = targetUser.ParentUserId,
             ParentUserName = parentName,
             IsActive = targetUser.IsActive,
+            Documents = targetUser.Documents ?? new List<string>(),
             VoiceCredits = targetUser.VoiceCredits,
             WhatsAppCredits = targetUser.WhatsAppCredits,
             RcsCredits = targetUser.RcsCredits,
             SmsCredits = targetUser.SmsCredits,
+            RcsPromotionalCredits = targetUser.RcsPromotionalCredits,
+            BulkSmsPromotionalCredits = targetUser.BulkSmsPromotionalCredits,
+            WhatsAppPromotionalCredits = targetUser.WhatsAppPromotionalCredits,
             CreatedAt = targetUser.CreatedAt,
             UpdatedAt = targetUser.UpdatedAt
         };
@@ -377,6 +391,9 @@ public class UserManagementService : IUserManagementService
             WhatsAppCredits = targetUser.WhatsAppCredits,
             RcsCredits = targetUser.RcsCredits,
             SmsCredits = targetUser.SmsCredits,
+            RcsPromotionalCredits = targetUser.RcsPromotionalCredits,
+            BulkSmsPromotionalCredits = targetUser.BulkSmsPromotionalCredits,
+            WhatsAppPromotionalCredits = targetUser.WhatsAppPromotionalCredits,
             CreatedAt = targetUser.CreatedAt,
             UpdatedAt = targetUser.UpdatedAt
         };

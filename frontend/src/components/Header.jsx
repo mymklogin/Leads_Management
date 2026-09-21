@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import api from '../services/api';
 import { 
   Shield, 
@@ -23,6 +24,7 @@ import {
 
 export const Header = ({ currentTitle, onOpenDrawer }) => {
   const { user, logout } = useAuth();
+  const { branding } = useBranding();
   const currentDate = new Date().toLocaleDateString('en-IN', {
     weekday: 'short',
     day: 'numeric',
@@ -53,7 +55,7 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const [modalKeyAction, setModalKeyAction] = useState(null);
 
-  const apiKey = 'A58463AEB7AE41CD9901D23D18BC2482883';
+  const apiKey = user?.apiKey || branding?.activeApiKey || 'A58463AEB7AE41CD9901D23D18BC2482883';
 
   useEffect(() => {
     fetchBalances();
@@ -61,7 +63,21 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
     const timer = setInterval(fetchBalances, 10000);
 
     // Event listener for instant balance updates after campaigns or credit changes
-    const onBalanceUpdated = () => fetchBalances();
+    const onBalanceUpdated = (e) => {
+      if (e?.detail) {
+        setBalances(prev => {
+          const next = {
+            ...prev,
+            rcsT: e.detail.rcsT !== undefined ? Number(e.detail.rcsT) : (e.detail.newBalance !== undefined ? Number(e.detail.newBalance) : prev.rcsT),
+            rcsP: e.detail.rcsP !== undefined ? Number(e.detail.rcsP) : prev.rcsP
+          };
+          try {
+            localStorage.setItem('rcs_live_balances', JSON.stringify(next));
+          } catch (_) {}
+          return next;
+        });
+      }
+    };
     window.addEventListener('rcs_balance_updated', onBalanceUpdated);
 
     return () => {
@@ -163,33 +179,51 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
               <span title="RCS Transactional Balance">RCS-T: <b style={{ color: '#059669' }}>{balances.rcsT}</b></span>
             </div>
 
-            {/* Support Ticket External Link */}
-            <a 
-              href="https://napl.freshdesk.com/support/home" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            {/* Support Ticket (Visible, Non-Clickable / Enterprise Managed) */}
+            <div 
               className="btn btn-outline"
-              style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Enterprise Support Managed"
+              style={{ 
+                fontSize: '12px', 
+                padding: '6px 14px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                cursor: 'default',
+                opacity: 0.85,
+                userSelect: 'none',
+                background: '#f8fafc',
+                borderColor: '#cbd5e1'
+              }}
             >
               <Headphones size={13} color="#0a66c2" />
               <span>Support Ticket</span>
-            </a>
+            </div>
 
-            {/* Pay Online External Link */}
-            <a 
-              href="https://www.nimbusitsolutions.com/Pay" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            {/* Pay Online (Visible, Non-Clickable / Enterprise Managed) */}
+            <div 
               className="btn btn-primary"
-              style={{ fontSize: '12px', padding: '6px 14px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Enterprise Billing Managed"
+              style={{ 
+                fontSize: '12px', 
+                padding: '6px 14px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                cursor: 'default',
+                opacity: 0.9,
+                userSelect: 'none',
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
+              }}
             >
               <CreditCard size={13} />
               <span>Pay Online</span>
-            </a>
+            </div>
 
             {/* User Profile Pill & Dropdown Trigger */}
             <div style={{ position: 'relative' }}>
               <div 
+                className="profile-pill-trigger"
                 onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                 style={{
                   display: 'flex',
@@ -260,9 +294,9 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
                       <span>Account Manager</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#1e293b' }}>
-                      <div><b>Name:</b> vyom</div>
-                      <div><b>Mobile:</b> 9711557791</div>
-                      <div style={{ color: '#0a66c2' }}>vyom@nimbusitsolutions.com</div>
+                      <div><b>Name:</b> XXXXXX</div>
+                      <div><b>Mobile:</b> +91-XXXXXXXXXX</div>
+                      <div style={{ color: '#0a66c2' }}>manager@xxxx.com</div>
                     </div>
                   </div>
 
@@ -273,9 +307,9 @@ export const Header = ({ currentTitle, onOpenDrawer }) => {
                       <span>Technical Support</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#1e293b' }}>
-                      <div><b>Mobile:</b> +91-9278780303</div>
-                      <div><b>Phone:</b> +91-120-4630111 (Ext. 232)</div>
-                      <div style={{ color: '#059669' }}>support@nimbusitsolutions.com</div>
+                      <div><b>Mobile:</b> +91-XXXXXXXXXX</div>
+                      <div><b>Phone:</b> +91-120-XXXXXXX</div>
+                      <div style={{ color: '#059669' }}>support@xxxx.com</div>
                     </div>
                   </div>
 

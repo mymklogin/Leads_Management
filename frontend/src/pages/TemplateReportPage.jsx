@@ -14,7 +14,8 @@ import {
   PhoneForwarded,
   Filter,
   BarChart2,
-  Calendar
+  Calendar,
+  FileText
 } from 'lucide-react';
 
 export const TemplateReportPage = ({ templateId, title, description, badgeColor = 'badge-warm' }) => {
@@ -124,28 +125,93 @@ export const TemplateReportPage = ({ templateId, title, description, badgeColor 
 
   return (
     <div>
-      {/* Header Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>{title}</h2>
-            <span className={`badge ${badgeColor}`}>Template {templateId}</span>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <FileText size={20} color="#ffffff" />
           </div>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: 4 }}>
-            {description}
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                {title}
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                TEMPLATE {templateId}
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              {description}
+            </p>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
           <button 
-            className="btn btn-outline"
+            type="button"
+            className="btn"
             onClick={() => setShowConfig(!showConfig)}
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.18)', 
+              color: '#ffffff', 
+              border: '1px solid rgba(255, 255, 255, 0.35)',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontWeight: 700, 
+              fontSize: '12px',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              cursor: 'pointer',
+              backdropFilter: 'blur(4px)'
+            }}
           >
             <Code size={14} />
             <span>{showConfig ? 'Hide Payload Rules' : 'View Payload Spec'}</span>
           </button>
 
-          <button className="btn btn-primary" onClick={handleExportCsv} title="Download CSV filtered by date selection">
+          <button 
+            type="button"
+            className="btn" 
+            onClick={handleExportCsv} 
+            title="Download CSV filtered by date selection"
+            style={{ 
+              background: '#ffffff', 
+              color: '#0284c7', 
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 14px',
+              fontWeight: 700, 
+              fontSize: '12px',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
+          >
             <Download size={14} />
             <span>{fromDate || toDate ? 'Export Date-Wise CSV' : 'Export Template CSV'}</span>
           </button>

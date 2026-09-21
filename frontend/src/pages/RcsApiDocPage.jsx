@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import {
   Key, Globe, Send, Wallet, FileText, Bot, PlusCircle, Code, MessageSquare,
   Bell, AlertTriangle, ShieldCheck, Check, Copy, ExternalLink, Search,
   Terminal, RefreshCw, Eye, Sparkles, PhoneCall, Sliders, Layers, Zap,
-  Info, List, Download
+  Info, List, Download, Printer
 } from 'lucide-react';
 import './RcsApiDoc.css';
 import {
@@ -15,11 +17,23 @@ import {
 } from '../data/rcsApiDocData';
 
 // Reusable Code Block with Copy Feedback matching exact design
-function CodeBlock({ code, language = 'json', title = null }) {
+function CodeBlock({ code, language = 'json', title = null, baseUrl = null, apiKey = null }) {
   const [copied, setCopied] = useState(false);
 
+  const formattedCode = useMemo(() => {
+    if (!code || typeof code !== 'string') return code;
+    let res = code;
+    if (baseUrl) {
+      res = res.replace(/\$\{BASE_URL\}/g, baseUrl);
+    }
+    if (apiKey) {
+      res = res.replace(/\$\{API_KEY\}/g, apiKey);
+    }
+    return res;
+  }, [code, baseUrl, apiKey]);
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
+    navigator.clipboard.writeText(formattedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -39,21 +53,44 @@ function CodeBlock({ code, language = 'json', title = null }) {
           </>
         )}
       </button>
-      <pre>{code}</pre>
+      <pre>{formattedCode}</pre>
     </div>
   );
 }
 
 export function RcsApiDocPage() {
-  const [activeApiKey, setActiveApiKey] = useState(DEFAULT_API_KEY);
+  const { user } = useAuth();
+  const { branding } = useBranding();
+
+  const effectiveBaseUrl = branding?.apiDomain 
+    ? `${branding.apiDomain.replace(/\/+$/, '')}/api/RCSApi` 
+    : BASE_URL;
+
+  const [activeApiKey, setActiveApiKey] = useState(() => user?.apiKey || branding?.activeApiKey || DEFAULT_API_KEY);
   const [activeSection, setActiveSection] = useState('authentication');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Dynamic template formatter for Web UI
+  const formatDoc = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    return str
+      .replace(/\$\{BASE_URL\}/g, effectiveBaseUrl)
+      .replace(/\$\{API_KEY\}/g, activeApiKey)
+      .replace(/130AB08588EF4D58B74E96D1A5CC9063993/g, activeApiKey)
+      .replace(/A58463AEB7AE41CD9901D23D18BC2482883/g, activeApiKey);
+  };
+
+  useEffect(() => {
+    if (user?.apiKey) setActiveApiKey(user.apiKey);
+    else if (branding?.activeApiKey) setActiveApiKey(branding.activeApiKey);
+  }, [user, branding]);
   
   // Tabs
   const [selectedCampaignTab, setSelectedCampaignTab] = useState('withoutFallback');
   const [selectedCampaignRespTab, setSelectedCampaignRespTab] = useState('success');
   const [selectedTplTab, setSelectedTplTab] = useState('plainText');
   const [selectedCurlTab, setSelectedCurlTab] = useState(0);
+  const [selectedTplCurlTab, setSelectedTplCurlTab] = useState(0);
   const [selectedDlrTab, setSelectedDlrTab] = useState(0);
   const [selectedEngageTab, setSelectedEngageTab] = useState(0);
   const [errorCodeFilter, setErrorCodeFilter] = useState('ALL');
@@ -192,15 +229,29 @@ export function RcsApiDocPage() {
     );
   }, [tplValidationSearch]);
 
+  // Quick DocCodeBlock wrapper with automatic baseURL and apiKey injection
+  const DocCodeBlock = (props) => (
+    <CodeBlock {...props} baseUrl={effectiveBaseUrl} apiKey={activeApiKey} />
+  );
+
   return (
     <div className="api-doc-container">
       {/* 7.2 Header */}
       <div className="api-header">
-        <h1>
-          <Code size={26} />
-          <span>RCS API Documentation</span>
-        </h1>
-        <p>Complete reference for integrating RCS messaging into your applications</p>
+        <div className="api-header-left">
+          <div className="api-header-icon">
+            <Code size={20} color="#ffffff" />
+          </div>
+          <div>
+            <h1>
+              <span>RCS Developer API Reference</span>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                REST v1.0
+              </span>
+            </h1>
+            <p>Complete reference and live testing console for integrating RCS messaging into your applications</p>
+          </div>
+        </div>
       </div>
 
       {/* 7.3 PDF Download Banner */}
@@ -220,17 +271,150 @@ export function RcsApiDocPage() {
             </div>
           </div>
           <div className="api-pdf-action">
-            <a
-              href="https://omnidigital.co.in/Pdf/RCS_Api.pdf"
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={() => {
+                const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                  window.print();
+                  return;
+                }
+                const pdfBaseUrl = 'https://yourdomain/api/RCSApi';
+                const pdfDocUrl = 'https://yourdomain/RcsApiDoc';
+                const htmlContent = `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <title>RCS API Documentation - ${branding?.companyName || 'Enterprise RCS Cloud'}</title>
+                    <style>
+                      @page { size: A4; margin: 15mm; }
+                      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.5; margin: 0; padding: 20px; font-size: 12.5px; background: #ffffff; }
+                      h1 { font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 4px; text-align: center; }
+                      .subtitle { text-align: center; color: #64748b; font-size: 13px; margin-bottom: 20px; }
+                      h2 { font-size: 16px; color: #0f172a; border-bottom: 2px solid #0284c7; padding-bottom: 5px; margin-top: 24px; margin-bottom: 10px; font-weight: 700; }
+                      h3 { font-size: 14px; color: #1e293b; margin-top: 14px; margin-bottom: 6px; font-weight: 700; }
+                      h4 { font-size: 12px; color: #475569; margin-top: 10px; margin-bottom: 4px; font-weight: 600; }
+                      p { margin: 6px 0 10px; color: #334155; }
+                      pre, code { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 11.5px; color: #0f172a; }
+                      pre { padding: 10px 14px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 8px 0 14px; }
+                      code { padding: 2px 5px; }
+                      table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 11.5px; }
+                      th, td { border: 1px solid #cbd5e1; padding: 7px 9px; text-align: left; }
+                      th { background: #f1f5f9; font-weight: 700; color: #0f172a; }
+                      .page-break { page-break-after: always; }
+                    </style>
+                  </head>
+                  <body>
+                    <div style="text-align:center; margin-bottom: 24px;">
+                      <h2 style="border:none; margin:0; color:#0284c7; font-size:20px;">${branding?.companyName || 'Enterprise RCS Cloud Suite'}</h2>
+                      <h1>RCS API Documentation</h1>
+                      <div class="subtitle">Complete Developer Reference for RCS Messaging API Integration</div>
+                    </div>
+
+                    <h2>Authentication</h2>
+                    <p>All API requests require authentication using an API Key passed as a query parameter.</p>
+                    <h4>How to Authenticate</h4>
+                    <p>Include your API key in every request as a query parameter:</p>
+                    <pre>${pdfBaseUrl}/{endpoint}?apiKey=${activeApiKey}</pre>
+
+                    <h2>Base URL</h2>
+                    <pre>${pdfDocUrl}</pre>
+
+                    <div class="page-break"></div>
+
+                    <h2>Create RCS Campaign</h2>
+                    <p>Creates and submits a new RCS campaign with optional SMS fallback.</p>
+                    <h4>Request URL</h4>
+                    <pre>POST ${pdfBaseUrl}/CreateCampaign?apiKey=${activeApiKey}</pre>
+
+                    <h4>Request Headers</h4>
+                    <pre>Content-Type: application/json</pre>
+
+                    <h4>Request Body Parameters</h4>
+                    <table>
+                      <thead>
+                        <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>TemplateId</td><td>string</td><td>Required</td><td>RCS Template ID</td></tr>
+                        <tr><td>CampaignName</td><td>string</td><td>Required</td><td>Campaign name (1-50 chars, alphanumeric + spaces, hyphens, underscores)</td></tr>
+                        <tr><td>MobileNumbers</td><td>string[]</td><td>Required</td><td>Array of 10-digit mobile numbers (max 5000)</td></tr>
+                        <tr><td>EnableFallback</td><td>boolean</td><td>Optional</td><td>Enable SMS fallback (default: false)</td></tr>
+                        <tr><td>EntityId</td><td>string</td><td>Conditional</td><td>Required if EnableFallback is true</td></tr>
+                        <tr><td>SenderId</td><td>string</td><td>Conditional</td><td>Required if EnableFallback is true</td></tr>
+                        <tr><td>SmsTemplateId</td><td>string</td><td>Conditional</td><td>Required if EnableFallback is true</td></tr>
+                        <tr><td>SmsText</td><td>string</td><td>Conditional</td><td>Required if EnableFallback is true</td></tr>
+                      </tbody>
+                    </table>
+
+                    <h4>cURL Example</h4>
+                    <pre>curl -X POST "${pdfBaseUrl}/CreateCampaign?apiKey=${activeApiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "TemplateId": "vendor_tpl_abc456",
+    "CampaignName": "Test_Campaign",
+    "MobileNumbers": ["9876543210", "9123456789"],
+    "EnableFallback": false
+  }'</pre>
+
+                    <div class="page-break"></div>
+
+                    <h2>Check RCS Balance</h2>
+                    <p>Retrieves your current RCS and SMS balance.</p>
+                    <h4>Request URL</h4>
+                    <pre>GET ${pdfBaseUrl}/CheckRcsBalance?apiKey=${activeApiKey}</pre>
+
+                    <h4>Success Response</h4>
+                    <pre>{
+  "Status": "OK",
+  "Response": {
+    "RcsBalance": 5000,
+    "SmsBalance": 10000
+  }
+}</pre>
+
+                    <div class="page-break"></div>
+
+                    <h2>Get RCS Templates</h2>
+                    <p>Retrieves list of your RCS templates for a specific BOT with optional filters.</p>
+                    <pre>GET ${pdfBaseUrl}/GetTemplates?apiKey=${activeApiKey}&botId=bot_abc123</pre>
+
+                    <h2>Get RCS Bots</h2>
+                    <p>Retrieves list of all RCS bots registered under your account.</p>
+                    <pre>GET ${pdfBaseUrl}/GetBots?apiKey=${activeApiKey}</pre>
+
+                    <h2>Create RCS Bot</h2>
+                    <p>Registers a new RCS bot for the authenticated account.</p>
+                    <pre>POST ${pdfBaseUrl}/CreateBot?apiKey=${activeApiKey}</pre>
+
+                    <h2>Create RCS Template</h2>
+                    <p>Creates a new RCS template (PlainText, RichCard, or Carousel) with optional suggestion buttons.</p>
+                    <pre>POST ${pdfBaseUrl}/CreateTemplate?apiKey=${activeApiKey}</pre>
+
+                    <h2>Send Chat Message (1-on-1 RCS)</h2>
+                    <p>Sends direct single recipient conversational chat message.</p>
+                    <pre>POST ${pdfBaseUrl}/SendChatMessage?apiKey=${activeApiKey}</pre>
+
+                    <div style="margin-top:40px; text-align:center; color:#94a3b8; font-size:11px;">
+                      Generated dynamically by ${branding?.companyName || 'Enterprise RCS Cloud'} • White-Label API Developer Reference
+                    </div>
+                  </body>
+                  </html>
+                `;
+                printWindow.document.write(htmlContent);
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                  printWindow.print();
+                }, 400);
+              }}
               className="pdf-download-btn"
+              style={{ cursor: 'pointer', border: 'none', background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' }}
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Download size={14} /> Download PDF
               </span>
-              <small>(Complete Guide)</small>
-            </a>
+              <small>(Custom Brand Guide)</small>
+            </button>
           </div>
         </div>
       </div>
@@ -289,12 +473,12 @@ export function RcsApiDocPage() {
 
             <h4>How to Authenticate</h4>
             <p>Include your API key in every request as a query parameter:</p>
-            <CodeBlock
-              code={`https://omnidigital.co.in/api/RCSApi/{endpoint}?apiKey=${activeApiKey}`}
+            <DocCodeBlock
+              code={`${effectiveBaseUrl}/{endpoint}?apiKey=${activeApiKey}`}
             />
 
             <h4>Base URL</h4>
-            <CodeBlock code={BASE_URL} />
+            <DocCodeBlock code={effectiveBaseUrl} />
           </div>
 
           {/* 2. CREATE RCS CAMPAIGN */}
@@ -313,10 +497,10 @@ export function RcsApiDocPage() {
             </div>
 
             <h4>Request URL</h4>
-            <CodeBlock code={CREATE_CAMPAIGN_DOC.requestUrl} />
+            <DocCodeBlock code={CREATE_CAMPAIGN_DOC.requestUrl} />
 
             <h4>Request Headers</h4>
-            <CodeBlock code="Content-Type: application/json" />
+            <DocCodeBlock code="Content-Type: application/json" />
 
             <h4>Request Body Parameters</h4>
             <table className="params-table">
@@ -375,7 +559,7 @@ export function RcsApiDocPage() {
                 With Variables Option
               </button>
             </div>
-            <CodeBlock code={CREATE_CAMPAIGN_DOC.examples[selectedCampaignTab]} />
+            <DocCodeBlock code={CREATE_CAMPAIGN_DOC.examples[selectedCampaignTab]} />
 
             <h4>Responses</h4>
             <div className="doc-tabs-bar">
@@ -398,10 +582,10 @@ export function RcsApiDocPage() {
                 400 Error
               </button>
             </div>
-            <CodeBlock code={CREATE_CAMPAIGN_DOC.responses[selectedCampaignRespTab]} />
+            <DocCodeBlock code={CREATE_CAMPAIGN_DOC.responses[selectedCampaignRespTab]} />
 
             <h4>cURL Command</h4>
-            <CodeBlock code={CREATE_CAMPAIGN_DOC.curl} />
+            <DocCodeBlock code={CREATE_CAMPAIGN_DOC.curl} />
           </div>
 
           {/* 3. CHECK RCS BALANCE */}
@@ -420,13 +604,13 @@ export function RcsApiDocPage() {
             </div>
 
             <h4>Request URL</h4>
-            <CodeBlock code={CHECK_BALANCE_DOC.requestUrl} />
+            <DocCodeBlock code={CHECK_BALANCE_DOC.requestUrl} />
 
             <h4>Success Response</h4>
-            <CodeBlock code={CHECK_BALANCE_DOC.response} />
+            <DocCodeBlock code={CHECK_BALANCE_DOC.response} />
 
             <h4>cURL Command</h4>
-            <CodeBlock code={CHECK_BALANCE_DOC.curl} />
+            <DocCodeBlock code={CHECK_BALANCE_DOC.curl} />
           </div>
 
           {/* 4. GET RCS TEMPLATES */}
@@ -475,7 +659,7 @@ export function RcsApiDocPage() {
               {GET_TEMPLATES_DOC.exampleUrls.map((item, i) => (
                 <div key={i} style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>{item.label}</div>
-                  <div style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#0284c7', wordBreak: 'break-all' }}>{item.url}</div>
+                  <div style={{ fontSize: '11.5px', fontFamily: 'monospace', color: '#0284c7', wordBreak: 'break-all' }}>{formatDoc(item.url)}</div>
                 </div>
               ))}
             </div>
@@ -578,8 +762,8 @@ export function RcsApiDocPage() {
               </div>
             </div>
 
-            <h4>Example Mixed Response (PlainText + RichCard + Carousel)</h4>
-            <CodeBlock code={GET_TEMPLATES_DOC.mixedExampleResponse} />
+            <h4>Example Response Schema</h4>
+            <DocCodeBlock code={GET_TEMPLATES_DOC.errorResponse} />
 
             <h4>cURL Examples</h4>
             <div className="doc-tabs-bar">
@@ -593,7 +777,7 @@ export function RcsApiDocPage() {
                 </button>
               ))}
             </div>
-            <CodeBlock code={GET_TEMPLATES_DOC.curlExamples[selectedCurlTab]?.cmd || ''} />
+            <DocCodeBlock code={GET_TEMPLATES_DOC.curlExamples[selectedCurlTab]?.cmd || ''} />
           </div>
 
           {/* 5. GET RCS BOTS */}
@@ -612,13 +796,13 @@ export function RcsApiDocPage() {
             </div>
 
             <h4>Request URL</h4>
-            <CodeBlock code={GET_BOTS_DOC.requestUrl} />
+            <DocCodeBlock code={GET_BOTS_DOC.requestUrl} />
 
             <h4>Success Response</h4>
-            <CodeBlock code={GET_BOTS_DOC.response} />
+            <DocCodeBlock code={GET_BOTS_DOC.response} />
 
             <h4>cURL Command</h4>
-            <CodeBlock code={GET_BOTS_DOC.curl} />
+            <DocCodeBlock code={GET_BOTS_DOC.curl} />
           </div>
 
           {/* 6. CREATE RCS BOT */}
@@ -637,10 +821,10 @@ export function RcsApiDocPage() {
             </div>
 
             <h4>Request URL</h4>
-            <CodeBlock code={CREATE_BOT_DOC.requestUrl} />
+            <DocCodeBlock code={CREATE_BOT_DOC.requestUrl} />
 
             <h4>Request Headers</h4>
-            <CodeBlock code="Content-Type: application/json" />
+            <DocCodeBlock code="Content-Type: application/json" />
 
             <h4>Request Body Parameters (20 Fields)</h4>
             <table className="params-table">
@@ -698,16 +882,16 @@ export function RcsApiDocPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <h5 style={{ margin: '8px 0', fontSize: '13px', fontWeight: '700' }}>Minimal Request</h5>
-                <CodeBlock code={CREATE_BOT_DOC.minimalExample} />
+                <DocCodeBlock code={CREATE_BOT_DOC.minimalExample} />
               </div>
               <div>
                 <h5 style={{ margin: '8px 0', fontSize: '13px', fontWeight: '700' }}>Full Request</h5>
-                <CodeBlock code={CREATE_BOT_DOC.fullExample} />
+                <DocCodeBlock code={CREATE_BOT_DOC.fullExample} />
               </div>
             </div>
 
             <h4>Success Response</h4>
-            <CodeBlock code={CREATE_BOT_DOC.responses.success} />
+            <DocCodeBlock code={CREATE_BOT_DOC.responses.success} />
 
             <div className="doc-filter-bar" style={{ marginTop: '20px' }}>
               <h4>All 25 Possible Validation Messages ({filteredBotValidations.length})</h4>
@@ -737,7 +921,7 @@ export function RcsApiDocPage() {
             </table>
 
             <h4>cURL Command</h4>
-            <CodeBlock code={CREATE_BOT_DOC.curl} />
+            <DocCodeBlock code={CREATE_BOT_DOC.curl} />
           </div>
 
           {/* 7. CREATE RCS TEMPLATE */}
@@ -754,6 +938,12 @@ export function RcsApiDocPage() {
               </div>
               <p className="endpoint-description">{CREATE_TEMPLATE_DOC.description}</p>
             </div>
+
+            <h4>Request URL</h4>
+            <DocCodeBlock code={CREATE_TEMPLATE_DOC.requestUrl} />
+
+            <h4>Request Headers</h4>
+            <DocCodeBlock code="Content-Type: application/json" />
 
             <h4>Common Request Body Parameters</h4>
             <table className="params-table">
@@ -872,7 +1062,21 @@ export function RcsApiDocPage() {
                 Carousel Template
               </button>
             </div>
-            <CodeBlock code={CREATE_TEMPLATE_DOC.examples[selectedTplTab]} />
+            <DocCodeBlock code={CREATE_TEMPLATE_DOC.examples[selectedTplTab]} />
+
+            <h4>cURL Examples</h4>
+            <div className="doc-tabs-bar">
+              {CREATE_TEMPLATE_DOC.curlExamples.map((item, idx) => (
+                <button
+                  key={idx}
+                  className={`doc-tab-btn ${selectedTplCurlTab === idx ? 'active' : ''}`}
+                  onClick={() => setSelectedTplCurlTab(idx)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <DocCodeBlock code={CREATE_TEMPLATE_DOC.curlExamples[selectedTplCurlTab]?.cmd || ''} />
 
             <div className="doc-filter-bar" style={{ marginTop: '20px' }}>
               <h4>All 27 Possible Validation Messages ({filteredTplValidations.length})</h4>
@@ -918,7 +1122,7 @@ export function RcsApiDocPage() {
             </div>
 
             <h4>Request URL</h4>
-            <CodeBlock code={SEND_CHAT_MESSAGE_DOC.requestUrl} />
+            <DocCodeBlock code={SEND_CHAT_MESSAGE_DOC.requestUrl} />
 
             <h4>Request Body Parameters</h4>
             <table className="params-table">
@@ -943,7 +1147,7 @@ export function RcsApiDocPage() {
             </table>
 
             <h4>Request Body Example</h4>
-            <CodeBlock code={SEND_CHAT_MESSAGE_DOC.exampleBody} />
+            <DocCodeBlock code={SEND_CHAT_MESSAGE_DOC.exampleBody} />
 
             <h4>Status &amp; Suppression Messages</h4>
             <table className="params-table">
@@ -964,7 +1168,7 @@ export function RcsApiDocPage() {
             </table>
 
             <h4>cURL Command</h4>
-            <CodeBlock code={SEND_CHAT_MESSAGE_DOC.curl} />
+            <DocCodeBlock code={SEND_CHAT_MESSAGE_DOC.curl} />
           </div>
 
           {/* 9. WEBHOOK PAYLOADS */}
@@ -1007,7 +1211,7 @@ export function RcsApiDocPage() {
                 </button>
               ))}
             </div>
-            <CodeBlock code={WEBHOOK_PAYLOADS_DOC.dlrExamples[selectedDlrTab]?.payload || ''} />
+            <DocCodeBlock code={WEBHOOK_PAYLOADS_DOC.dlrExamples[selectedDlrTab]?.payload || ''} />
 
             <h4>2. Engagement (User Response) Webhook Payloads</h4>
             <table className="params-table">
@@ -1041,7 +1245,7 @@ export function RcsApiDocPage() {
                 </button>
               ))}
             </div>
-            <CodeBlock code={WEBHOOK_PAYLOADS_DOC.engagementExamples[selectedEngageTab]?.payload || ''} />
+            <DocCodeBlock code={WEBHOOK_PAYLOADS_DOC.engagementExamples[selectedEngageTab]?.payload || ''} />
 
             <h4>3. All DLR Event Types &amp; SMS Fallback Trigger</h4>
             <table className="params-table">

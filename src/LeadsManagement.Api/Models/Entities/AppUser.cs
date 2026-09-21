@@ -48,11 +48,27 @@ public class AppUser
 
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(150)]
+    public string? CompanyName { get; set; }
+
+    [MaxLength(50)]
+    public string? DltEntityId { get; set; }
+
+    public List<string> Documents { get; set; } = new List<string>();
+
     // Service Balances / Credits
     public decimal VoiceCredits { get; set; } = 0;
     public decimal WhatsAppCredits { get; set; } = 0;
-    public decimal RcsCredits { get; set; } = 0;
+    public decimal RcsCredits { get; set; } = 0; // RCS Transactional
+    public decimal RcsPromotionalCredits { get; set; } = 0; // RCS Promotional
     public decimal SmsCredits { get; set; } = 0;
+    public decimal BulkSmsPromotionalCredits { get; set; } = 0;
+    public decimal WhatsAppPromotionalCredits { get; set; } = 0;
+
+    /// <summary>
+    /// Allowed Telecom Services (e.g. "RCS-T", "RCS-P", "BULKSMS-T", "BULKSMS-P", "WHATSAPP-T", "WHATSAPP-P")
+    /// </summary>
+    public List<string> AllowedServices { get; set; } = new List<string> { "RCS-T", "RCS-P" };
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

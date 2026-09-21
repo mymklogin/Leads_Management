@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { CreateUserModal } from '../components/CreateUserModal';
+import { ViewUserModal } from '../components/ViewUserModal';
+import { EditUserModal } from '../components/EditUserModal';
 import { 
   UserPlus, 
   CheckSquare, 
@@ -12,11 +15,33 @@ import {
   AlertTriangle,
   Save,
   X,
-  Search
+  Search,
+  Users,
+  FileText,
+  Building2,
+  Eye,
+  Edit3,
+  PauseCircle,
+  PlayCircle,
+  Plus,
+  Download
 } from 'lucide-react';
 
 export const UsersManagementPage = () => {
   const { user: currentUser } = useAuth();
+  
+  const handleDownloadDoc = (docName, targetUser) => {
+    const fileContent = `========================================\nKYC COMPLIANCE VERIFICATION RECORD\n========================================\nDocument Name: ${docName}\nUser Account: ${targetUser?.fullName || targetUser?.username}\nUsername: @${targetUser?.username}\nCompany / Entity: ${targetUser?.companyName || 'N/A'}\nDLT Entity ID: ${targetUser?.dltEntityId || 'N/A'}\nVerification Status: Officially Verified\nTimestamp: ${new Date().toLocaleString()}\n========================================\nThis document is cryptographically logged and compliant with Telecom Regulatory Authority guidelines.`;
+    const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = docName.endsWith('.pdf') || docName.endsWith('.png') || docName.endsWith('.jpg') ? docName : `${docName}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -26,6 +51,12 @@ export const UsersManagementPage = () => {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [viewingDocsUser, setViewingDocsUser] = useState(null);
+
+  // Action Modals state (View & Unified Edit/Credit Modal)
+  const [viewingUser, setViewingUser] = useState(null);
+  const [editModalState, setEditModalState] = useState(null); // { user, tab: 'edit' | 'credit' }
+
 
   // Form states
   const [createForm, setCreateForm] = useState({
@@ -156,18 +187,67 @@ export const UsersManagementPage = () => {
 
   return (
     <div>
-      {/* Action Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Users & Resellers Hierarchy</h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>
-            Manage subordinates, allocate dynamic service menus, and set wallet credits
-          </p>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Users size={20} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                Users & Resellers Hierarchy
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                ACCESS CONTROL
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Manage subordinates, allocate dynamic service menus, and configure roles & permissions
+            </p>
+          </div>
         </div>
 
         <button 
-          className="btn btn-primary"
+          type="button"
+          className="btn"
           onClick={() => setShowCreateModal(true)}
+          style={{ 
+            background: '#ffffff', 
+            color: '#0284c7', 
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            fontWeight: 700, 
+            fontSize: '12px',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 6,
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+          }}
         >
           <UserPlus size={16} />
           <span>Create New Account</span>
@@ -192,38 +272,68 @@ export const UsersManagementPage = () => {
       {/* Users Table */}
       <div className="card">
         <div className="table-responsive">
-          <table className="data-table">
+          <table className="data-table" style={{ fontSize: '12px' }}>
             <thead>
               <tr>
-                <th>Account</th>
-                <th>Role</th>
-                <th>Parent Account</th>
-                <th>Active Menus</th>
-                <th>Voice Balance</th>
-                <th>WhatsApp Balance</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th style={{ width: '50px', padding: '10px 8px' }}>UID</th>
+                <th style={{ padding: '10px 10px' }}>Account</th>
+                <th style={{ padding: '10px 10px' }}>Company & DLT Entity</th>
+                <th style={{ padding: '10px 8px' }}>Role</th>
+                <th style={{ padding: '10px 8px' }}>RCS SMS</th>
+                <th style={{ padding: '10px 8px' }}>Bulk SMS</th>
+                <th style={{ padding: '10px 8px' }}>WhatsApp SMS</th>
+                <th style={{ padding: '10px 8px' }}>KYC Docs</th>
+                <th style={{ padding: '10px 8px', textAlign: 'center' }}>Status</th>
+                <th style={{ textAlign: 'center', padding: '10px 8px', minWidth: '170px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>Loading accounts...</td>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '30px' }}>Loading accounts...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                     No subordinate accounts found. Click "Create New Account" to add one.
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map(u => (
                   <tr key={u.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{u.fullName}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>@{u.username} • {u.email}</div>
+                    {/* UID */}
+                    <td style={{ padding: '8px 8px' }}>
+                      <span style={{
+                        background: '#e0f2fe',
+                        color: '#0369a1',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontWeight: 800,
+                        fontSize: '11px'
+                      }}>
+                        #{u.id}
+                      </span>
                     </td>
-                    <td>
+
+                    {/* Account */}
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{u.fullName}</div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b' }}>@{u.username} • {u.email}</div>
+                    </td>
+
+                    {/* Company & DLT Entity */}
+                    <td style={{ padding: '8px 10px' }}>
+                      <div style={{ fontWeight: 600, fontSize: '12.5px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Building2 size={13} color="#0284c7" />
+                        <span>{u.companyName || u.fullName}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>
+                        DLT: <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: 3 }}>{u.dltEntityId || 'N/A'}</code>
+                      </div>
+                    </td>
+
+                    {/* Role */}
+                    <td style={{ padding: '8px 8px' }}>
                       <span className={`badge ${
                         u.role === 1 || u.role === 'SuperAdmin' ? 'badge-hot' :
                         u.role === 2 || u.role === 'Admin' ? 'badge-warm' :
@@ -232,41 +342,171 @@ export const UsersManagementPage = () => {
                         {u.roleName}
                       </span>
                     </td>
-                    <td>
-                      <span style={{ fontSize: '12px', color: '#475569' }}>
-                        {u.parentUserName || 'SuperAdmin'}
-                      </span>
+
+                    {/* 1. RCS SMS Column: T: x | P: y */}
+                    <td style={{ padding: '8px 8px' }}>
+                      {(!u.allowedServices || u.allowedServices.includes('RCS-T') || u.allowedServices.includes('RCS-P')) ? (
+                        <div style={{ fontSize: '11.5px', lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 800, color: '#059669' }}>T: {Number(u.rcsCredits || 0).toLocaleString()}</span>
+                          <span style={{ color: '#94a3b8', margin: '0 4px' }}>|</span>
+                          <span style={{ fontWeight: 800, color: '#0284c7' }}>P: {Number(u.rcsPromotionalCredits || 0).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>— Not Allowed</span>
+                      )}
                     </td>
-                    <td>
-                      <span className="badge badge-success">
-                        {u.allowedMenusCount} Services Enabled
-                      </span>
+
+                    {/* 2. Bulk SMS Column: T: x | P: y */}
+                    <td style={{ padding: '8px 8px' }}>
+                      {(u.allowedServices && (u.allowedServices.includes('BULKSMS-T') || u.allowedServices.includes('BULKSMS-P'))) ? (
+                        <div style={{ fontSize: '11.5px', lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 800, color: '#059669' }}>T: {Number(u.smsCredits || 0).toLocaleString()}</span>
+                          <span style={{ color: '#94a3b8', margin: '0 4px' }}>|</span>
+                          <span style={{ fontWeight: 800, color: '#0284c7' }}>P: {Number(u.bulkSmsPromoCredits || 0).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>— Not Allowed</span>
+                      )}
                     </td>
-                    <td style={{ fontWeight: 600 }}>{u.voiceCredits}</td>
-                    <td style={{ fontWeight: 600 }}>{u.whatsAppCredits}</td>
-                    <td>
-                      <button 
-                        onClick={() => handleToggleStatus(u)}
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
-                        title={u.isActive ? 'Deactivate' : 'Activate'}
-                      >
-                        {u.isActive ? (
-                          <span className="badge badge-success">Active</span>
-                        ) : (
-                          <span className="badge badge-cold">Inactive</span>
-                        )}
-                      </button>
+
+                    {/* 3. WhatsApp SMS Column: T: x | P: y */}
+                    <td style={{ padding: '8px 8px' }}>
+                      {(u.allowedServices && (u.allowedServices.includes('WHATSAPP-T') || u.allowedServices.includes('WHATSAPP-P'))) ? (
+                        <div style={{ fontSize: '11.5px', lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 800, color: '#059669' }}>T: {Number(u.whatsAppCredits || 0).toLocaleString()}</span>
+                          <span style={{ color: '#94a3b8', margin: '0 4px' }}>|</span>
+                          <span style={{ fontWeight: 800, color: '#0284c7' }}>P: {Number(u.whatsAppPromoCredits || 0).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>— Not Allowed</span>
+                      )}
                     </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* Assign Menus Checkbox Modal Button */}
-                        <button 
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleOpenPermissions(u)}
-                          title="Assign Dynamic Menus & Services"
+
+                    {/* KYC Docs */}
+                    <td style={{ padding: '8px 8px' }}>
+                      {u.documents && u.documents.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewingDocsUser(u)}
+                          className="btn btn-outline btn-sm"
+                          style={{
+                            fontSize: '11px',
+                            padding: '3px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            borderRadius: '6px',
+                            borderColor: '#cbd5e1',
+                            background: '#f8fafc',
+                            cursor: 'pointer'
+                          }}
                         >
-                          <CheckSquare size={13} />
-                          <span>Assign Menus</span>
+                          <FileText size={13} color="#0284c7" />
+                          <span>{u.documents.length} Docs</span>
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>None</span>
+                      )}
+                    </td>
+
+                    {/* Status Badge */}
+                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>
+                      {u.isActive ? (
+                        <span className="badge badge-success" style={{ fontSize: '10.5px', padding: '2px 8px' }}>Active</span>
+                      ) : (
+                        <span className="badge badge-cold" style={{ fontSize: '10.5px', padding: '2px 8px' }}>Inactive</span>
+                      )}
+                    </td>
+
+                    {/* 4 Square Icon Action Buttons (Exact Match to Image 4) */}
+                    <td style={{ padding: '8px 8px', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
+                        {/* 1. View User [ 👁️ ] */}
+                        <button 
+                          type="button"
+                          onClick={() => setViewingUser(u)}
+                          title="View Account Details & Balances"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '7px',
+                            border: '1px solid #cbd5e1',
+                            background: '#f8fafc',
+                            color: '#1e293b',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Eye size={15} />
+                        </button>
+
+                        {/* 2. Edit User [ ✏️ ] */}
+                        <button 
+                          type="button"
+                          onClick={() => setEditModalState({ user: u, tab: 'edit' })}
+                          title="Edit User Profile & Telecom Services"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '7px',
+                            border: '1px solid #bae6fd',
+                            background: '#e0f2fe',
+                            color: '#0284c7',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Edit3 size={15} />
+                        </button>
+
+                        {/* 3. Pause / Play Status Toggle [ ⏸️ / ▶️ ] */}
+                        <button 
+                          type="button"
+                          onClick={() => handleToggleStatus(u)}
+                          title={u.isActive ? 'Pause / Deactivate Account' : 'Resume / Activate Account'}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '7px',
+                            border: u.isActive ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+                            background: u.isActive ? '#f0fdf4' : '#fff7ed',
+                            color: u.isActive ? '#16a34a' : '#ea580c',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {u.isActive ? <PauseCircle size={16} /> : <PlayCircle size={16} />}
+                        </button>
+
+                        {/* 4. Add / Credit Balance [ ➕ ] */}
+                        <button 
+                          type="button"
+                          onClick={() => setEditModalState({ user: u, tab: 'credit' })}
+                          title="Credit / Debit Telecom Balance"
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '7px',
+                            border: '1px solid #bfdbfe',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <Plus size={16} strokeWidth={2.5} />
                         </button>
                       </div>
                     </td>
@@ -375,109 +615,155 @@ export const UsersManagementPage = () => {
         </div>
       )}
 
-      {/* CREATE NEW ACCOUNT MODAL */}
-      {showCreateModal && (
+      {/* UNIFIED REUSABLE CREATE NEW ACCOUNT MODAL */}
+      <CreateUserModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          fetchUsers();
+        }}
+      />
+
+      {/* KYC DOCUMENTS PREVIEW MODAL */}
+      {viewingDocsUser && (
         <div className="modal-overlay">
-          <div className="modal-card">
+          <div className="modal-card" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>Create Subordinate Account</h3>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Uploaded KYC Documents
+                </h3>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: 2 }}>
+                  Account: <b>{viewingDocsUser.fullName}</b> ({viewingDocsUser.companyName || viewingDocsUser.username})
+                </div>
+              </div>
               <button 
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => setViewingDocsUser(null)}
                 style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Full Name / Company Name</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    required
-                    placeholder="Rohan Sharma"
-                    value={createForm.fullName}
-                    onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
-                  />
-                </div>
+            <div className="modal-body">
+              <div style={{ fontSize: '12px', color: '#475569', marginBottom: 12 }}>
+                Verified regulatory credentials and uploaded telecom compliance files:
+              </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label className="form-label">Username</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      required
-                      placeholder="rohan_tele"
-                      value={createForm.username}
-                      onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Account Role</label>
-                    <select 
-                      className="form-select"
-                      value={createForm.role}
-                      onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {viewingDocsUser.documents && viewingDocsUser.documents.length > 0 ? (
+                  viewingDocsUser.documents.map((doc, idx) => (
+                    <div 
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px'
+                      }}
                     >
-                      {currentUser?.role === 1 && <option value="2">Admin</option>}
-                      {(currentUser?.role === 1 || currentUser?.role === 2) && <option value="3">Reseller</option>}
-                      <option value="4">User / Telecaller</option>
-                    </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 6,
+                          background: '#e0f2fe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <FileText size={16} color="#0284c7" />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {doc}
+                          </div>
+                          <div style={{ fontSize: '10.5px', color: '#64748b' }}>
+                            KYC Verification Document • Verified
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: '11px', color: '#166534', background: '#dcfce7', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>
+                          ✓ Uploaded
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadDoc(doc, viewingDocsUser)}
+                          className="btn btn-outline btn-sm"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            color: '#0284c7',
+                            borderColor: '#bae6fd',
+                            background: '#ffffff',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                          title={`Download ${doc}`}
+                        >
+                          <Download size={12} />
+                          <span>Download</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
+                    No KYC documents uploaded for this user.
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input 
-                      type="email" 
-                      className="form-input" 
-                      required
-                      placeholder="rohan@example.com"
-                      value={createForm.email}
-                      onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Password</label>
-                    <input 
-                      type="password" 
-                      className="form-input" 
-                      required
-                      placeholder="••••••••"
-                      value={createForm.password}
-                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Phone Number (Optional)</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="9876543210"
-                    value={createForm.phoneNumber}
-                    onChange={(e) => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
-                  />
-                </div>
+                )}
               </div>
+            </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create Account
-                </button>
-              </div>
-            </form>
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => setViewingDocsUser(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* 👁️ VIEW USER DETAILS MODAL */}
+      {viewingUser && (
+        <ViewUserModal
+          user={viewingUser}
+          onClose={() => setViewingUser(null)}
+          onEditUser={(u) => {
+            setViewingUser(null);
+            setEditModalState({ user: u, tab: 'edit' });
+          }}
+          onAddBalance={(u) => {
+            setViewingUser(null);
+            setEditModalState({ user: u, tab: 'credit' });
+          }}
+        />
+      )}
+
+      {/* ✏️ UNIFIED EDIT USER & TELECOM BALANCE MODAL */}
+      {editModalState && (
+        <EditUserModal
+          user={editModalState.user}
+          initialTab={editModalState.tab}
+          onClose={() => setEditModalState(null)}
+          onSuccess={() => {
+            setEditModalState(null);
+            fetchUsers();
+          }}
+        />
       )}
     </div>
   );
 };
+

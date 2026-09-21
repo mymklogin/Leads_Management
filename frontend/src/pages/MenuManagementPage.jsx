@@ -1,714 +1,810 @@
 import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 import { 
-  PlusCircle, 
-  Edit3, 
-  Trash2, 
-  Layers, 
-  Search, 
-  RefreshCw, 
-  FolderPlus, 
-  CheckCircle2, 
-  AlertCircle, 
-  X, 
-  ArrowRight,
-  ShieldAlert,
-  Sliders,
-  ExternalLink
+  Layers, Plus, Trash2, Edit3, Save, RotateCcw, ArrowUp, ArrowDown, 
+  ChevronRight, ChevronDown, Check, X, Sliders, Globe, Server, 
+  ShieldCheck, Hash, MessageSquare, Send, MousePointer, BarChart3, 
+  Bot, FileCode, PlusCircle, Calendar, PieChart, Database, Wallet, 
+  Code, HelpCircle, CheckCircle2, AlertCircle, RefreshCw, Key, 
+  ExternalLink, Move
 } from 'lucide-react';
 
-export const MenuManagementPage = () => {
-  const { user } = useAuth();
-  const [menus, setMenus] = useState([]);
+const ICON_OPTIONS = [
+  { name: 'LayoutDashboard', label: 'Dashboard', icon: Layers },
+  { name: 'MessageSquare', label: 'Chat / RCS', icon: MessageSquare },
+  { name: 'Send', label: 'SMS / Send', icon: Send },
+  { name: 'MousePointer', label: 'Clicker', icon: MousePointer },
+  { name: 'Zap', label: 'Gateway / Telco', icon: Sliders },
+  { name: 'Server', label: 'Server / SMPP', icon: Server },
+  { name: 'Globe', label: 'Domain / CNAME', icon: Globe },
+  { name: 'ShieldCheck', label: 'Security / IP', icon: ShieldCheck },
+  { name: 'Hash', label: 'DLT / Hash', icon: Hash },
+  { name: 'BarChart3', label: 'Reports', icon: BarChart3 },
+  { name: 'PieChart', label: 'Analytics / MIS', icon: PieChart },
+  { name: 'Database', label: 'Database', icon: Database },
+  { name: 'Wallet', label: 'Billing / Wallet', icon: Wallet },
+  { name: 'Bot', label: 'Bots', icon: Bot },
+  { name: 'FileCode', label: 'Templates / Code', icon: FileCode },
+  { name: 'Code', label: 'HTTP / API', icon: Code },
+  { name: 'Key', label: '2FA / Security', icon: Key },
+  { name: 'HelpCircle', label: 'Help / Support', icon: HelpCircle },
+  { name: 'Sliders', label: 'Settings', icon: Sliders }
+];
+
+const getIconComponent = (iconName) => {
+  const match = ICON_OPTIONS.find(i => i.name.toLowerCase() === (iconName || '').toLowerCase());
+  return match ? match.icon : Layers;
+};
+
+export function MenuManagementPage() {
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterService, setFilterService] = useState('ALL');
-  const [filterType, setFilterType] = useState('ALL'); // ALL, PARENT, SUBMENU
+  const [saving, setSaving] = useState(false);
+  const [menus, setMenus] = useState([]);
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [expandedParents, setExpandedParents] = useState({});
 
-  // Modal State
-  const [modalMode, setModalMode] = useState(null); // 'ADD' | 'EDIT' | null
-  const [selectedMenu, setSelectedMenu] = useState(null);
-  const [deleteConfirmMenu, setDeleteConfirmMenu] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  // Modal State for Add / Edit
+  const [showModal, setShowModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [targetParentId, setTargetParentId] = useState(null); // null = top level parent, string = sub-menu under parent
+  const [editingId, setEditingId] = useState(null);
 
-  // Form State
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     title: '',
     menuKey: '',
-    serviceCode: 'RCS',
-    parentMenuId: '',
     routePath: '',
+    icon: 'Layers',
     sortOrder: 1,
     isActive: true,
-    icon: 'fa-layer-group'
+    badgeText: '',
+    badgeColor: '#22c55e'
   });
 
-  const availableServices = [
-    { code: 'DASHBOARD', label: 'Dashboard' },
-    { code: 'VOICE', label: 'Voice OBD Calls' },
-    { code: 'RCS', label: 'RCS Messaging' },
-    { code: 'WHATSAPP', label: 'WhatsApp Messaging' },
-    { code: 'SMS', label: 'SMS Gateway' },
-    { code: 'LEADS_CRM', label: 'Leads CRM' },
-    { code: 'USER_MANAGEMENT', label: 'User Management' },
-    { code: 'REPORTS', label: 'Reports & Analytics' }
-  ];
-
   useEffect(() => {
-    fetchMenus();
+    fetchTree();
   }, []);
 
-  const fetchMenus = async () => {
+  const fetchTree = async () => {
     try {
       setLoading(true);
-      setErrorMsg('');
-      const res = await api.get('/Menus/all');
-      setMenus(res.data || []);
+      const res = await axios.get('http://127.0.0.1:5108/api/DynamicMenus/tree');
+      if (res.data.success) {
+        setMenus(res.data.menus || []);
+        // Expand all parents by default for easy visual editing
+        const exp = {};
+        (res.data.menus || []).forEach(m => { exp[m.id] = true; });
+        setExpandedParents(exp);
+      }
     } catch (err) {
-      console.error('Failed to load master menus', err);
-      setErrorMsg('Failed to load menus from server.');
+      console.error('Failed to load menu tree:', err);
+      setSaveError('Failed to load dynamic menus from backend.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Get list of parent menus (where parentMenuId is null)
-  const parentMenus = menus.filter(m => !m.parentMenuId);
+  const toggleExpand = (id) => {
+    setExpandedParents(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-  const openAddModal = () => {
-    setFormData({
+  // Open Modal to Add Parent Menu
+  const handleOpenAddParent = () => {
+    setIsEditMode(false);
+    setTargetParentId(null);
+    setEditingId(null);
+    setForm({
       title: '',
       menuKey: '',
-      serviceCode: 'RCS',
-      parentMenuId: '',
-      routePath: '/rcs/custom',
-      sortOrder: 1,
+      routePath: '/custom',
+      icon: 'Layers',
+      sortOrder: menus.length + 1,
       isActive: true,
-      icon: 'fa-circle'
+      badgeText: '',
+      badgeColor: '#22c55e'
     });
-    setModalMode('ADD');
-    setErrorMsg('');
+    setShowModal(true);
   };
 
-  const openEditModal = (menu) => {
-    setSelectedMenu(menu);
-    setFormData({
-      title: menu.title,
-      menuKey: menu.menuKey,
-      serviceCode: menu.serviceCode,
-      parentMenuId: menu.parentMenuId ? String(menu.parentMenuId) : '',
-      routePath: menu.routePath,
-      sortOrder: menu.sortOrder,
-      isActive: menu.isActive,
-      icon: menu.icon || 'fa-circle'
+  // Open Modal to Add Submenu under specific parent
+  const handleOpenAddSubmenu = (parent) => {
+    setIsEditMode(false);
+    setTargetParentId(parent.id);
+    setEditingId(null);
+    const subCount = parent.SubMenus ? parent.SubMenus.length : (parent.subMenus ? parent.subMenus.length : 0);
+    setForm({
+      title: '',
+      menuKey: '',
+      routePath: `${parent.routePath || '/custom'}/sub`,
+      icon: 'ChevronRight',
+      sortOrder: subCount + 1,
+      isActive: true,
+      badgeText: '',
+      badgeColor: '#22c55e'
     });
-    setModalMode('EDIT');
-    setErrorMsg('');
+    setShowModal(true);
   };
 
-  const handleSaveMenu = async (e) => {
+  // Open Modal to Edit Existing Menu/Submenu
+  const handleOpenEdit = (item, parentId = null) => {
+    setIsEditMode(true);
+    setTargetParentId(parentId);
+    setEditingId(item.id);
+    setForm({
+      title: item.title,
+      menuKey: item.menuKey,
+      routePath: item.routePath || '',
+      icon: item.icon || 'Layers',
+      sortOrder: item.sortOrder || 1,
+      isActive: item.isActive !== false,
+      badgeText: item.badgeText || '',
+      badgeColor: item.badgeColor || '#22c55e'
+    });
+    setShowModal(true);
+  };
+
+  // Save Modal Form (In Memory Tree)
+  const handleModalSubmit = (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.menuKey || !formData.routePath) {
-      setErrorMsg('Please enter Title, Menu Key, and Route Path.');
-      return;
-    }
+    const updatedTree = JSON.parse(JSON.stringify(menus));
 
-    try {
-      setSubmitting(true);
-      setErrorMsg('');
-
-      const payload = {
-        title: formData.title.trim(),
-        menuKey: formData.menuKey.trim().toUpperCase(),
-        serviceCode: formData.serviceCode.trim().toUpperCase(),
-        parentMenuId: formData.parentMenuId ? parseInt(formData.parentMenuId) : null,
-        routePath: formData.routePath.trim(),
-        sortOrder: parseInt(formData.sortOrder) || 0,
-        isActive: formData.isActive,
-        icon: formData.icon?.trim() || 'fa-circle'
-      };
-
-      if (modalMode === 'ADD') {
-        await api.post('/Menus', payload);
-        setSuccessMsg(`Menu "${formData.title}" created successfully!`);
-      } else if (modalMode === 'EDIT' && selectedMenu) {
-        await api.put(`/Menus/${selectedMenu.id}`, payload);
-        setSuccessMsg(`Menu "${formData.title}" updated successfully!`);
+    if (isEditMode) {
+      // Edit existing
+      if (!targetParentId) {
+        // Top level parent
+        const idx = updatedTree.findIndex(m => m.id === editingId);
+        if (idx !== -1) {
+          updatedTree[idx] = { ...updatedTree[idx], ...form };
+        }
+      } else {
+        // Submenu
+        const parent = updatedTree.find(m => m.id === targetParentId);
+        if (parent) {
+          const subs = parent.subMenus || parent.SubMenus || [];
+          const subIdx = subs.findIndex(s => s.id === editingId);
+          if (subIdx !== -1) {
+            subs[subIdx] = { ...subs[subIdx], ...form };
+          }
+        }
       }
-
-      setModalMode(null);
-      fetchMenus();
-
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err) {
-      console.error('Error saving menu', err);
-      setErrorMsg(err.response?.data?.message || 'Failed to save menu changes.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteMenu = async () => {
-    if (!deleteConfirmMenu) return;
-    try {
-      setSubmitting(true);
-      await api.delete(`/Menus/${deleteConfirmMenu.id}`);
-      setSuccessMsg(`Menu "${deleteConfirmMenu.title}" deleted.`);
-      setDeleteConfirmMenu(null);
-      fetchMenus();
-      setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err) {
-      console.error('Error deleting menu', err);
-      alert(err.response?.data?.message || 'Failed to delete menu. It may have child submenus.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleStatus = async (menu) => {
-    try {
-      const payload = {
-        title: menu.title,
-        menuKey: menu.menuKey,
-        serviceCode: menu.serviceCode,
-        parentMenuId: menu.parentMenuId,
-        routePath: menu.routePath,
-        sortOrder: menu.sortOrder,
-        isActive: !menu.isActive,
-        icon: menu.icon
+    } else {
+      // Create new
+      const newId = 'menu-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+      const newItem = {
+        id: newId,
+        ...form,
+        parentId: targetParentId,
+        subMenus: []
       };
-      await api.put(`/Menus/${menu.id}`, payload);
-      setMenus(prev => prev.map(m => m.id === menu.id ? { ...m, isActive: !m.isActive } : m));
-    } catch (err) {
-      alert('Failed to toggle menu status.');
+
+      if (!targetParentId) {
+        updatedTree.push(newItem);
+      } else {
+        const parent = updatedTree.find(m => m.id === targetParentId);
+        if (parent) {
+          if (!parent.subMenus && !parent.SubMenus) parent.subMenus = [];
+          const list = parent.subMenus || parent.SubMenus;
+          list.push(newItem);
+        }
+      }
+    }
+
+    setMenus(updatedTree);
+    setShowModal(false);
+    setSaveSuccess('Menu updated in visual tree. Click "Save Menu Tree" to persist permanently.');
+    setTimeout(() => setSaveSuccess(''), 4000);
+  };
+
+  // Delete Menu or Submenu
+  const handleDelete = (id, parentId = null) => {
+    if (!window.confirm('Are you sure you want to remove this menu item?')) return;
+    const updatedTree = JSON.parse(JSON.stringify(menus));
+
+    if (!parentId) {
+      const filtered = updatedTree.filter(m => m.id !== id);
+      setMenus(filtered);
+    } else {
+      const parent = updatedTree.find(m => m.id === parentId);
+      if (parent) {
+        const subs = parent.subMenus || parent.SubMenus || [];
+        parent.subMenus = subs.filter(s => s.id !== id);
+        parent.SubMenus = parent.subMenus;
+      }
+      setMenus(updatedTree);
     }
   };
 
-  // Filtered menus
-  const filteredMenus = menus.filter(m => {
-    const matchesSearch = 
-      m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.menuKey.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.routePath.toLowerCase().includes(searchTerm.toLowerCase());
+  // Move Menu Up / Down
+  const handleMoveParent = (index, direction) => {
+    const updatedTree = [...menus];
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= updatedTree.length) return;
 
-    const matchesService = filterService === 'ALL' || m.serviceCode === filterService;
-    const matchesType = 
-      filterType === 'ALL' ? true :
-      filterType === 'PARENT' ? !m.parentMenuId :
-      filterType === 'SUBMENU' ? !!m.parentMenuId : true;
+    const temp = updatedTree[index];
+    updatedTree[index] = updatedTree[targetIdx];
+    updatedTree[targetIdx] = temp;
 
-    return matchesSearch && matchesService && matchesType;
-  });
+    // Refresh sortOrder
+    updatedTree.forEach((m, idx) => { m.sortOrder = idx + 1; });
+    setMenus(updatedTree);
+  };
+
+  const handleMoveSub = (parentIndex, subIndex, direction) => {
+    const updatedTree = JSON.parse(JSON.stringify(menus));
+    const parent = updatedTree[parentIndex];
+    const subs = parent.subMenus || parent.SubMenus || [];
+    const targetIdx = subIndex + direction;
+    if (targetIdx < 0 || targetIdx >= subs.length) return;
+
+    const temp = subs[subIndex];
+    subs[subIndex] = subs[targetIdx];
+    subs[targetIdx] = temp;
+
+    subs.forEach((s, idx) => { s.sortOrder = idx + 1; });
+    parent.subMenus = subs;
+    parent.SubMenus = subs;
+
+    setMenus(updatedTree);
+  };
+
+  // Toggle Active Status
+  const handleToggleActive = (item, parentId = null) => {
+    const updatedTree = JSON.parse(JSON.stringify(menus));
+    if (!parentId) {
+      const parent = updatedTree.find(m => m.id === item.id);
+      if (parent) parent.isActive = !parent.isActive;
+    } else {
+      const parent = updatedTree.find(m => m.id === parentId);
+      if (parent) {
+        const subs = parent.subMenus || parent.SubMenus || [];
+        const sub = subs.find(s => s.id === item.id);
+        if (sub) sub.isActive = !sub.isActive;
+      }
+    }
+    setMenus(updatedTree);
+  };
+
+  // Save Full Tree to Backend API
+  const handleSaveTree = async () => {
+    try {
+      setSaving(true);
+      setSaveError('');
+      const res = await axios.post('http://127.0.0.1:5108/api/DynamicMenus/save-tree', {
+        menus: menus
+      });
+
+      if (res.data.success) {
+        setSaveSuccess('100% Dynamic Menu Tree saved successfully! Sidebar is updated live.');
+        // Trigger global event so Sidebar updates immediately without full page reload
+        window.dispatchEvent(new Event('lead_mgmt_menus_updated'));
+        setTimeout(() => setSaveSuccess(''), 4000);
+      }
+    } catch (err) {
+      setSaveError(err.response?.data?.message || 'Failed to save menu tree.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reset to Defaults
+  const handleResetDefaults = async () => {
+    if (!window.confirm('Reset all menus and submenus to standard telecom defaults? Any custom menus will be reset.')) return;
+    try {
+      setLoading(true);
+      const res = await axios.post('http://127.0.0.1:5108/api/DynamicMenus/reset-defaults');
+      if (res.data.success) {
+        setMenus(res.data.menus || []);
+        window.dispatchEvent(new Event('lead_mgmt_menus_updated'));
+        setSaveSuccess('Menus reset to standard telecom defaults.');
+        setTimeout(() => setSaveSuccess(''), 4000);
+      }
+    } catch (err) {
+      setSaveError('Failed to reset menus.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ maxWidth: '1600px', margin: '0 auto', paddingBottom: '60px' }}>
       
-      {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1e293b', margin: 0 }}>
-              Dynamic Menu Management & Configuration
-            </h2>
-            <span className="badge badge-primary" style={{ fontSize: '11px', fontWeight: 700 }}>
-              SuperAdmin Control
-            </span>
+      {/* Sleek Enterprise Blue Header Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '14px 22px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 14px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 42,
+            height: 42,
+            borderRadius: '10px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Sliders size={24} color="#ffffff" />
           </div>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: 4 }}>
-            Create new parent categories or submenus, reorder navigation hierarchy, and dynamically change menu names & linked pages.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '17px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                Dynamic Menu & Sub-Menu Management Hub
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '4px', letterSpacing: '0.4px' }}>
+                100% DYNAMIC & REAL-TIME
+              </span>
+            </div>
+            <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.9)' }}>
+              Create parent menu categories, add submenus, customize icons, re-order navigation, and bind target routes.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button 
-            type="button" 
-            className="btn btn-primary"
-            onClick={openAddModal}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={handleOpenAddParent}
+            style={{
+              background: '#ffffff',
+              color: '#0284c7',
+              border: 'none',
+              padding: '7px 16px',
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+            }}
           >
-            <PlusCircle size={15} />
-            <span>Add New Menu</span>
+            <Plus size={15} /> Add Parent Category
           </button>
 
-          <button 
-            type="button" 
-            className="btn btn-outline"
-            onClick={fetchMenus}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+          <button
+            onClick={handleSaveTree}
+            disabled={saving}
+            style={{
+              background: '#22c55e',
+              color: '#ffffff',
+              border: 'none',
+              padding: '7px 16px',
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(34, 197, 94, 0.3)'
+            }}
           >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
+            {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />} Save Menu Tree
+          </button>
+
+          <button
+            onClick={handleResetDefaults}
+            style={{
+              background: 'rgba(255, 255, 255, 0.18)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.35)',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            <RotateCcw size={13} /> Reset Defaults
           </button>
         </div>
       </div>
 
-      {/* Success Notification */}
-      {successMsg && (
-        <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: '12px 16px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CheckCircle2 size={18} color="#059669" />
-          <span style={{ fontWeight: 700, fontSize: '13.5px' }}>{successMsg}</span>
+      {/* Notifications */}
+      {saveSuccess && (
+        <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '12px', padding: '12px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: '#15803d', fontWeight: 700, fontSize: '13.5px' }}>
+          <CheckCircle2 size={20} /> {saveSuccess}
+        </div>
+      )}
+      {saveError && (
+        <div style={{ background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: '12px', padding: '12px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', color: '#b91c1c', fontWeight: 700, fontSize: '13.5px' }}>
+          <AlertCircle size={20} /> {saveError}
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div className="card" style={{ padding: '16px', margin: 0, borderLeft: '4px solid #0a66c2' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Master Menus</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#1e293b', marginTop: 4 }}>{menus.length}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>Registered in Database</div>
-        </div>
+      {/* Dynamic Menu Tree Cards Container */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {menus.map((parent, pIdx) => {
+          const ParentIcon = getIconComponent(parent.icon);
+          const isExpanded = expandedParents[parent.id] !== false;
+          const subMenus = parent.subMenus || parent.SubMenus || [];
 
-        <div className="card" style={{ padding: '16px', margin: 0, borderLeft: '4px solid #10b981' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Parent Categories</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981', marginTop: 4 }}>{parentMenus.length}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>Top-Level Services</div>
-        </div>
-
-        <div className="card" style={{ padding: '16px', margin: 0, borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Submenus / Pages</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#f59e0b', marginTop: 4 }}>{menus.length - parentMenus.length}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>Nested Dynamic Sub-items</div>
-        </div>
-
-        <div className="card" style={{ padding: '16px', margin: 0, borderLeft: '4px solid #8b5cf6' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Active Menus</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#8b5cf6', marginTop: 4 }}>{menus.filter(m => m.isActive).length}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', marginTop: 2 }}>Currently Visible</div>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="card" style={{ padding: '16px 20px', margin: 0 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-          
-          {/* Search Box */}
-          <div style={{ position: 'relative', minWidth: '260px', flex: 1 }}>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search by Menu Title, Key (e.g. RCS_CAMPAIGNS), or Route..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '36px', borderRadius: '24px' }}
-            />
-            <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: '#94a3b8' }} />
-          </div>
-
-          {/* Service Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Service:</span>
-            <select 
-              className="form-select" 
-              style={{ fontSize: '12.5px', padding: '6px 12px', borderRadius: '20px', width: 'auto' }}
-              value={filterService}
-              onChange={(e) => setFilterService(e.target.value)}
+          return (
+            <div 
+              key={parent.id} 
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '14px',
+                overflow: 'hidden',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                transition: 'all 0.2s ease'
+              }}
             >
-              <option value="ALL">All Services</option>
-              {availableServices.map(s => (
-                <option key={s.code} value={s.code}>{s.label}</option>
-              ))}
-            </select>
-          </div>
+              {/* Parent Category Header Row */}
+              <div style={{
+                background: '#f8fafc',
+                borderBottom: isExpanded && subMenus.length > 0 ? '1px solid #e2e8f0' : 'none',
+                padding: '12px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={() => toggleExpand(parent.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '2px', display: 'flex', alignItems: 'center' }}
+                  >
+                    {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                  </button>
 
-          {/* Type Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Type:</span>
-            <select 
-              className="form-select" 
-              style={{ fontSize: '12.5px', padding: '6px 12px', borderRadius: '20px', width: 'auto' }}
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-            >
-              <option value="ALL">All Levels</option>
-              <option value="PARENT">Parent Categories Only</option>
-              <option value="SUBMENU">Submenus Only</option>
-            </select>
-          </div>
-        </div>
-      </div>
+                  <div style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '8px',
+                    background: '#e0f2fe',
+                    color: '#0284c7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ParentIcon size={18} />
+                  </div>
 
-      {/* Menus Table */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', margin: 0 }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafafa' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#1e293b' }}>
-            Registered Dynamic Menus ({filteredMenus.length})
-          </h3>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            Changes sync dynamically to user permission matrices and sidebars
-          </span>
-        </div>
-
-        <div className="table-responsive">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: '60px' }}>ID</th>
-                <th>Menu Name (Title)</th>
-                <th>Menu Key</th>
-                <th>Parent Category</th>
-                <th>Service Code</th>
-                <th>Linked Route / Dynamic Page</th>
-                <th style={{ textAlign: 'center' }}>Sort</th>
-                <th style={{ textAlign: 'center' }}>Status</th>
-                <th style={{ textAlign: 'right', paddingRight: '20px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMenus.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
-                    {loading ? 'Loading menus...' : 'No menus matched your search criteria.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredMenus.map(m => {
-                  const parentObj = menus.find(p => p.id === m.parentMenuId);
-                  const isParent = !m.parentMenuId;
-
-                  return (
-                    <tr key={m.id} style={{ background: isParent ? '#f8fafc' : '#ffffff' }}>
-                      <td style={{ fontWeight: 700, color: '#64748b', fontSize: '12px' }}>#{m.id}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {isParent ? (
-                            <span style={{ 
-                              display: 'inline-flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              width: 22, 
-                              height: 22, 
-                              borderRadius: 4, 
-                              background: '#e0f2fe', 
-                              color: '#0a66c2', 
-                              fontSize: '11px',
-                              fontWeight: 800
-                            }}>
-                              📁
-                            </span>
-                          ) : (
-                            <span style={{ color: '#94a3b8', marginLeft: 8 }}>↳</span>
-                          )}
-                          <span style={{ fontWeight: isParent ? 800 : 600, color: isParent ? '#0a66c2' : '#1e293b', fontSize: '13.5px' }}>
-                            {m.title}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <code style={{ 
-                          background: '#f1f5f9', 
-                          padding: '2px 6px', 
-                          borderRadius: '4px', 
-                          fontSize: '11.5px', 
-                          color: '#0f172a',
-                          fontWeight: 600
-                        }}>
-                          {m.menuKey}
-                        </code>
-                      </td>
-                      <td>
-                        {parentObj ? (
-                          <span className="badge badge-cold" style={{ fontSize: '11px' }}>
-                            {parentObj.title}
-                          </span>
-                        ) : (
-                          <span className="badge badge-primary" style={{ fontSize: '10.5px', fontWeight: 700 }}>
-                            Root Category
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span style={{ 
-                          fontSize: '11px', 
-                          fontWeight: 700, 
-                          color: '#475569',
-                          background: '#f1f5f9',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          border: '1px solid #e2e8f0'
-                        }}>
-                          {m.serviceCode}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                        {parent.title}
+                      </span>
+                      {parent.badgeText && (
+                        <span style={{ background: parent.badgeColor || '#22c55e', color: '#fff', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                          {parent.badgeText}
                         </span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '12px', color: '#64748b', fontFamily: 'monospace' }}>
-                          {m.routePath}
+                      )}
+                      {!parent.isActive && (
+                        <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '9.5px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                          DISABLED
                         </span>
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#1e293b' }}>
-                        {m.sortOrder}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(m)}
-                          style={{
-                            background: m.isActive ? '#ecfdf5' : '#f1f5f9',
-                            color: m.isActive ? '#059669' : '#94a3b8',
-                            border: `1px solid ${m.isActive ? '#a7f3d0' : '#e2e8f0'}`,
-                            borderRadius: '12px',
-                            padding: '2px 10px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {m.isActive ? 'Active' : 'Inactive'}
-                        </button>
-                      </td>
-                      <td style={{ textAlign: 'right', paddingRight: '20px' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
-                          <button 
-                            type="button" 
-                            className="btn btn-outline btn-sm"
-                            onClick={() => openEditModal(m)}
-                            title="Edit Menu Name, Key or Linked Page"
-                            style={{ padding: '4px 10px' }}
-                          >
-                            <Edit3 size={13} color="#0a66c2" />
-                            <span>Edit</span>
-                          </button>
-
-                          <button 
-                            type="button" 
-                            className="btn btn-outline btn-sm"
-                            onClick={() => setDeleteConfirmMenu(m)}
-                            title="Delete Menu"
-                            style={{ padding: '4px 8px', borderColor: '#fecaca', color: '#dc2626' }}
-                          >
-                            <Trash2 size={13} color="#dc2626" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ADD / EDIT MENU MODAL */}
-      {modalMode && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '580px', width: '100%' }}>
-            
-            {/* Modal Header */}
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '8px',
-                  background: '#e0f2fe',
-                  color: '#0a66c2',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {modalMode === 'ADD' ? <FolderPlus size={20} /> : <Edit3 size={20} />}
+                      )}
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', gap: '10px', marginTop: '2px' }}>
+                      <span>Key: <code style={{ color: '#0284c7' }}>{parent.menuKey}</code></span>
+                      <span>Route: <code style={{ color: '#475569' }}>{parent.routePath || '—'}</code></span>
+                      <span>Submenus: <strong style={{ color: '#0f172a' }}>{subMenus.length}</strong></span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 800, margin: 0, color: '#1e293b' }}>
-                    {modalMode === 'ADD' ? 'Add New Dynamic Menu' : `Edit Menu: ${selectedMenu?.title}`}
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
-                    Configure menu name, key, service category, and linked dynamic page route.
-                  </p>
+
+                {/* Parent Action Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    onClick={() => handleOpenAddSubmenu(parent)}
+                    style={{
+                      background: '#e0f2fe',
+                      color: '#0284c7',
+                      border: '1px solid #bae6fd',
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Plus size={13} /> Add Submenu
+                  </button>
+
+                  <button
+                    onClick={() => handleMoveParent(pIdx, -1)}
+                    disabled={pIdx === 0}
+                    title="Move Up"
+                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: pIdx === 0 ? 'not-allowed' : 'pointer', color: pIdx === 0 ? '#cbd5e1' : '#475569' }}
+                  >
+                    <ArrowUp size={13} />
+                  </button>
+
+                  <button
+                    onClick={() => handleMoveParent(pIdx, 1)}
+                    disabled={pIdx === menus.length - 1}
+                    title="Move Down"
+                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: pIdx === menus.length - 1 ? 'not-allowed' : 'pointer', color: pIdx === menus.length - 1 ? '#cbd5e1' : '#475569' }}
+                  >
+                    <ArrowDown size={13} />
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleActive(parent)}
+                    title={parent.isActive ? 'Disable Menu' : 'Enable Menu'}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: parent.isActive ? '1px solid #86efac' : '1px solid #cbd5e1',
+                      background: parent.isActive ? '#f0fdf4' : '#f8fafc',
+                      color: parent.isActive ? '#15803d' : '#64748b',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {parent.isActive ? 'Active' : 'Disabled'}
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenEdit(parent)}
+                    title="Edit Category"
+                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', color: '#475569' }}
+                  >
+                    <Edit3 size={13} />
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(parent.id)}
+                    title="Delete Category"
+                    style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fff', cursor: 'pointer', color: '#dc2626' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
 
-              <button 
-                type="button" 
-                onClick={() => setModalMode(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
-              >
-                <X size={20} />
-              </button>
+              {/* Submenus List */}
+              {isExpanded && subMenus.length > 0 && (
+                <div style={{ padding: '10px 18px 14px 44px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {subMenus.map((sub, sIdx) => {
+                    const SubIcon = getIconComponent(sub.icon);
+
+                    return (
+                      <div
+                        key={sub.id || sIdx}
+                        style={{
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          padding: '8px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <SubIcon size={14} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                              {sub.title}
+                              {!sub.isActive && (
+                                <span style={{ marginLeft: 6, background: '#fee2e2', color: '#991b1b', fontSize: '9px', fontWeight: 800, padding: '1px 5px', borderRadius: '3px' }}>
+                                  OFF
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>
+                              Route: <code style={{ color: '#0284c7' }}>{sub.routePath || '—'}</code> • Key: <code>{sub.menuKey}</code>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={() => handleMoveSub(pIdx, sIdx, -1)}
+                            disabled={sIdx === 0}
+                            title="Move Up"
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: sIdx === 0 ? 'not-allowed' : 'pointer', color: sIdx === 0 ? '#cbd5e1' : '#475569' }}
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => handleMoveSub(pIdx, sIdx, 1)}
+                            disabled={sIdx === subMenus.length - 1}
+                            title="Move Down"
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: sIdx === subMenus.length - 1 ? 'not-allowed' : 'pointer', color: sIdx === subMenus.length - 1 ? '#cbd5e1' : '#475569' }}
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleActive(sub, parent.id)}
+                            style={{
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: sub.isActive ? '1px solid #86efac' : '1px solid #cbd5e1',
+                              background: sub.isActive ? '#f0fdf4' : '#fff',
+                              color: sub.isActive ? '#15803d' : '#64748b',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {sub.isActive ? 'Active' : 'Off'}
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenEdit(sub, parent.id)}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', color: '#475569' }}
+                          >
+                            <Edit3 size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => handleDelete(sub.id, parent.id)}
+                            style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #fecaca', background: '#fff', cursor: 'pointer', color: '#dc2626' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add / Edit Menu Modal */}
+      {showModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{ background: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '520px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', color: '#ffffff', padding: '16px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sliders size={20} />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
+                  {isEditMode ? 'Edit Menu Item' : (targetParentId ? 'Add New Sub-Menu' : 'Add New Parent Category')}
+                </h3>
+              </div>
+              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><X size={18} /></button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSaveMenu}>
-              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                
-                {errorMsg && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}>
-                    {errorMsg}
-                  </div>
-                )}
-
-                {/* ROW 1: Menu Title (Name) */}
+            <form onSubmit={handleModalSubmit} style={{ padding: '22px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                 <div>
-                  <label className="form-label" style={{ fontWeight: 700 }}>Menu Name / Title *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. RCS Live Tracker, Custom Voice Report"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Menu Title *
+                  </label>
+                  <input
+                    type="text"
                     required
+                    placeholder="e.g. WHATSAPP BOX"
+                    value={form.title}
+                    onChange={e => setForm({ ...form, title: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 700, boxSizing: 'border-box' }}
                   />
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>This is the display title seen by users in the navigation sidebar.</span>
                 </div>
 
-                {/* ROW 2: Menu Key & Service Code */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <label className="form-label" style={{ fontWeight: 700 }}>Menu Key (Unique ID) *</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="e.g. RCS_LIVE_TRACKER"
-                      value={formData.menuKey}
-                      onChange={(e) => setFormData({ ...formData, menuKey: e.target.value.toUpperCase() })}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label" style={{ fontWeight: 700 }}>Service Category *</label>
-                    <select 
-                      className="form-select"
-                      value={formData.serviceCode}
-                      onChange={(e) => setFormData({ ...formData, serviceCode: e.target.value })}
-                    >
-                      {availableServices.map(s => (
-                        <option key={s.code} value={s.code}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* ROW 3: Parent Category Selection */}
                 <div>
-                  <label className="form-label" style={{ fontWeight: 700 }}>Parent Menu (Optional)</label>
-                  <select 
-                    className="form-select"
-                    value={formData.parentMenuId}
-                    onChange={(e) => setFormData({ ...formData, parentMenuId: e.target.value })}
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Menu Key (Navigation ID) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. WHATSAPP_BOX"
+                    value={form.menuKey}
+                    onChange={e => setForm({ ...form, menuKey: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Route URL Path
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. /whatsapp"
+                    value={form.routePath}
+                    onChange={e => setForm({ ...form, routePath: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Choose Icon
+                  </label>
+                  <select
+                    value={form.icon}
+                    onChange={e => setForm({ ...form, icon: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
                   >
-                    <option value="">None (Top-Level Parent Category)</option>
-                    {parentMenus.filter(p => p.id !== selectedMenu?.id).map(p => (
-                      <option key={p.id} value={p.id}>
-                        📁 {p.title} ({p.serviceCode})
+                    {ICON_OPTIONS.map(opt => (
+                      <option key={opt.name} value={opt.name}>
+                        {opt.label} ({opt.name})
                       </option>
                     ))}
                   </select>
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>Select a parent if this is a submenu item under an existing service.</span>
                 </div>
-
-                {/* ROW 4: Linked Dynamic Route / Page */}
-                <div>
-                  <label className="form-label" style={{ fontWeight: 700 }}>Linked Route / Dynamic Page *</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. /rcs/custom-tracker, /voice/report"
-                    value={formData.routePath}
-                    onChange={(e) => setFormData({ ...formData, routePath: e.target.value })}
-                    required
-                  />
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>The frontend route path or page identifier mapped to this menu.</span>
-                </div>
-
-                {/* ROW 5: Sort Order & Is Active */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'center' }}>
-                  <div>
-                    <label className="form-label" style={{ fontWeight: 700 }}>Sort Order</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={formData.sortOrder}
-                      onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
-                    />
-                  </div>
-
-                  <div style={{ paddingTop: '22px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={formData.isActive}
-                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                        style={{ width: 16, height: 16, accentColor: '#0a66c2' }}
-                      />
-                      <span>Active & Visible in Sidebar</span>
-                    </label>
-                  </div>
-                </div>
-
               </div>
 
-              {/* Modal Footer */}
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#f8fafc' }}>
-                <button 
-                  type="button" 
-                  className="btn btn-outline"
-                  onClick={() => setModalMode(null)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Badge Tag (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. NEW or PRO"
+                    value={form.badgeText}
+                    onChange={e => setForm({ ...form, badgeText: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                </div>
 
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={submitting}
-                  style={{ fontWeight: 700 }}
-                >
-                  {submitting ? 'Saving...' : (modalMode === 'ADD' ? 'Create Dynamic Menu' : 'Save Changes')}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Display Order
+                  </label>
+                  <input
+                    type="number"
+                    value={form.sortOrder}
+                    onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 1 })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input
+                  type="checkbox"
+                  id="menuActive"
+                  checked={form.isActive}
+                  onChange={e => setForm({ ...form, isActive: e.target.checked })}
+                />
+                <label htmlFor="menuActive" style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}>
+                  Enable Menu in Sidebar (Active)
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" style={{ padding: '10px 22px', borderRadius: '8px', border: 'none', background: '#0284c7', color: '#ffffff', fontSize: '13px', fontWeight: 800, cursor: 'pointer' }}>
+                  {isEditMode ? 'Update Item' : 'Add to Tree'}
                 </button>
               </div>
             </form>
-
-          </div>
-        </div>
-      )}
-
-      {/* DELETE CONFIRMATION MODAL */}
-      {deleteConfirmMenu && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ maxWidth: '440px', width: '100%', padding: '24px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <AlertCircle size={28} />
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1e293b', margin: '0 0 6px 0' }}>
-                Delete Menu?
-              </h3>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-                Are you sure you want to delete <b>"{deleteConfirmMenu.title}"</b> (#{deleteConfirmMenu.id})? 
-                This will also remove it from all user permission matrices.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button 
-                type="button" 
-                className="btn btn-outline" 
-                style={{ flex: 1 }}
-                onClick={() => setDeleteConfirmMenu(null)}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-danger" 
-                style={{ flex: 1, fontWeight: 700 }}
-                onClick={handleDeleteMenu}
-                disabled={submitting}
-              >
-                {submitting ? 'Deleting...' : 'Yes, Delete Menu'}
-              </button>
-            </div>
           </div>
         </div>
       )}
 
     </div>
   );
-};
-
+}

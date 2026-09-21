@@ -42,6 +42,33 @@ public class LeadRecord
     [MaxLength(1000)]
     public string? Notes { get; set; }
 
+    [MaxLength(120)]
+    public string? Email { get; set; }
+
+    [MaxLength(100)]
+    public string? City { get; set; }
+
+    [MaxLength(100)]
+    public string? State { get; set; }
+
+    [MaxLength(100)]
+    public string? Country { get; set; }
+
+    [MaxLength(60)]
+    public string? IpAddress { get; set; }
+
+    [MaxLength(100)]
+    public string? ServiceRequired { get; set; }
+
+    [MaxLength(100)]
+    public string? LeadSource { get; set; } = "AI Chat Assistant";
+
+    [MaxLength(50)]
+    public string? InquiryType { get; set; } = "Sales";
+
+    [MaxLength(4000)]
+    public string? ChatTranscript { get; set; }
+
     [MaxLength(500)]
     public string? CustomData { get; set; }
 

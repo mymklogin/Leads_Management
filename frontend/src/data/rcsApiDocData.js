@@ -1,8 +1,18 @@
-// Comprehensive OmniDigital RCS API Documentation Dataset
-// 100% Faithful to Documentation.html (vendor portal)
+// Dynamic White-Label RCS API Documentation Dataset
+export const DEFAULT_API_KEY = "130AB08588EF4D58B74E96D1A5CC9063993";
 
-export const DEFAULT_API_KEY = "A58463AEB7AE41CD9901D23D18BC2482883";
-export const BASE_URL = "https://omnidigital.co.in/api/RCSApi";
+export const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port === '5173' ? '5108' : (window.location.port ? window.location.port : '');
+    const hostWithPort = port ? `${hostname}:${port}` : hostname;
+    return `${protocol}//${hostWithPort}/api/RCSApi`;
+  }
+  return "http://10.25.215.137:5108/api/RCSApi";
+};
+
+export const BASE_URL = getApiBaseUrl();
 
 export const QUICK_NAV_ITEMS = [
   {
@@ -61,14 +71,14 @@ export const AUTH_DOC = {
   apiKey: DEFAULT_API_KEY,
   baseUrl: BASE_URL,
   howToAuthenticate: "Include your API key in every request as a query parameter:",
-  requestUrlPattern: "https://omnidigital.co.in/api/RCSApi/{endpoint}?apiKey=" + DEFAULT_API_KEY
+  requestUrlPattern: "${BASE_URL}/{endpoint}?apiKey=${API_KEY}"
 };
 
 export const CREATE_CAMPAIGN_DOC = {
   endpoint: "/CreateCampaign",
   method: "POST",
   description: "Creates and submits a new RCS campaign with optional SMS fallback.",
-  requestUrl: "POST https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "POST ${BASE_URL}/CreateCampaign?apiKey=${API_KEY}",
   headers: { "Content-Type": "application/json" },
   parameters: [
   [
@@ -161,16 +171,16 @@ export const CREATE_CAMPAIGN_DOC = {
     warning: "{\n                    \"Status\": \"WARNING\",\n                    \"Response\": {\n                    \"Message\": \"Invalid API Key!\"\n  }\n}",
     error: "{\n                    \"Status\": \"WARNING\",\n                    \"Response\": {\n                    \"Message\": \"Insufficient RCS balance. Your balance: 100, required: 500\"\n  }\n}"
   },
-  curl: "curl -X POST \"https://omnidigital.co.in/api/RCSApi/CreateCampaign?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateId\": \"vendor_tpl_abc456\",\n    \"CampaignName\": \"Test_Campaign\",\n    \"MobileNumbers\": [\"9876543210\", \"9123456789\"],\n    \"EnableFallback\": false,\n    \"CustomParam1\": \"ORDER-12345\",\n    \"CustomParam2\": \"BATCH-A\",\n    \"CustomParam3\": \"promo\",\n    \"CustomParam4\": \"source_web\"\n  }'"
+  curl: "curl -X POST \"${BASE_URL}/CreateCampaign?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateId\": \"vendor_tpl_abc456\",\n    \"CampaignName\": \"Test_Campaign\",\n    \"MobileNumbers\": [\"9876543210\", \"9123456789\"],\n    \"EnableFallback\": false,\n    \"CustomParam1\": \"ORDER-12345\",\n    \"CustomParam2\": \"BATCH-A\",\n    \"CustomParam3\": \"promo\",\n    \"CustomParam4\": \"source_web\"\n  }'"
 };
 
 export const CHECK_BALANCE_DOC = {
   endpoint: "/CheckRcsBalance",
   method: "GET",
   description: "Retrieves the current RCS and SMS balance for the authenticated account.",
-  requestUrl: "GET https://omnidigital.co.in/api/RCSApi/CheckRcsBalance?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "GET ${BASE_URL}/CheckRcsBalance?apiKey=${API_KEY}",
   response: "{\n                    \"Status\": \"OK\",\n                    \"Response\": {\n                    \"RcsBalance\": 5000,\n                    \"SmsBalance\": 10000\n  }\n}",
-  curl: "curl -X GET \"https://omnidigital.co.in/api/RCSApi/CheckRcsBalance?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\""
+  curl: "curl -X GET \"${BASE_URL}/CheckRcsBalance?apiKey=${API_KEY}\""
 };
 
 export const GET_TEMPLATES_DOC = {
@@ -210,10 +220,10 @@ export const GET_TEMPLATES_DOC = {
   ]
 ],
   exampleUrls: [
-    { label: "All Templates for a Bot", url: "GET https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=" + DEFAULT_API_KEY + "&botId=bot_abc123" },
-    { label: "Filter by Template Name", url: "GET https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=" + DEFAULT_API_KEY + "&botId=bot_abc123&templateName=Welcome" },
-    { label: "Filter by Template Type", url: "GET https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=" + DEFAULT_API_KEY + "&botId=bot_abc123&templateType=RichCard" },
-    { label: "Combined Filters", url: "GET https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=" + DEFAULT_API_KEY + "&botId=bot_abc123&templateName=promo&templateType=PlainText" }
+    { label: "All Templates for a Bot", url: "GET ${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123" },
+    { label: "Filter by Template Name", url: "GET ${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateName=Welcome" },
+    { label: "Filter by Template Type", url: "GET ${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateType=RichCard" },
+    { label: "Combined Filters", url: "GET ${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateName=promo&templateType=PlainText" }
   ],
   responseSchema: {
     commonFields: [
@@ -418,14 +428,14 @@ export const GET_TEMPLATES_DOC = {
     "status (Optional): Exact match on Active, Pending, or Rejected",
     "Combined: When multiple optional filters are provided, they are combined with AND logic"
   ],
-  mixedExampleResponse: "GET https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=bot_abc123&templateName=promo&templateType=PlainText",
-  errorResponse: "{\n  \"Status\": \"OK\",\n  \"Response\": {\n    \"Templates\": [\n      {\n        \"BotId\": \"bot_abc123\",\n        \"BotName\": \"Marketing Bot\",\n        \"TemplateName\": \"Welcome_Msg\",\n        \"TemplateType\": \"PlainText\",\n        \"TemplateStatus\": \"Active\",\n        \"TemplateId\": \"vendor_tpl_xyz789\",\n        \"LocalTemplateId\": 10245,\n        \"CreatedDate\": \"2024-12-11 10:30\",\n        \"FailedDescription\": null,\n        \"PlainText\": {\n          \"MessageText\": \"Hello! Welcome to our service.\",\n          \"Suggestions\": [\n            {\n              \"Label\": \"Visit Site\",\n              \"Type\": \"OPEN_URL\",\n              \"Url\": \"https://www.mybrand.com\",\n              \"PostbackData\": null,\n              \"PhoneNumber\": null\n            },\n            {\n              \"Label\": \"Call Us\",\n              \"Type\": \"DIAL\",\n              \"Url\": null,\n              \"PostbackData\": null,\n              \"PhoneNumber\": \"+919876543210\"\n            }\n          ]\n        },\n        \"RichCard\": null,\n        \"Carousel\": null\n      },\n      {\n        \"BotId\": \"bot_abc123\",\n        \"BotName\": \"Marketing Bot\",\n        \"TemplateName\": \"Product_Card\",\n        \"TemplateType\": \"RichCard\",\n        \"TemplateStatus\": \"Active\",\n        \"TemplateId\": \"vendor_tpl_abc456\",\n        \"LocalTemplateId\": 10246,\n        \"CreatedDate\": \"2024-12-15 14:20\",\n        \"FailedDescription\": null,\n        \"PlainText\": null,\n        \"RichCard\": {\n          \"Title\": \"Summer Sale\",\n          \"Description\": \"50% off on all products!\",\n          \"MediaType\": \"IMAGE\",\n          \"MediaHeight\": \"MEDIUM\",\n          \"Orientation\": \"VERTICAL\",\n          \"ImageUrl\": \"https://yourdomain.com/Uploads/RCS/sale.jpg\",\n          \"VideoUrl\": null,\n          \"ThumbUrl\": null,\n          \"PdfUrl\": null,\n          \"Suggestions\": [\n            {\n              \"Label\": \"Shop Now\",\n              \"Type\": \"OPEN_URL\",\n              \"Url\": \"https://shop.mybrand.com/sale\",\n              \"PostbackData\": null,\n              \"PhoneNumber\": null\n            }\n          ]\n        },\n        \"Carousel\": null\n      },\n      {\n        \"BotId\": \"bot_abc123\",\n        \"BotName\": \"Marketing Bot\",\n        \"TemplateName\": \"Catalog_Cards\",\n        \"TemplateType\": \"Carousel\",\n        \"TemplateStatus\": \"Active\",\n        \"TemplateId\": \"vendor_tpl_car001\",\n        \"LocalTemplateId\": 10247,\n        \"CreatedDate\": \"2024-12-20 09:10\",\n        \"FailedDescription\": null,\n        \"PlainText\": null,\n        \"RichCard\": null,\n        \"Carousel\": {\n          \"Cards\": [\n            {\n              \"Title\": \"Product A\",\n              \"Description\": \"Premium product\",\n              \"MediaHeight\": \"MEDIUM\",\n              \"Orientation\": \"VERTICAL\",\n              \"ImageUrl\": \"https://yourdomain.com/Uploads/RCS/product_a.jpg\",\n              \"VideoUrl\": null,\n              \"Suggestions\": [\n                {\n                  \"Label\": \"Buy A\",\n                  \"Type\": \"OPEN_URL\",\n                  \"Url\": \"https://shop.mybrand.com/a\",\n                  \"PostbackData\": null,\n                  \"PhoneNumber\": null\n                }\n              ]\n            },\n            {\n              \"Title\": \"Product B\",\n              \"Description\": \"Best seller\",\n              \"MediaHeight\": \"MEDIUM\",\n              \"Orientation\": \"VERTICAL\",\n              \"ImageUrl\": \"https://yourdomain.com/Uploads/RCS/product_b.jpg\",\n              \"VideoUrl\": null,\n              \"Suggestions\": [\n                {\n                  \"Label\": \"Buy B\",\n                  \"Type\": \"OPEN_URL\",\n                  \"Url\": \"https://shop.mybrand.com/b\",\n                  \"PostbackData\": null,\n                  \"PhoneNumber\": null\n                }\n              ]\n            }\n          ]\n        }\n      }\n    ],\n    \"TotalCount\": 3\n  }\n}",
+  mixedExampleResponse: "GET ${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateName=promo&templateType=PlainText",
+  errorResponse: "{\n  \"Status\": \"OK\",\n  \"Response\": {\n    \"Templates\": [\n      {\n        \"BotId\": \"bot_abc123\",\n        \"BotName\": \"Marketing Bot\",\n        \"TemplateName\": \"Welcome_Msg\",\n        \"TemplateType\": \"PlainText\",\n        \"TemplateStatus\": \"Active\",\n        \"TemplateId\": \"vendor_tpl_xyz789\",\n        \"LocalTemplateId\": 10245,\n        \"CreatedDate\": \"2024-12-11 10:30\",\n        \"FailedDescription\": null,\n        \"PlainText\": {\n          \"MessageText\": \"Hello! Welcome to our service.\",\n          \"Suggestions\": [\n            {\n              \"Label\": \"Visit Site\",\n              \"Type\": \"OPEN_URL\",\n              \"Url\": \"https://www.mybrand.com\",\n              \"PostbackData\": null,\n              \"PhoneNumber\": null\n            },\n            {\n              \"Label\": \"Call Us\",\n              \"Type\": \"DIAL\",\n              \"Url\": null,\n              \"PostbackData\": null,\n              \"PhoneNumber\": \"+919876543210\"\n            }\n          ]\n        },\n        \"RichCard\": null,\n        \"Carousel\": null\n      }\n    ],\n    \"TotalCount\": 1\n  }\n}",
   curlExamples: [
-    { label: "Get All Templates", cmd: "{\n                    \"Status\": \"WARNING\",\n                    \"Response\": {\n                    \"Message\": \"botId is required!\"\n  }\n}" },
-    { label: "Filter by Name", cmd: "{\n                    \"Status\": \"WARNING\",\n                    \"Response\": {\n                    \"Message\": \"Invalid API Key!\"\n  }\n}" },
-    { label: "Filter by Type", cmd: "{\n                    \"Status\": \"OK\",\n                    \"Response\": {\n                    \"Templates\": [],\n                    \"TotalCount\": 0\n  }\n}" },
-    { label: "Filter by Status", cmd: "curl -X GET \"https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=bot_abc123\"" },
-    { label: "Combined Filters", cmd: "curl -X GET \"https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=A58463AEB7AE41CD9901D23D18BC2482883&botId=bot_abc123&templateName=Welcome\"" }
+    { label: "Get All Templates", cmd: "curl -X GET \"${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123\"" },
+    { label: "Filter by Name", cmd: "curl -X GET \"${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateName=Welcome\"" },
+    { label: "Filter by Type", cmd: "curl -X GET \"${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateType=RichCard\"" },
+    { label: "Filter by Status", cmd: "curl -X GET \"${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&status=Active\"" },
+    { label: "Combined Filters", cmd: "curl -X GET \"${BASE_URL}/GetTemplates?apiKey=${API_KEY}&botId=bot_abc123&templateName=promo&templateType=PlainText\"" }
   ],
   useCases: [
     "Pre-campaign Verification: Check that the template is Active before calling CreateCampaign",
@@ -447,16 +457,16 @@ export const GET_BOTS_DOC = {
     "Your API authentication key"
   ]
 ],
-  requestUrl: "GET https://omnidigital.co.in/api/RCSApi/GetBots?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "GET ${BASE_URL}/GetBots?apiKey=${API_KEY}",
   response: "{\n                    \"Status\": \"OK\",\n                    \"Response\": {\n                    \"Bots\": [\n      {\n                    \"BotId\": \"bot_abc123\",\n                    \"BotName\": \"Marketing Bot\"\n      },\n      {\n                    \"BotId\": \"bot_def456\",\n                    \"BotName\": \"Support Bot\"\n      }\n    ]\n  }\n}",
-  curl: "curl -X GET \"https://omnidigital.co.in/api/RCSApi/GetBots?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\""
+  curl: "curl -X GET \"${BASE_URL}/GetBots?apiKey=${API_KEY}\""
 };
 
 export const CREATE_BOT_DOC = {
   endpoint: "/CreateBot",
   method: "POST",
   description: "Registers a new RCS bot for the authenticated account. Once submitted, the bot undergoes an approval process before it can be used.",
-  requestUrl: "POST https://omnidigital.co.in/api/RCSApi/CreateBot?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "POST ${BASE_URL}/CreateBot?apiKey=${API_KEY}",
   headers: { "Content-Type": "application/json" },
   parameters: [
   [
@@ -752,14 +762,14 @@ export const CREATE_BOT_DOC = {
     "Invalid additional logo URL format! Must be a valid absolute URL."
   ]
 ],
-  curl: "curl -X POST \"https://omnidigital.co.in/api/RCSApi/CreateBot?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"name\": \"MyBrandBot\",\n    \"bot_type\": \"A2P\",\n    \"brandname\": \"MyBrand Pvt Ltd\",\n    \"desc\": \"Official RCS bot for MyBrand notifications\",\n    \"number\": [\"9876543210\"],\n    \"plab\": [\"Main\"],\n    \"email\": [\"support@mybrand.com\"],\n    \"elab\": [\"Support\"],\n    \"message_type\": \"Transactional\",\n    \"logoimageurlrcs\": \"https://cdn.mybrand.com/logo.png\",\n    \"colorCode\": \"#FF5733\",\n    \"extra_details\": {\n      \"fullname\": \"Vijay Kumar\",\n      \"designation\": \"IT Manager\",\n      \"emailid\": \"vijay@mybrand.com\",\n      \"mobile\": \"9876543210\",\n      \"gst\": \"https://cdn.mybrand.com/docs/gst.pdf\",\n      \"pan\": \"https://cdn.mybrand.com/docs/pan.pdf\"\n    }\n  }'"
+  curl: "curl -X POST \"${BASE_URL}/CreateBot?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"name\": \"MyBrandBot\",\n    \"bot_type\": \"A2P\",\n    \"brandname\": \"MyBrand Pvt Ltd\",\n    \"desc\": \"Official RCS bot for MyBrand notifications\",\n    \"number\": [\"9876543210\"],\n    \"plab\": [\"Main\"],\n    \"email\": [\"support@mybrand.com\"],\n    \"elab\": [\"Support\"],\n    \"message_type\": \"Transactional\",\n    \"logoimageurlrcs\": \"https://cdn.mybrand.com/logo.png\",\n    \"colorCode\": \"#FF5733\",\n    \"extra_details\": {\n      \"fullname\": \"Vijay Kumar\",\n      \"designation\": \"IT Manager\",\n      \"emailid\": \"vijay@mybrand.com\",\n      \"mobile\": \"9876543210\",\n      \"gst\": \"https://cdn.mybrand.com/docs/gst.pdf\",\n      \"pan\": \"https://cdn.mybrand.com/docs/pan.pdf\"\n    }\n  }'"
 };
 
 export const CREATE_TEMPLATE_DOC = {
   endpoint: "/CreateTemplate",
   method: "POST",
   description: "Creates a new RCS template (PlainText, RichCard, or Carousel) with optional suggestion buttons. Templates are submitted for vendor approval before they can be used in campaigns.",
-  requestUrl: "POST https://omnidigital.co.in/api/RCSApi/CreateTemplate?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "POST ${BASE_URL}/CreateTemplate?apiKey=${API_KEY}",
   headers: { "Content-Type": "application/json" },
   commonParameters: [
   [
@@ -1102,9 +1112,9 @@ export const CREATE_TEMPLATE_DOC = {
   ]
 ],
   curlExamples: [
-    { label: "Create PlainText Template", cmd: "{\n  \"Status\": \"WARNING\",\n  \"Response\": {\n    \"Message\": \"Vendor did not return a template ID. Template creation may have failed.\"\n  }\n}" },
-    { label: "Create RichCard Template", cmd: "{\n  \"Status\": \"ERROR\",\n  \"Response\": {\n    \"Message\": \"An error occurred while processing the request: {details}\"\n  }\n}" },
-    { label: "Create Carousel Template", cmd: "curl -X POST \"https://omnidigital.co.in/api/RCSApi/CreateTemplate?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateType\": \"PlainText\",\n    \"BotId\": \"bot_abc123\",\n    \"TemplateName\": \"Welcome_Msg\",\n    \"PlainText\": {\n      \"MessageText\": \"Hello! Welcome to our service.\"\n    },\n    \"Suggestions\": [\n      { \"Label\": \"Visit Site\", \"Type\": \"OPEN_URL\", \"Url\": \"https://www.mybrand.com\" }\n    ]\n  }'" }
+    { label: "PlainText Template", cmd: "curl -X POST \"${BASE_URL}/CreateTemplate?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateType\": \"PlainText\",\n    \"BotId\": \"bot_abc123\",\n    \"TemplateName\": \"Welcome_Msg\",\n    \"PlainText\": {\n      \"MessageText\": \"Hello! Welcome to our service.\"\n    },\n    \"Suggestions\": [\n      { \"Label\": \"Visit Site\", \"Type\": \"OPEN_URL\", \"Url\": \"https://www.mybrand.com\" }\n    ]\n  }'" },
+    { label: "RichCard Template", cmd: "curl -X POST \"${BASE_URL}/CreateTemplate?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateType\": \"RichCard\",\n    \"BotId\": \"bot_abc123\",\n    \"TemplateName\": \"Product_Promo\",\n    \"RichCard\": {\n      \"Title\": \"Summer Sale\",\n      \"Description\": \"Get up to 50% off\",\n      \"MediaType\": \"IMAGE\",\n      \"MediaHeight\": \"MEDIUM\",\n      \"Orientation\": \"VERTICAL\",\n      \"ImageUrl\": \"https://cdn.mybrand.com/images/sale.jpg\"\n    }\n  }'" },
+    { label: "Carousel Template", cmd: "curl -X POST \"${BASE_URL}/CreateTemplate?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"TemplateType\": \"Carousel\",\n    \"BotId\": \"bot_abc123\",\n    \"TemplateName\": \"Catalog_Cards\",\n    \"Cards\": [\n      {\n        \"Title\": \"Product A\",\n        \"Description\": \"Premium Product\",\n        \"MediaHeight\": \"MEDIUM\",\n        \"Orientation\": \"VERTICAL\",\n        \"ImageUrl\": \"https://cdn.mybrand.com/images/a.jpg\"\n      },\n      {\n        \"Title\": \"Product B\",\n        \"Description\": \"Best Seller\",\n        \"MediaHeight\": \"MEDIUM\",\n        \"Orientation\": \"VERTICAL\",\n        \"ImageUrl\": \"https://cdn.mybrand.com/images/b.jpg\"\n      }\n    ]\n  }'" }
   ]
 };
 
@@ -1112,7 +1122,7 @@ export const SEND_CHAT_MESSAGE_DOC = {
   endpoint: "/SendChatMessage",
   method: "POST",
   description: "Sends a 1-to-1 conversational RCS text message to a single recipient. Supports two-way communication workflows and automatic STOP suppression rules.",
-  requestUrl: "POST https://omnidigital.co.in/api/RCSApi/SendChatMessage?apiKey=" + DEFAULT_API_KEY,
+  requestUrl: "POST ${BASE_URL}/SendChatMessage?apiKey=${API_KEY}",
   headers: { "Content-Type": "application/json" },
   queryParams: [
   [
@@ -1167,9 +1177,9 @@ export const SEND_CHAT_MESSAGE_DOC = {
   exampleBody: "{\n  \"BotId\": \"bot_abc123\",\n  \"MobileNo\": \"9876543210\",\n  \"MessageText\": \"Thanks for reaching out! How can we help you today?\"\n}",
   responses: {
     success: "{\n  \"Status\": \"OK\",\n  \"Response\": {\n    \"Message\": \"Message sent successfully.\",\n    \"ChatMessageId\": 10245,\n    \"VendorMessageId\": \"msg_9f2c81\",\n    \"Status\": \"SENT\"\n  }\n}",
-    error: "curl -X POST \"https://omnidigital.co.in/api/RCSApi/SendChatMessage?apiKey=A58463AEB7AE41CD9901D23D18BC2482883\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"BotId\": \"bot_abc123\",\n    \"MobileNo\": \"9876543210\",\n    \"MessageText\": \"Thanks for reaching out! How can we help you today?\"\n  }'"
+    error: "{\n  \"Status\": \"WARNING\",\n  \"Response\": {\n    \"Message\": \"Bot not found or does not belong to this customer!\"\n  }\n}"
   },
-  curl: ""
+  curl: "curl -X POST \"${BASE_URL}/SendChatMessage?apiKey=${API_KEY}\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"BotId\": \"bot_abc123\",\n    \"MobileNo\": \"9876543210\",\n    \"MessageText\": \"Thanks for reaching out! How can we help you today?\"\n  }'"
 };
 
 export const WEBHOOK_PAYLOADS_DOC = {
@@ -1350,7 +1360,7 @@ export const WEBHOOK_PAYLOADS_DOC = {
 };
 
 export const ERROR_CODES_DOC = {
-  description: "Complete list of status codes and error messages returned by the OmniDigital RCS API.",
+  description: "Complete list of status codes and error messages returned by the RCS Enterprise Cloud API.",
   rows: [
   [
     "OK",

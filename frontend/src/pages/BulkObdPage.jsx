@@ -169,17 +169,70 @@ export const BulkObdPage = () => {
 
   return (
     <div>
-      {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Bulk OBD Call Reports & Batch Analytics</h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>
-            Consolidated batch execution metrics, duration analysis, and date-wise CSV export records
-          </p>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Layers size={20} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                Bulk OBD Call Reports & Batch Analytics
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                BATCH TELEPHONY
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Consolidated batch execution metrics, duration analysis, and date-wise CSV export records
+            </p>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-primary" onClick={downloadFilteredBatchesCsv} title="Download CSV for current date selection">
+          <button 
+            type="button"
+            className="btn" 
+            onClick={downloadFilteredBatchesCsv} 
+            title="Download CSV for current date selection"
+            style={{ 
+              background: '#ffffff', 
+              color: '#0284c7', 
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 14px',
+              fontWeight: 700, 
+              fontSize: '12px',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
+          >
             <Download size={14} />
             <span>{fromDate || toDate ? 'Export Date-Wise Batches (CSV)' : 'Export All Batches (CSV)'}</span>
           </button>

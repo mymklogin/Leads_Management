@@ -14,4 +14,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations/20260917_balance_audit.sql" />
+  </ItemGroup>
 </Project>

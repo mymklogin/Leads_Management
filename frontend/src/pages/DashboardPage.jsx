@@ -174,25 +174,65 @@ export const DashboardPage = ({ onNavigateToLeads }) => {
 
   return (
     <div>
-      {/* Top Bar: View Mode Switcher */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>Real-Time Performance Overview</h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>Consolidated metrics for OBD calls and multi-service dispatches</p>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <TrendingUp size={20} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                Real-Time Performance Overview
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                LIVE ANALYTICS
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Consolidated metrics for OBD calls and multi-service dispatches
+            </p>
+          </div>
         </div>
 
         {/* Date Wise / Month Wise Toggle Switch */}
-        <div className="view-mode-toggle">
+        <div className="view-mode-toggle" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', padding: '3px', borderRadius: '8px' }}>
           <button 
+            type="button"
             className={`view-mode-btn ${viewMode === 'daily' ? 'active' : ''}`}
             onClick={() => setViewMode('daily')}
+            style={viewMode === 'daily' ? { background: '#ffffff', color: '#0284c7', fontWeight: 700, borderRadius: '6px' } : { color: '#ffffff', background: 'transparent' }}
           >
             <Calendar size={14} style={{ display: 'inline', marginRight: 6 }} />
             Date-Wise (Daily)
           </button>
           <button 
+            type="button"
             className={`view-mode-btn ${viewMode === 'monthly' ? 'active' : ''}`}
             onClick={() => setViewMode('monthly')}
+            style={viewMode === 'monthly' ? { background: '#ffffff', color: '#0284c7', fontWeight: 700, borderRadius: '6px' } : { color: '#ffffff', background: 'transparent' }}
           >
             <BarChart2 size={14} style={{ display: 'inline', marginRight: 6 }} />
             Month-Wise (Monthly)

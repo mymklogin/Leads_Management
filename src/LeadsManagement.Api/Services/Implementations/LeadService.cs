@@ -42,13 +42,14 @@ public class LeadService : ILeadService
             {
                 if (currentUser.Role == UserRole.User)
                 {
-                    query = query.Where(x => x.UserId == currentUserId || x.AssignedToUserId == currentUserId);
+                    query = query.Where(x => !x.UserId.HasValue || x.UserId == 0 || x.UserId == currentUserId || x.AssignedToUserId == currentUserId);
                 }
                 else // Admin or Reseller
                 {
                     var allowedUserIds = await _userRepository.GetDownlineUserIdsAsync(currentUserId, cancellationToken);
                     allowedUserIds.Add(currentUserId);
-                    query = query.Where(x => (x.UserId.HasValue && allowedUserIds.Contains(x.UserId.Value)) ||
+                    query = query.Where(x => !x.UserId.HasValue || x.UserId == 0 ||
+                                             (x.UserId.HasValue && allowedUserIds.Contains(x.UserId.Value)) ||
                                              (x.AssignedToUserId.HasValue && allowedUserIds.Contains(x.AssignedToUserId.Value)));
                 }
             }
@@ -58,13 +59,30 @@ public class LeadService : ILeadService
         {
             string search = filter.Search.Trim();
             query = query.Where(x => x.Mobile.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                                     (x.CustomerName != null && x.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase)));
+                                     (x.CustomerName != null && x.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                     (x.Email != null && x.Email.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                     (x.City != null && x.City.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                     (x.State != null && x.State.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                     (x.ServiceRequired != null && x.ServiceRequired.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                     (x.Notes != null && x.Notes.Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
         {
             string status = filter.Status.Trim();
             query = query.Where(x => x.LeadStatus.Contains(status, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.ServiceRequired))
+        {
+            string srv = filter.ServiceRequired.Trim();
+            query = query.Where(x => x.ServiceRequired != null && x.ServiceRequired.Contains(srv, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.InquiryType))
+        {
+            string inq = filter.InquiryType.Trim();
+            query = query.Where(x => x.InquiryType != null && x.InquiryType.Equals(inq, StringComparison.OrdinalIgnoreCase));
         }
 
         if (filter.TemplateId.HasValue)
@@ -75,13 +93,13 @@ public class LeadService : ILeadService
         if (filter.FromDate.HasValue)
         {
             var startOfDay = filter.FromDate.Value.Date;
-            query = query.Where(x => x.CreatedAt >= startOfDay);
+            query = query.Where(x => x.CreatedAt.Date >= startOfDay);
         }
 
         if (filter.ToDate.HasValue)
         {
-            var endOfDay = filter.ToDate.Value.Date.AddDays(1).AddTicks(-1);
-            query = query.Where(x => x.CreatedAt <= endOfDay);
+            var endOfDay = filter.ToDate.Value.Date;
+            query = query.Where(x => x.CreatedAt.Date <= endOfDay);
         }
 
         var filteredList = query.ToList();
@@ -92,6 +110,7 @@ public class LeadService : ILeadService
         {
             "mobile" => filter.SortDescending ? filteredList.OrderByDescending(x => x.Mobile).ToList() : filteredList.OrderBy(x => x.Mobile).ToList(),
             "leadstatus" => filter.SortDescending ? filteredList.OrderByDescending(x => x.LeadStatus).ToList() : filteredList.OrderBy(x => x.LeadStatus).ToList(),
+            "customername" => filter.SortDescending ? filteredList.OrderByDescending(x => x.CustomerName).ToList() : filteredList.OrderBy(x => x.CustomerName).ToList(),
             "callduration" => filter.SortDescending ? filteredList.OrderByDescending(x => x.CallDuration).ToList() : filteredList.OrderBy(x => x.CallDuration).ToList(),
             "createdat" => filter.SortDescending ? filteredList.OrderByDescending(x => x.CreatedAt).ToList() : filteredList.OrderBy(x => x.CreatedAt).ToList(),
             _ => filter.SortDescending ? filteredList.OrderByDescending(x => x.UpdatedAt).ToList() : filteredList.OrderBy(x => x.UpdatedAt).ToList()
@@ -138,6 +157,15 @@ public class LeadService : ILeadService
         {
             Mobile = dto.Mobile.Trim(),
             CustomerName = dto.CustomerName?.Trim(),
+            Email = dto.Email?.Trim(),
+            City = dto.City?.Trim(),
+            State = dto.State?.Trim(),
+            Country = dto.Country?.Trim(),
+            IpAddress = dto.IpAddress?.Trim(),
+            ServiceRequired = dto.ServiceRequired?.Trim(),
+            LeadSource = !string.IsNullOrWhiteSpace(dto.LeadSource) ? dto.LeadSource.Trim() : "AI Chat Assistant",
+            InquiryType = !string.IsNullOrWhiteSpace(dto.InquiryType) ? dto.InquiryType.Trim() : "Sales",
+            ChatTranscript = dto.ChatTranscript,
             TemplateId = dto.TemplateId,
             LeadStatus = !string.IsNullOrWhiteSpace(dto.LeadStatus) ? dto.LeadStatus.Trim() : "New Lead",
             Notes = dto.Notes,
@@ -186,11 +214,11 @@ public class LeadService : ILeadService
         var pagedResult = await GetLeadsAsync(filter, currentUserId, cancellationToken);
 
         var sb = new StringBuilder();
-        sb.AppendLine("Id,Mobile,CustomerName,TemplateId,LeadStatus,CallDuration,PressedDtmf,LastEventType,Cli,CreatedAt,UpdatedAt");
+        sb.AppendLine("Id,Mobile,CustomerName,Email,City,State,Country,ServiceRequired,InquiryType,LeadSource,LeadStatus,Notes,CreatedAt");
 
         foreach (var lead in pagedResult.Items)
         {
-            sb.AppendLine($"{lead.Id},\"{lead.Mobile}\",\"{lead.CustomerName ?? ""}\",{lead.TemplateId},\"{EscapeCsv(lead.LeadStatus)}\",{lead.CallDuration},\"{lead.PressedDtmf ?? ""}\",\"{lead.LastEventType ?? ""}\",\"{lead.Cli ?? ""}\",\"{lead.CreatedAt:yyyy-MM-dd HH:mm:ss}\",\"{lead.UpdatedAt:yyyy-MM-dd HH:mm:ss}\"");
+            sb.AppendLine($"{lead.Id},\"{lead.Mobile}\",\"{EscapeCsv(lead.CustomerName ?? "")}\",\"{EscapeCsv(lead.Email ?? "")}\",\"{EscapeCsv(lead.City ?? "")}\",\"{EscapeCsv(lead.State ?? "")}\",\"{EscapeCsv(lead.Country ?? "")}\",\"{EscapeCsv(lead.ServiceRequired ?? "")}\",\"{EscapeCsv(lead.InquiryType ?? "Sales")}\",\"{EscapeCsv(lead.LeadSource ?? "")}\",\"{EscapeCsv(lead.LeadStatus)}\",\"{EscapeCsv(lead.Notes ?? "")}\",\"{lead.CreatedAt:yyyy-MM-dd HH:mm:ss}\"");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
@@ -207,6 +235,15 @@ public class LeadService : ILeadService
         Id = entity.Id,
         Mobile = entity.Mobile,
         CustomerName = entity.CustomerName,
+        Email = entity.Email,
+        City = entity.City,
+        State = entity.State,
+        Country = entity.Country,
+        IpAddress = entity.IpAddress,
+        ServiceRequired = entity.ServiceRequired,
+        LeadSource = entity.LeadSource,
+        InquiryType = entity.InquiryType,
+        ChatTranscript = entity.ChatTranscript,
         TemplateId = entity.TemplateId,
         LeadStatus = entity.LeadStatus,
         CallDuration = entity.CallDuration,

@@ -5,15 +5,11 @@ import {
   Calendar, 
   Download, 
   RefreshCw, 
-  Filter, 
-  FileSpreadsheet, 
-  BarChart2, 
-  Clock, 
-  CheckCircle2,
-  TrendingUp,
   X,
   Send,
-  Bot
+  Bot,
+  CheckCircle2,
+  Radio
 } from 'lucide-react';
 
 export const RcsMisReportPage = () => {
@@ -25,140 +21,73 @@ export const RcsMisReportPage = () => {
   const [selectedMonth, setSelectedMonth] = useState('September');
   const [selectedYear, setSelectedYear] = useState(2026);
   const [loading, setLoading] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const [misMatrix, setMisMatrix] = useState([]);
+  const [hourlyTotals, setHourlyTotals] = useState(Array(24).fill(0));
+  const [overallTotal, setOverallTotal] = useState(0);
+  const [monthCampaigns, setMonthCampaigns] = useState([]);
   const [modalDetails, setModalDetails] = useState(null);
 
-  // Exact campaign registry matching vendor portal screenshots
-  const campaignHourRegistry = {
-    // September 16, 2026 - Hour 10 (2 campaigns today: 6422 & 6416)
-    '2026-09-16-10': [
-      {
-        id: 6422,
-        name: 'PBG_Account_Status',
-        botName: 'PBG INFO',
-        template: 'pbg_account_status_u',
-        type: 'PLAINTEXT',
-        recipients: 1,
-        postedAt: '2026-09-16 10:12'
-      },
-      {
-        id: 6416,
-        name: 'PBG_Account_Status',
-        botName: 'PBG INFO',
-        template: 'pbg_account_status_u',
-        type: 'PLAINTEXT',
-        recipients: 1,
-        postedAt: '2026-09-16 10:10'
-      }
-    ],
-    // September 15, 2026 - Hour 13 (2 campaigns)
-    '2026-09-15-13': [
-      {
-        id: 6320,
-        name: 'PBG_Account_Status',
-        botName: 'PBG INFO',
-        template: 'pbg_account_status_u',
-        type: 'PLAINTEXT',
-        recipients: 1,
-        postedAt: '2026-09-15 13:45'
-      },
-      {
-        id: 6319,
-        name: 'PBG_Account_Status',
-        botName: 'PBG INFO',
-        template: 'pbg_account_status_u',
-        type: 'PLAINTEXT',
-        recipients: 1,
-        postedAt: '2026-09-15 13:12'
-      }
-    ],
-    // September 15, 2026 - Hour 14 (10 campaigns)
-    '2026-09-15-14': [
-      { id: 6330, name: 'ops', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:52' },
-      { id: 6329, name: 'pbg', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:48' },
-      { id: 6328, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:41' },
-      { id: 6327, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:35' },
-      { id: 6326, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:28' },
-      { id: 6325, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:22' },
-      { id: 6324, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:18' },
-      { id: 6323, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:14' },
-      { id: 6322, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:09' },
-      { id: 6321, name: 'PBG_Account_Status', botName: 'PBG INFO', template: 'pbg_account_status_u', type: 'PLAINTEXT', recipients: 1, postedAt: '2026-09-15 14:02' }
-    ]
-  };
-
   useEffect(() => {
-    generateMisData(selectedMonth, selectedYear);
+    fetchMisReport();
+
+    const onCampCreated = () => {
+      fetchMisReport();
+    };
+
+    window.addEventListener('rcs_campaign_created', onCampCreated);
+    return () => window.removeEventListener('rcs_campaign_created', onCampCreated);
   }, [selectedMonth, selectedYear]);
 
-  // Generate matrix data matching the screenshot
-  const generateMisData = (month, year) => {
-    setLoading(true);
-    const monthIndex = months.indexOf(month);
-    // Days in month
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-    const rows = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const hours = Array(24).fill(0);
-
-      // Matches the screenshot exact data for Sept 15: hour 13 = 2, hour 14 = 10, total = 12
-      if (day === 15 && month === 'September' && year === 2026) {
-        hours[13] = 2;
-        hours[14] = 10;
-      }
-
-      // Sept 16 (Today): hour 10 = 2 (Campaigns 6422 & 6416 posted at 10:12 & 10:10), total = 2
-      if (day === 16 && month === 'September' && year === 2026) {
-        hours[10] = 2;
-      }
-
-      const dayTotal = hours.reduce((a, b) => a + b, 0);
-      rows.push({
-        day,
-        hours,
-        dayTotal
+  const fetchMisReport = async (isManualSync = false) => {
+    try {
+      setLoading(true);
+      const res = await api.get('/RCSApi/GetMisReport', {
+        params: {
+          month: selectedMonth,
+          year: selectedYear
+        }
       });
-    }
 
-    setMisMatrix(rows);
-    setLoading(false);
+      if (res.data?.response) {
+        const data = res.data.response;
+        setMisMatrix(data.matrix || []);
+        setHourlyTotals(data.hourlyTotals || Array(24).fill(0));
+        setOverallTotal(data.totalDispatches || 0);
+        setMonthCampaigns(data.campaigns || []);
+
+        if (isManualSync) {
+          setSyncMsg('✓ Synced with RCS Enterprise Live Gateway & Database Ledger');
+          setTimeout(() => setSyncMsg(''), 4000);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch MIS report from backend API:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Compute column totals across all days
-  const hourlyTotals = Array(24).fill(0);
-  let overallTotal = 0;
-
-  misMatrix.forEach(row => {
-    row.hours.forEach((val, h) => {
-      hourlyTotals[h] += val;
-    });
-    overallTotal += row.dayTotal;
-  });
-
-  // Handle cell click to open details modal matching media_1789534105107.png
+  // Handle cell click to open drill-down details modal
   const handleCellClick = (day, hour, count) => {
     if (count <= 0) return;
     const monthIndex = String(months.indexOf(selectedMonth) + 1).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
-    const key = `${selectedYear}-${monthIndex}-${dayStr}-${hour}`;
-    const fallbackKey = `${selectedYear}-09-${dayStr}-${hour}`;
+    const prefix = `${selectedYear}-${monthIndex}-${dayStr}`;
 
-    const campaigns = campaignHourRegistry[key] || campaignHourRegistry[fallbackKey] || [
-      {
-        id: `64${day}${hour}`,
-        name: 'PBG_Account_Status',
-        botName: 'PBG INFO',
-        template: 'pbg_account_status_u',
-        type: 'PLAINTEXT',
-        recipients: count,
-        postedAt: `${selectedYear}-${monthIndex}-${dayStr} ${String(hour).padStart(2, '0')}:10`
-      }
-    ];
+    // Filter campaigns matching this specific day & hour
+    const matching = monthCampaigns.filter(c => {
+      const created = c.createdAt || c.CreatedAt || '';
+      if (!created || !created.startsWith(prefix)) return false;
+      const timePart = created.includes('T') ? created.split('T')[1] : created.split(' ')[1];
+      if (!timePart) return false;
+      const h = parseInt(timePart.split(':')[0], 10);
+      return h === hour;
+    });
 
     setModalDetails({
       title: `RCS Campaign Details - ${selectedMonth} ${day}, ${selectedYear} - Hour ${String(hour).padStart(2, '0')}:00`,
-      campaigns
+      campaigns: matching
     });
   };
 
@@ -167,30 +96,16 @@ export const RcsMisReportPage = () => {
     if (total <= 0) return;
     const monthIndex = String(months.indexOf(selectedMonth) + 1).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
+    const prefix = `${selectedYear}-${monthIndex}-${dayStr}`;
 
-    const allForDay = [];
-    for (let h = 0; h < 24; h++) {
-      const key = `${selectedYear}-${monthIndex}-${dayStr}-${h}`;
-      const fallbackKey = `${selectedYear}-09-${dayStr}-${h}`;
-      const items = campaignHourRegistry[key] || campaignHourRegistry[fallbackKey];
-      if (items) {
-        allForDay.push(...items);
-      }
-    }
+    const matching = monthCampaigns.filter(c => {
+      const created = c.createdAt || c.CreatedAt || '';
+      return created && created.startsWith(prefix);
+    });
 
     setModalDetails({
       title: `RCS Campaign Details - ${selectedMonth} ${day}, ${selectedYear} - All ${total} Dispatches`,
-      campaigns: allForDay.length > 0 ? allForDay : [
-        {
-          id: 6422,
-          name: 'PBG_Account_Status',
-          botName: 'PBG INFO',
-          template: 'pbg_account_status_u',
-          type: 'PLAINTEXT',
-          recipients: 1,
-          postedAt: `${selectedYear}-${monthIndex}-${dayStr} 10:12`
-        }
-      ]
+      campaigns: matching
     });
   };
 
@@ -215,69 +130,27 @@ export const RcsMisReportPage = () => {
   };
 
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto' }}>
-      {/* Breadcrumb Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: 500 }}>
-          Home / <span style={{ color: '#0a66c2' }}>RCS MIS Report</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <PieChart size={24} color="#0a66c2" />
-              RCS Campaign MIS Report
-            </h1>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Granular hour-by-hour message delivery volumes and time-distribution matrix.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button 
-              type="button" 
-              className="btn btn-outline" 
-              onClick={() => generateMisData(selectedMonth, selectedYear)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', padding: '8px 14px' }}
-            >
-              <RefreshCw size={14} className={loading ? 'fa-spin' : ''} />
-              <span>Refresh</span>
-            </button>
-
-            <button 
-              type="button" 
-              className="btn btn-primary" 
-              onClick={exportToCsv}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', padding: '8px 16px' }}
-            >
-              <Download size={14} />
-              <span>Export CSV</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Filter Card */}
-      <div style={{ 
-        background: '#ffffff', 
-        border: '1px solid #e2e8f0', 
-        borderRadius: '14px', 
-        padding: '18px 24px', 
-        marginBottom: '20px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+    <div style={{ padding: '0', maxWidth: '100%', margin: '0 auto' }}>
+      
+      {/* Top Filter & Gateway Sync Bar */}
+      <div style={{
+        padding: '12px 18px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '12px',
+        background: '#f8fafc',
+        borderBottom: '1px solid #e2e8f0'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>Select Period:</span>
             <select 
               className="form-control" 
               value={selectedMonth} 
               onChange={e => setSelectedMonth(e.target.value)}
-              style={{ fontSize: '13px', padding: '6px 12px', minWidth: '140px' }}
+              style={{ fontSize: '12.5px', padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
             >
               {months.map(m => (
                 <option key={m} value={m}>{m}</option>
@@ -285,7 +158,7 @@ export const RcsMisReportPage = () => {
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>Year:</span>
             <input 
               type="number" 
@@ -294,49 +167,99 @@ export const RcsMisReportPage = () => {
               onChange={e => setSelectedYear(Number(e.target.value))}
               min={2020}
               max={2030}
-              style={{ fontSize: '13px', padding: '6px 12px', width: '90px' }}
-            >
-            </input>
+              style={{ fontSize: '12.5px', padding: '5px 10px', width: '80px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff' }}
+            />
           </div>
+
+          <button 
+            type="button" 
+            onClick={() => fetchMisReport(true)}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              fontSize: '12px', 
+              fontWeight: 700,
+              padding: '6px 14px',
+              background: '#ffffff',
+              color: '#0a66c2',
+              border: '1px solid #0a66c2',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(10, 102, 194, 0.15)'
+            }}
+            title="Sync live campaign dispatches directly from RCS Gateway & DB"
+          >
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
+            <span>Sync Live Gateway</span>
+          </button>
         </div>
 
-        {/* Quick Month Metrics */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 14px', textAlign: 'right' }}>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>Total Dispatches</div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0a66c2' }}>{overallTotal.toLocaleString()}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {syncMsg && (
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircle2 size={14} color="#059669" />
+              {syncMsg}
+            </span>
+          )}
+
+          <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#0f172a', background: '#ffffff', padding: '5px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+            Total Month Dispatches: <span style={{ color: '#0a66c2' }}>{overallTotal}</span>
           </div>
+
+          <button 
+            type="button" 
+            onClick={exportToCsv}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              fontSize: '12px', 
+              fontWeight: 700,
+              padding: '6px 14px',
+              background: '#0a66c2',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(10, 102, 194, 0.25)'
+            }}
+          >
+            <Download size={13} />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
-      {/* Main MIS Matrix Table */}
+      {/* Main MIS Matrix Table (Pixel-perfect matching reference image) */}
       <div style={{ 
         background: '#ffffff', 
-        border: '1px solid #e2e8f0', 
-        borderRadius: '14px', 
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        border: 'none', 
+        borderRadius: '0', 
         overflow: 'hidden'
       }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'center' }}>
             <thead>
-              {/* Top Category Header */}
-              <tr style={{ background: '#0f172a', color: '#ffffff', fontWeight: 700, letterSpacing: '0.5px' }}>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #1e293b', width: '60px' }}>DAY</th>
-                <th colSpan={24} style={{ padding: '10px 8px', borderRight: '1px solid #1e293b' }}>
-                  HOURS (00:00 - 23:59)
+              {/* Row 1: Section Categories */}
+              <tr style={{ background: '#1c2d42', color: '#ffffff', fontSize: '11px', fontWeight: 800, letterSpacing: '0.6px' }}>
+                <th rowSpan={2} style={{ padding: '8px 10px', borderRight: '1px solid #2d3f56', width: '50px', verticalAlign: 'middle' }}>
+                  DAY
                 </th>
-                <th style={{ padding: '10px 12px', width: '100px', background: '#0a66c2' }}>DAY TOTAL</th>
+                <th colSpan={24} style={{ padding: '7px 8px', borderRight: '1px solid #2d3f56' }}>
+                  HOURS
+                </th>
+                <th rowSpan={2} style={{ padding: '8px 12px', width: '85px', verticalAlign: 'middle', borderLeft: '1px solid #2d3f56' }}>
+                  DAY TOTAL
+                </th>
               </tr>
-              {/* Hour Subheaders */}
-              <tr style={{ background: '#1e293b', color: '#94a3b8', fontSize: '11px' }}>
-                <th style={{ padding: '6px', borderRight: '1px solid #334155' }}>#</th>
+              {/* Row 2: Hour Digits 00 to 23 */}
+              <tr style={{ background: '#1c2d42', color: '#ffffff', fontSize: '11px', fontWeight: 700 }}>
                 {Array.from({ length: 24 }, (_, i) => (
-                  <th key={i} style={{ padding: '6px 4px', borderRight: '1px solid #334155', minWidth: '34px' }}>
+                  <th key={i} style={{ padding: '6px 2px', borderRight: '1px solid #2d3f56', minWidth: '32px' }}>
                     {String(i).padStart(2, '0')}
                   </th>
                 ))}
-                <th style={{ padding: '6px', background: '#095196', color: '#ffffff' }}>TOTAL</th>
               </tr>
             </thead>
             <tbody>
@@ -346,15 +269,19 @@ export const RcsMisReportPage = () => {
                   <tr 
                     key={row.day} 
                     style={{ 
-                      borderBottom: '1px solid #f1f5f9',
-                      background: hasActivity ? '#f0fdf4' : (row.day % 2 === 0 ? '#fafafa' : '#ffffff'),
-                      transition: 'background 0.15s ease'
+                      borderBottom: '1px solid #e2e8f0',
+                      background: '#ffffff',
+                      transition: 'background 0.1s ease'
                     }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
                   >
-                    <td style={{ padding: '8px 6px', fontWeight: 700, color: '#334155', borderRight: '1px solid #e2e8f0' }}>
+                    {/* Day Column */}
+                    <td style={{ padding: '6px 4px', fontWeight: 800, color: '#0f172a', borderRight: '1px solid #e2e8f0', background: '#f8fafc' }}>
                       {row.day}
                     </td>
 
+                    {/* Hour Columns (00 - 23) */}
                     {row.hours.map((val, hIndex) => {
                       const isClickable = val > 0;
                       return (
@@ -363,25 +290,23 @@ export const RcsMisReportPage = () => {
                           onClick={() => handleCellClick(row.day, hIndex, val)}
                           title={isClickable ? `Click to view ${val} campaign(s) on Day ${row.day} at Hour ${String(hIndex).padStart(2, '0')}:00` : ''}
                           style={{ 
-                            padding: '8px 4px', 
-                            borderRight: '1px solid #f1f5f9',
-                            color: val > 0 ? '#0a66c2' : '#94a3b8',
+                            padding: '6px 2px', 
+                            borderRight: '1px solid #e2e8f0',
+                            color: val > 0 ? '#0f172a' : '#94a3b8',
                             fontWeight: val > 0 ? 800 : 400,
                             background: val > 0 ? '#e0f2fe' : 'transparent',
                             cursor: isClickable ? 'pointer' : 'default',
-                            transition: 'all 0.15s ease',
+                            transition: 'all 0.1s ease',
                             userSelect: isClickable ? 'none' : 'auto'
                           }}
                           onMouseEnter={e => {
                             if (isClickable) {
                               e.currentTarget.style.background = '#bae6fd';
-                              e.currentTarget.style.transform = 'scale(1.08)';
                             }
                           }}
                           onMouseLeave={e => {
                             if (isClickable) {
                               e.currentTarget.style.background = '#e0f2fe';
-                              e.currentTarget.style.transform = 'scale(1)';
                             }
                           }}
                         >
@@ -390,25 +315,27 @@ export const RcsMisReportPage = () => {
                       );
                     })}
 
+                    {/* Day Total Column */}
                     <td 
                       onClick={() => handleDayTotalClick(row.day, row.dayTotal)}
                       title={hasActivity ? `Click to view all ${row.dayTotal} campaign(s) for Day ${row.day}` : ''}
                       style={{ 
-                        padding: '8px 12px', 
+                        padding: '6px 8px', 
                         fontWeight: 800, 
-                        color: hasActivity ? '#047857' : '#64748b', 
-                        background: hasActivity ? '#dcfce7' : '#f8fafc',
+                        color: hasActivity ? '#0f172a' : '#94a3b8', 
+                        background: '#ffffff',
+                        borderLeft: '1px solid #e2e8f0',
                         cursor: hasActivity ? 'pointer' : 'default',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.1s ease'
                       }}
                       onMouseEnter={e => {
                         if (hasActivity) {
-                          e.currentTarget.style.background = '#bbf7d0';
+                          e.currentTarget.style.background = '#f1f5f9';
                         }
                       }}
                       onMouseLeave={e => {
                         if (hasActivity) {
-                          e.currentTarget.style.background = '#dcfce7';
+                          e.currentTarget.style.background = '#ffffff';
                         }
                       }}
                     >
@@ -419,13 +346,13 @@ export const RcsMisReportPage = () => {
               })}
 
               {/* Bottom Grand Totals Row */}
-              <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1', fontWeight: 800 }}>
-                <td style={{ padding: '10px 6px', color: '#0f172a', borderRight: '1px solid #cbd5e1' }}>TOTAL</td>
+              <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1', fontWeight: 800, color: '#0f172a' }}>
+                <td style={{ padding: '8px 6px', borderRight: '1px solid #cbd5e1', background: '#e2e8f0' }}>TOTAL</td>
                 {hourlyTotals.map((hTotal, hIdx) => (
                   <td 
                     key={hIdx} 
                     style={{ 
-                      padding: '10px 4px', 
+                      padding: '8px 2px', 
                       borderRight: '1px solid #e2e8f0',
                       color: hTotal > 0 ? '#0a66c2' : '#64748b'
                     }}
@@ -433,7 +360,7 @@ export const RcsMisReportPage = () => {
                     {hTotal}
                   </td>
                 ))}
-                <td style={{ padding: '10px 12px', background: '#0a66c2', color: '#ffffff', fontSize: '13px' }}>
+                <td style={{ padding: '8px 10px', background: '#0a66c2', color: '#ffffff', fontSize: '12px' }}>
                   {overallTotal}
                 </td>
               </tr>
@@ -442,7 +369,7 @@ export const RcsMisReportPage = () => {
         </div>
       </div>
 
-      {/* Campaign Details Modal matching exact vendor design in media_1789534105107.png */}
+      {/* Campaign Details Drill-Down Modal */}
       {modalDetails && (
         <div 
           style={{
@@ -536,7 +463,7 @@ export const RcsMisReportPage = () => {
                 <tbody>
                   {modalDetails.campaigns.map((camp, idx) => (
                     <tr 
-                      key={camp.id || idx}
+                      key={camp.campaignId || camp.id || idx}
                       style={{
                         borderBottom: '1px solid #f1f5f9',
                         transition: 'background 0.15s ease'
@@ -545,16 +472,16 @@ export const RcsMisReportPage = () => {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       <td style={{ padding: '12px', fontWeight: 600, color: '#334155' }}>
-                        {camp.id}
+                        {camp.campaignId || camp.id}
                       </td>
                       <td style={{ padding: '12px', color: '#1e293b', fontWeight: 600 }}>
-                        {camp.name}
+                        {camp.campaignName || camp.name}
                       </td>
                       <td style={{ padding: '12px', color: '#475569' }}>
-                        {camp.botName}
+                        {camp.botName || camp.bot}
                       </td>
                       <td style={{ padding: '12px', color: '#475569' }}>
-                        {camp.template}
+                        {camp.templateName || camp.template}
                       </td>
                       <td style={{ padding: '12px' }}>
                         <span style={{
@@ -567,14 +494,14 @@ export const RcsMisReportPage = () => {
                           letterSpacing: '0.4px',
                           display: 'inline-block'
                         }}>
-                          {camp.type}
+                          {(camp.templateType || camp.type || 'PLAINTEXT').toUpperCase()}
                         </span>
                       </td>
                       <td style={{ padding: '12px', color: '#334155', fontWeight: 600 }}>
-                        {camp.recipients}
+                        {camp.totalMobiles || camp.total || camp.recipients || 1}
                       </td>
                       <td style={{ padding: '12px', color: '#64748b', fontSize: '12px' }}>
-                        {camp.postedAt}
+                        {camp.createdAt || camp.postedAt || '2026-09-18'}
                       </td>
                     </tr>
                   ))}

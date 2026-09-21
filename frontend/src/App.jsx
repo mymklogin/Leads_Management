@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrandingProvider } from './context/BrandingContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -7,6 +8,7 @@ import { MobileDrawer } from './components/MobileDrawer';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LeadsCrmPage } from './pages/LeadsCrmPage';
+import { AiChatWidget } from './components/AiChatWidget';
 import { UsersManagementPage } from './pages/UsersManagementPage';
 import { VoiceObdPage } from './pages/VoiceObdPage';
 import { BulkObdPage } from './pages/BulkObdPage';
@@ -26,6 +28,12 @@ import { RcsCampaignDashboardPage } from './pages/RcsCampaignDashboardPage';
 import { LiveWebhookLogsPage } from './pages/LiveWebhookLogsPage';
 import { ServicePlaceholderPage } from './pages/ServicePlaceholderPage';
 import { MenuManagementPage } from './pages/MenuManagementPage';
+import { GatewaySettingsPage } from './pages/GatewaySettingsPage';
+import { SmppGatewayPage } from './pages/SmppGatewayPage';
+import { ResellerSmppPage } from './pages/ResellerSmppPage';
+import { IpSecurityPage } from './pages/IpSecurityPage';
+import { ResellerDomainPage } from './pages/ResellerDomainPage';
+import { SenderIdAllocationPage } from './pages/SenderIdAllocationPage';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -83,33 +91,82 @@ const RCS_DOC_HASHES = [
   'docs'
 ];
 
-const getInitialTabFromHash = () => {
-  if (typeof window !== 'undefined' && window.location.hash) {
-    const raw = window.location.hash.replace('#', '').toLowerCase().trim();
-    if (RCS_DOC_HASHES.includes(raw) || raw.includes('error') || raw.includes('rcs') || raw.includes('campaign') || raw.includes('template') || raw.includes('bot')) {
-      return 'RCS_API_DOC';
-    }
+const getInitialTab = () => {
+  if (typeof window !== 'undefined') {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.replace('#', '').toLowerCase().trim();
+
+    if (path.includes('rcs-mis') || path.includes('/mis') || hash.includes('mis')) return 'RCS_MIS_REPORT';
+    if (path.includes('reseller-smpp') || hash.includes('reseller-smpp')) return 'RESELLER_SMPP';
+    if (path.includes('ip-whitelist') || path.includes('ip-security') || hash.includes('ip-whitelist')) return 'IP_SECURITY';
+    if (path.includes('reseller-domains') || hash.includes('reseller-domains')) return 'RESELLER_DOMAINS';
+    if (path.includes('sender-id') || hash.includes('sender-id')) return 'SENDER_ID_ALLOCATION';
+    if (path.includes('smpp') || hash.includes('smpp') || path.includes('carrier') || hash.includes('carrier')) return 'SMPP_ROUTING';
+    if (path.includes('gateway') || hash.includes('gateway')) return 'GATEWAY_SETTINGS';
+    if (path.includes('user') || hash.includes('user')) return 'USER_MANAGEMENT';
+    if (path.includes('campaign') || hash.includes('campaign')) return 'RCS_CAMPAIGNS';
+    if (path.includes('report') || hash.includes('report')) return 'RCS_REPORTS';
+    if (path.includes('template') || hash.includes('template')) return 'RCS_TEMPLATES';
+    if (path.includes('bot') || hash.includes('bot')) return 'RCS_BOTS';
+    if (path.includes('schedule') || hash.includes('schedule')) return 'RCS_MULTI_SCHEDULE';
+    if (path.includes('chat') || hash.includes('chat')) return 'RCS_CHAT';
+    if (path.includes('consolidate') || hash.includes('consolidate')) return 'RCS_CONSOLIDATE_REPORT';
+    if (path.includes('doc') || path.includes('api') || RCS_DOC_HASHES.includes(hash)) return 'RCS_API_DOC';
+    if (path.includes('payment') || hash.includes('payment')) return 'RCS_PAYMENT_MANAGE';
+    if (path.includes('lead') || hash.includes('lead')) return 'LEADS_CRM';
+    if (path.includes('menu') || hash.includes('menu')) return 'MENU_BUILDER';
   }
   return 'RCS_DASHBOARD';
 };
 
 const MainApp = () => {
   const { isAuthenticated, loading, allowedMenus } = useAuth();
-  const [activeTab, setActiveTab] = useState(getInitialTabFromHash);
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const handleHashNavigation = () => {
-      if (window.location.hash) {
-        const raw = window.location.hash.replace('#', '').toLowerCase().trim();
-        if (RCS_DOC_HASHES.includes(raw) || raw.includes('error') || raw.includes('rcs') || raw.includes('campaign') || raw.includes('template') || raw.includes('bot')) {
-          setActiveTab('RCS_API_DOC');
-        }
-      }
+    const handleUrlNavigation = () => {
+      setActiveTab(getInitialTab());
     };
-    window.addEventListener('hashchange', handleHashNavigation);
-    return () => window.removeEventListener('hashchange', handleHashNavigation);
+    window.addEventListener('popstate', handleUrlNavigation);
+    window.addEventListener('hashchange', handleUrlNavigation);
+    return () => {
+      window.removeEventListener('popstate', handleUrlNavigation);
+      window.removeEventListener('hashchange', handleUrlNavigation);
+    };
   }, []);
+
+  const handleSelectTab = (tabKey) => {
+    setActiveTab(tabKey);
+    const pathMap = {
+      'RCS_DASHBOARD': '/dashboard',
+      'RCS_PAYMENT_MANAGE': '/payment-manage',
+      'USER_MANAGEMENT': '/users',
+      'GATEWAY_SETTINGS': '/gateway-settings',
+      'SMPP_ROUTING': '/smpp-routing',
+      'RESELLER_SMPP': '/reseller-smpp',
+      'IP_SECURITY': '/ip-whitelist',
+      'RESELLER_DOMAINS': '/reseller-domains',
+      'SENDER_ID_ALLOCATION': '/sender-id-allocation',
+      'RCS_BOTS': '/rcs/bots',
+      'RCS_TEMPLATES': '/rcs/templates',
+      'RCS_CAMPAIGNS': '/rcs/campaign',
+      'RCS_MULTI_SCHEDULE': '/rcs/multi-schedule',
+      'RCS_REPORTS': '/rcs/reports',
+      'RCS_MIS_REPORT': '/rcs-mis',
+      'RCS_CHAT': '/rcs/chat',
+      'RCS_CONSOLIDATE_REPORT': '/rcs/consolidate-report',
+      'RCS_API_DOC': '/rcs/api-doc',
+      'MENU_BUILDER': '/menu-builder',
+      'MENU_MANAGEMENT': '/menu-builder',
+      'MENUS_MANAGE': '/menu-builder',
+      'LEADS_CRM': '/leads',
+      'LEADS_ALL': '/leads'
+    };
+    if (pathMap[tabKey] && window.location.pathname !== pathMap[tabKey]) {
+      window.history.pushState(null, '', pathMap[tabKey]);
+    }
+  };
 
   if (loading) {
     return (
@@ -250,6 +307,36 @@ const MainApp = () => {
       case 'RCS_PAYMENT_MANAGE':
         return <RcsOverviewBalancePage />;
 
+      // Telecom Gateway & White-Label Configuration
+      case 'GATEWAY_SETTINGS':
+        return <GatewaySettingsPage />;
+
+      // Direct Telco SMPP & Carrier Routing
+      case 'SMPP_ROUTING':
+      case 'SMPP_GATEWAY':
+      case 'CARRIER_ROUTING':
+        return <SmppGatewayPage />;
+
+      // Reseller Inbound SMPP Server Hub
+      case 'RESELLER_SMPP':
+      case 'INBOUND_SMPP':
+        return <ResellerSmppPage />;
+
+      // IP & Domain Firewall Whitelist Manager
+      case 'IP_SECURITY':
+      case 'IP_WHITELIST':
+        return <IpSecurityPage />;
+
+      // Reseller Custom Domains & White-Label
+      case 'RESELLER_DOMAINS':
+      case 'CUSTOM_DOMAINS':
+        return <ResellerDomainPage />;
+
+      // DLT Sender ID Allocation Hub
+      case 'SENDER_ID_ALLOCATION':
+      case 'SENDER_IDS':
+        return <SenderIdAllocationPage />;
+
       // RCS Campaigns (Dedicated Campaign Engine)
       case 'RCS_CAMPAIGNS':
         return <RcsCampaignPage />;
@@ -258,7 +345,11 @@ const MainApp = () => {
       case 'RCS_TEMPLATES':
       case 'RCS_TEMPLATES_MANAGE':
       case 'RCS_RICH_CARDS':
-        return <RcsTemplatesPage />;
+        return (
+          <RcsTemplatesPage 
+            onNavigateToBots={() => setActiveTab('RCS_BOTS')}
+          />
+        );
 
       // RCS Bots & Integrations Directory (PDF Pages 5-10 Spec)
       case 'RCS_BOTS':
@@ -313,6 +404,7 @@ const MainApp = () => {
         return <UsersManagementPage />;
 
       // Dynamic Menu Management & Configuration
+      case 'MENU_BUILDER':
       case 'MENUS_MANAGE':
       case 'MENU_MANAGEMENT':
       case 'MANAGE_MENUS':
@@ -356,8 +448,9 @@ const MainApp = () => {
       case 'LEADS_HOT': return 'Super Hot Leads';
       case 'USER_MANAGEMENT':
       case 'USERS_LIST': return 'User & Reseller Management';
+      case 'MENU_BUILDER':
       case 'MENUS_MANAGE':
-      case 'MENU_MANAGEMENT': return 'Dynamic Menu Management';
+      case 'MENU_MANAGEMENT': return 'Dynamic Menu & Sub-Menu Management System';
       case 'VOICE_SINGLE_CALL': return 'Single OBD Call Reports';
       case 'VOICE_BULK_OBD': return 'Bulk OBD Call Reports';
       case 'VOICE_T0_REPORT': return 'Template 0: Simple Campaign Reports';
@@ -373,6 +466,18 @@ const MainApp = () => {
       case 'DASHBOARD':
       case 'RCS_DASHBOARD': return 'Dashboard';
       case 'RCS_PAYMENT_MANAGE': return 'Payment Manage';
+      case 'GATEWAY_SETTINGS': return 'Telecom Gateway & White-Label Settings';
+      case 'SMPP_ROUTING':
+      case 'SMPP_GATEWAY':
+      case 'CARRIER_ROUTING': return 'Direct Telco SMPP & Carrier Routing';
+      case 'RESELLER_SMPP':
+      case 'INBOUND_SMPP': return 'Reseller Inbound SMPP Server Hub';
+      case 'IP_SECURITY':
+      case 'IP_WHITELIST': return 'IP & Domain Firewall Whitelist Manager';
+      case 'RESELLER_DOMAINS':
+      case 'CUSTOM_DOMAINS': return 'Reseller Custom Domains & White-Label';
+      case 'SENDER_ID_ALLOCATION':
+      case 'SENDER_IDS': return 'DLT Sender ID & Header Allocation Hub';
       case 'RCS_TEMPLATES':
       case 'RCS_TEMPLATES_MANAGE': return 'Templates';
       case 'RCS_CAMPAIGNS': return 'Create Campaign';
@@ -403,14 +508,14 @@ const MainApp = () => {
   return (
     <div className="app-container">
       {/* Desktop Sidebar (hidden on mobile via CSS) */}
-      <Sidebar activeTab={activeTab} onSelectTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} onSelectTab={handleSelectTab} />
 
       {/* Mobile Slide-in Drawer */}
       <MobileDrawer 
         isOpen={isDrawerOpen} 
         onClose={() => setIsDrawerOpen(false)} 
         activeTab={activeTab} 
-        onSelectTab={setActiveTab} 
+        onSelectTab={handleSelectTab} 
       />
 
       <div className="main-wrapper">
@@ -428,18 +533,23 @@ const MainApp = () => {
       {/* Native Mobile Bottom Navigation Bar (hidden on desktop via CSS) */}
       <BottomNav 
         activeTab={activeTab} 
-        onSelectTab={setActiveTab} 
+        onSelectTab={handleSelectTab} 
         onOpenDrawer={() => setIsDrawerOpen(prev => !prev)} 
         isDrawerOpen={isDrawerOpen}
       />
+
+      {/* Floating AI Sales & Support Chatbot Assistant */}
+      <AiChatWidget />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainApp />
-    </AuthProvider>
+    <BrandingProvider>
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
+    </BrandingProvider>
   );
 }

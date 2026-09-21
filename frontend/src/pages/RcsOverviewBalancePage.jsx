@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../services/api';
+import { CreateUserModal } from '../components/CreateUserModal';
 import { 
   Wallet, 
   Users, 
   Download, 
   RefreshCw, 
   PlusCircle, 
+  UserPlus,
   Trash2, 
   CheckCircle2, 
   AlertTriangle, 
@@ -15,39 +17,91 @@ import {
   Flame,
   Calendar,
   Shield,
-  X
+  X,
+  ChevronDown,
+  Search
 } from 'lucide-react';
 
 export const RcsOverviewBalancePage = () => {
-  // Live System Balances
-  const [rcsBalance, setRcsBalance] = useState(100);
-  const [rcsPromoBalance, setRcsPromoBalance] = useState(100);
-  const [rcsTxnBalance, setRcsTxnBalance] = useState(85.0);
-  const [smsBalance, setSmsBalance] = useState(100.0);
-  const [gatewayStatus, setGatewayStatus] = useState({ name: 'OmniDigital Live Cloud', connected: true });
-  const [showModal, setShowModal] = useState(false);
+  // Live Gateway Balances across 4 Distinct Telecom Service Wallets
+  const [rcsBalance, setRcsBalance] = useState(0);
+  const [rcsTxnBalance, setRcsTxnBalance] = useState(0);
+  const [rcsPromoBalance, setRcsPromoBalance] = useState(0);
+  const [smsBalance, setSmsBalance] = useState(0);
+  const [adminBalances, setAdminBalances] = useState({
+    rcsT: 0,
+    rcsP: 0,
+    bulkSmsT: 0,
+    bulkSmsP: 0,
+    whatsAppT: 0.0,
+    whatsAppP: 0.0
+  });
 
-  // Users List
+  const [gatewayStatus, setGatewayStatus] = useState({
+    name: 'RCS Enterprise Live Cloud',
+    connected: true
+  });
+
+  // User List & Selection
   const [users, setUsers] = useState([]);
-  const [selectedUserId, setSelectedUserId] = useState(1);
-  const [manageServiceType, setManageServiceType] = useState('RCS'); // 'RCS' or 'SMS'
-  const [manageActionType, setManageActionType] = useState('Credit'); // 'Credit' or 'Revoke'
-  const [manageCredits, setManageCredits] = useState(5000);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [userSearchInput, setUserSearchInput] = useState('');
+  const [userComboboxOpen, setUserComboboxOpen] = useState(false);
+  const pendingRequest = useRef(null);
+  const submitting = useRef(false);
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+
+  // New Inline User Form
+  const [newUserForm, setNewUserForm] = useState({
+    username: '',
+    fullName: '',
+    email: '',
+    password: '',
+    phoneNumber: '',
+    role: 4 // Client
+  });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [createUserError, setCreateUserError] = useState('');
+
+  // 2-Step Dropdowns: Platform + Traffic Type
+  const [selectedPlatform, setSelectedPlatform] = useState('RCS'); // 'RCS', 'SMS', 'WHATSAPP'
+  const [selectedRoute, setSelectedRoute] = useState('Transactional'); // 'Transactional', 'Promotional'
+  const [manageActionType, setManageActionType] = useState('Credit'); // 'Credit', 'Revoke'
+  const [manageCredits, setManageCredits] = useState(0);
   const [managePricePerCredit, setManagePricePerCredit] = useState(0.20);
-  const [manageNotes, setManageNotes] = useState('Client Monthly Balance Allotment');
+  const [manageNotes, setManageNotes] = useState('Client Balance Allotment');
   const [manageLoading, setManageLoading] = useState(false);
   const [manageSuccessMsg, setManageSuccessMsg] = useState('');
   const [manageErrorMsg, setManageErrorMsg] = useState('');
 
-  // Ledger & Audit Report States
+  // 2-Step Dynamic Wallet Service Resolution (RCS SMS, Bulk SMS, WhatsApp SMS + Transactional, Promotional)
+  const resolveWalletService = (plat, rt) => {
+    if (plat === 'RCS') return rt === 'Transactional' ? 'RCS-T' : 'RCS-P';
+    if (plat === 'SMS') return rt === 'Transactional' ? 'BULKSMS-T' : 'BULKSMS-P';
+    if (plat === 'WHATSAPP') return rt === 'Transactional' ? 'WHATSAPP-T' : 'WHATSAPP-P';
+    return 'RCS-T';
+  };
+
+  const manageServiceType = resolveWalletService(selectedPlatform, selectedRoute);
+
+
+  // Ledger & Audit Report States (Combobox + 2-Step Dropdowns + Action + Date Range)
   const [ledgerTransactions, setLedgerTransactions] = useState([]);
   const [ledgerSummary, setLedgerSummary] = useState(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [filterUserId, setFilterUserId] = useState(''); // Default to All Users
+  const [filterUserSearch, setFilterUserSearch] = useState(''); // Type/search user in ledger combobox
+  const [filterUserComboboxOpen, setFilterUserComboboxOpen] = useState(false);
+  const [filterPlatform, setFilterPlatform] = useState('All'); // All, RCS, SMS, WHATSAPP
+  const [filterRoute, setFilterRoute] = useState('All'); // All, Transactional, Promotional
   const [filterActionType, setFilterActionType] = useState('All');
   const [filterServiceType, setFilterServiceType] = useState('All');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [totalsSuiteTab, setTotalsSuiteTab] = useState('RCS'); // 'RCS', 'SMS', 'WHATSAPP'
 
   useEffect(() => {
     fetchBalances();
@@ -59,10 +113,11 @@ export const RcsOverviewBalancePage = () => {
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '-';
     try {
-      const utcStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+      const utcStr = /(?:Z|[+-]\d{2}:\d{2})$/i.test(dateStr) ? dateStr : dateStr + 'Z';
       const d = new Date(utcStr);
       if (isNaN(d.getTime())) return dateStr.replace('T', ' ').substring(0, 16);
       return d.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -75,19 +130,65 @@ export const RcsOverviewBalancePage = () => {
     }
   };
 
+  const getUserBalanceForService = (targetUser, sType) => {
+    if (!targetUser) return 0;
+    const st = (sType || 'RCS-T').toUpperCase();
+    if (st === 'BULKSMS-P') return targetUser.bulkSmsPromotionalCredits ?? 0;
+    if (st === 'WHATSAPP-P') return targetUser.whatsAppPromotionalCredits ?? 0;
+    if (st.includes('SMS') || st.includes('BULKSMS')) {
+      return targetUser.smsCredits ?? 0;
+    }
+    if (st.includes('WHATSAPP')) {
+      return targetUser.whatsAppCredits ?? 0;
+    }
+    if (st === 'RCS-P' || st.includes('PROMO') || st.includes('PROMOTIONAL')) {
+      return targetUser.rcsPromoCredits ?? targetUser.rcsPromotionalCredits ?? 0;
+    }
+    return targetUser.rcsCredits ?? 0;
+  };
+
+  const getAdminBalanceForService = (sType) => {
+    const st = (sType || 'RCS-T').toUpperCase();
+    if (st === 'RCS-T' || st === 'RCS_TRANSACTIONAL') return adminBalances.rcsT ?? 0;
+    if (st === 'RCS-P' || st === 'RCS_PROMOTIONAL') return adminBalances.rcsP ?? 0;
+    if (st === 'BULKSMS-T' || st === 'SMS_TRANSACTIONAL' || st === 'SMS') return adminBalances.bulkSmsT ?? 0;
+    if (st === 'BULKSMS-P' || st === 'SMS_PROMOTIONAL') return adminBalances.bulkSmsP ?? 0;
+    if (st === 'WHATSAPP-T' || st === 'WHATSAPP_TRANSACTIONAL') return adminBalances.whatsAppT ?? 0.0;
+    if (st === 'WHATSAPP-P' || st === 'WHATSAPP_PROMOTIONAL' || st === 'WHATSAPP') return adminBalances.whatsAppP ?? 0.0;
+    return adminBalances.rcsT ?? 0;
+  };
+
   const fetchBalances = async () => {
     try {
       const res = await api.get('/RCSApi/CheckRcsBalance');
       const data = res.data?.response || res.data?.Response;
       if (data) {
-        setRcsBalance(data.rcsBalance ?? data.RcsBalance ?? 100);
-        setRcsPromoBalance(data.rcsPromotionalBalance ?? data.RcsPromotionalBalance ?? 100);
-        setRcsTxnBalance(data.rcsTransactionalBalance ?? data.RcsTransactionalBalance ?? 85.0);
-        setSmsBalance(data.smsBalance ?? data.SmsBalance ?? 100.0);
+        const rT = data.rcsTransactionalBalance ?? (data.AdminBalances?.rcsT ?? 0);
+        const rP = data.rcsPromotionalBalance ?? (data.AdminBalances?.rcsP ?? 0);
+        const sT = data.bulkSmsTransactionalBalance ?? data.smsBalance ?? 0;
+        const sP = data.bulkSmsPromotionalBalance ?? 0;
+        const wT = data.whatsAppTransactionalBalance ?? 0.0;
+        const wP = data.whatsAppPromotionalBalance ?? 0.0;
+
+        setRcsBalance(rT + rP);
+        setRcsTxnBalance(rT);
+        setRcsPromoBalance(rP);
+        setSmsBalance(sT);
+        setAdminBalances({
+          rcsT: rT,
+          rcsP: rP,
+          bulkSmsT: sT,
+          bulkSmsP: sP,
+          whatsAppT: wT,
+          whatsAppP: wP
+        });
         setGatewayStatus({
-          name: data.gateway || data.Gateway || 'OmniDigital Live Cloud',
+          name: data.gateway || data.Gateway || 'RCS Enterprise Live Cloud',
           connected: data.connected !== undefined ? data.connected : true
         });
+
+        // Dispatch sync event for top navbar Header
+        window.dispatchEvent(new CustomEvent('rcs_balance_updated', { detail: { rcsT: rT, rcsP: rP, newBalance: rT } }));
       }
     } catch (err) {
       console.error('Failed to load RCS balance', err);
@@ -99,47 +200,111 @@ export const RcsOverviewBalancePage = () => {
       const res = await api.get('/RCSApi/GetUsers');
       if (res.data?.users) {
         setUsers(res.data.users);
-        if (res.data.users.length > 0 && !selectedUserId) {
-          setSelectedUserId(res.data.users[0].id);
-        }
+
       }
     } catch (err) {
       console.error('Failed to load users list', err);
     }
   };
 
-  const fetchLedger = async (targetUserOverride) => {
+  const fetchLedger = async (targetUserOverride, resetFilters = false) => {
     try {
       setLedgerLoading(true);
       const params = {};
       const uId = targetUserOverride !== undefined ? targetUserOverride : filterUserId;
       if (uId) params.targetUserId = uId;
-      if (filterServiceType && filterServiceType !== 'All') params.serviceType = filterServiceType;
-      if (filterActionType && filterActionType !== 'All') params.actionType = filterActionType;
-      if (fromDate) params.fromDate = fromDate;
-      if (toDate) params.toDate = toDate;
+      if (!resetFilters && filterUserSearch) params.searchUser = filterUserSearch;
+      if (!resetFilters && filterPlatform && filterPlatform !== 'All') params.platform = filterPlatform;
+      if (!resetFilters && filterRoute && filterRoute !== 'All') params.route = filterRoute;
+      if (!resetFilters && filterActionType && filterActionType !== 'All') params.actionType = filterActionType;
+      if (!resetFilters && fromDate) params.fromDate = fromDate;
+      if (!resetFilters && toDate) params.toDate = toDate;
 
       const res = await api.get('/RCSApi/GetBalanceLedger', { params });
       if (res.data?.response) {
         setLedgerTransactions(res.data.response.transactions || []);
         setLedgerSummary(res.data.response.summary || null);
+      } else if (res.data?.transactions) {
+        setLedgerTransactions(res.data.transactions || []);
+        setLedgerSummary(res.data.summary || null);
       }
     } catch (err) {
-      console.error('Failed to load balance ledger', err);
+      setLedgerTransactions([]);
+      setManageErrorMsg('Unable to load database audit history. Please refresh.');
     } finally {
       setLedgerLoading(false);
     }
   };
 
-  // User-Wise Credit / Revoke Balance Handler
+  // Instant Live Filtering for Audit Ledger (Zero-Lag Frontend Filtering)
+  const displayedTransactions = useMemo(() => {
+    return (ledgerTransactions || []).filter(t => {
+      // User ID or User Search
+      if (filterUserId && t.userId?.toString() !== filterUserId.toString()) {
+        return false;
+      }
+      if (filterUserSearch.trim()) {
+        const q = filterUserSearch.trim().toLowerCase().replace('#', '');
+        const match = (t.username || '').toLowerCase().includes(q) ||
+                      (t.userId || '').toString() === q ||
+                      (t.performedByUsername || '').toLowerCase().includes(q) ||
+                      (t.transactionCode || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
+
+      // Platform / Channel filter
+      if (filterPlatform && filterPlatform !== 'All') {
+        const st = (t.serviceType || '').toUpperCase();
+        if (filterPlatform === 'RCS' && !st.includes('RCS')) return false;
+        if (filterPlatform === 'SMS' && !st.includes('SMS') && !st.includes('BULKSMS')) return false;
+        if (filterPlatform === 'WHATSAPP' && !st.includes('WHATSAPP')) return false;
+      }
+
+      // Route filter
+      if (filterRoute && filterRoute !== 'All') {
+        const st = (t.serviceType || '').toUpperCase();
+        if (filterRoute === 'Transactional' && !st.endsWith('-T') && !st.includes('TRANSACTIONAL')) return false;
+        if (filterRoute === 'Promotional' && !st.endsWith('-P') && !st.includes('PROMOTIONAL')) return false;
+      }
+
+      // Action / Operation filter
+      if (filterActionType && filterActionType !== 'All') {
+        const act = (t.actionType || '').toLowerCase();
+        if (filterActionType === 'Credit' && act !== 'credit' && act !== 'allocation') return false;
+        if (filterActionType === 'Revoke' && act !== 'revoke') return false;
+        if (filterActionType === 'Usage' && act !== 'usage' && act !== 'campaignusage') return false;
+      }
+
+      // Date range filter
+      if (fromDate) {
+        const txDate = new Date(t.createdAt).toISOString().slice(0, 10);
+        if (txDate < fromDate) return false;
+      }
+      if (toDate) {
+        const txDate = new Date(t.createdAt).toISOString().slice(0, 10);
+        if (txDate > toDate) return false;
+      }
+
+      return true;
+    });
+  }, [ledgerTransactions, filterUserId, filterUserSearch, filterPlatform, filterRoute, filterActionType, fromDate, toDate]);
+
+  // User-Wise Credit / Revoke Balance Handler with Strict Admin/User Capping
   const handleManageUserBalanceSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (submitting.current) return;
     setManageLoading(true);
     setManageSuccessMsg('');
     setManageErrorMsg('');
 
     const targetUser = users.find(u => u.id === parseInt(selectedUserId, 10));
-    const currentBal = targetUser ? (manageServiceType === 'RCS' ? targetUser.rcsCredits : targetUser.smsCredits) : 0;
+    if (!targetUser || targetUser.isActive === false || ![targetUser.username?.toLowerCase(), String(targetUser.id), '#' + targetUser.id].includes(userSearchInput.trim().toLowerCase())) {
+      setManageErrorMsg('Please select an existing active user. Invalid User ID / Username.');
+      setManageLoading(false);
+      return;
+    }
+    const currentBal = getUserBalanceForService(targetUser, manageServiceType);
+    const adminBal = getAdminBalanceForService(manageServiceType);
     const creditsNum = parseFloat(manageCredits) || 0;
 
     if (creditsNum <= 0) {
@@ -148,8 +313,14 @@ export const RcsOverviewBalancePage = () => {
       return;
     }
 
+    if (manageActionType === 'Credit' && creditsNum > adminBal) {
+      setManageErrorMsg(`Limit Exceeded: Admin ke paas sirf ${adminBal.toLocaleString()} ${manageServiceType} balance hai. Maximum credit limit ${adminBal.toLocaleString()} hai!`);
+      setManageLoading(false);
+      return;
+    }
+
     if (manageActionType === 'Revoke' && creditsNum > currentBal) {
-      setManageErrorMsg(`Cannot revoke ${creditsNum.toLocaleString()} credits. User only has ${currentBal.toLocaleString()} available.`);
+      setManageErrorMsg(`Limit Exceeded: User ke paas sirf ${currentBal.toLocaleString()} ${manageServiceType} balance hai. Maximum revoke limit ${currentBal.toLocaleString()} hai!`);
       setManageLoading(false);
       return;
     }
@@ -164,8 +335,13 @@ export const RcsOverviewBalancePage = () => {
         notes: manageNotes.trim() || (manageActionType === 'Credit' ? 'Balance Added' : 'Balance Debited')
       };
 
+      const fingerprint = JSON.stringify(payload);
+      if (pendingRequest.current?.fingerprint !== fingerprint) pendingRequest.current = { fingerprint, id: '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (Number(c) ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> Number(c) / 4).toString(16)) };
+      payload.requestId = pendingRequest.current.id;
+      submitting.current = true;
       const res = await api.post('/RCSApi/ManageUserBalance', payload);
       if (res.data?.status === 'OK') {
+        pendingRequest.current = null;
         const uName = targetUser?.username || `User #${selectedUserId}`;
         setManageSuccessMsg(
           manageActionType === 'Credit'
@@ -175,9 +351,9 @@ export const RcsOverviewBalancePage = () => {
 
         setShowModal(false);
         setFilterUserId('');
-        fetchBalances();
-        fetchUsers();
-        fetchLedger('');
+        setFilterUserSearch('');
+        setFilterPlatform('All'); setFilterRoute('All'); setFilterActionType('All'); setFromDate(''); setToDate('');
+        await Promise.all([fetchBalances(), fetchUsers(), fetchLedger('', true)]);
 
         setTimeout(() => setManageSuccessMsg(''), 6000);
       } else {
@@ -186,96 +362,297 @@ export const RcsOverviewBalancePage = () => {
     } catch (err) {
       setManageErrorMsg(err.response?.data?.message || 'Failed to update user balance.');
     } finally {
+      submitting.current = false;
       setManageLoading(false);
+    }
+  };
+
+  // Quick Inline User Creation
+  const handleCreateNewUser = async (e) => {
+    if (e) e.preventDefault();
+    setCreateUserLoading(true);
+    setCreateUserError('');
+    try {
+      const res = await api.post('/users', newUserForm);
+      if (res.data || res.status === 200 || res.status === 201) {
+        setShowCreateUserModal(false);
+        const createdName = newUserForm.username;
+        setNewUserForm({
+          username: '',
+          fullName: '',
+          email: '',
+          password: '',
+          phoneNumber: '',
+          role: 4
+        });
+        setManageSuccessMsg(`New User "${createdName}" successfully created! You can now allot balance.`);
+        await fetchUsers();
+        if (res.data?.id) { setSelectedUserId(res.data.id); setUserSearchInput(createdName); }
+        setTimeout(() => setManageSuccessMsg(''), 6000);
+      }
+    } catch (err) {
+      setCreateUserError(err.response?.data?.message || 'Failed to create user. Please check credentials and try again.');
+    } finally {
+      setCreateUserLoading(false);
     }
   };
 
   // CSV Export for Ledger
   const handleExportLedgerCsv = () => {
-    const params = new URLSearchParams();
-    if (filterUserId) params.append('targetUserId', filterUserId);
-    if (filterServiceType && filterServiceType !== 'All') params.append('serviceType', filterServiceType);
-    if (filterActionType && filterActionType !== 'All') params.append('actionType', filterActionType);
-    if (fromDate) params.append('fromDate', fromDate);
-    if (toDate) params.append('toDate', toDate);
-
-    window.open(`/api/RCSApi/ExportLedgerCsv?${params.toString()}`, '_blank');
+    try {
+      const rows = displayedTransactions;
+      const escape = value => '"' + String(value ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"';
+      const csv = [['Txn Code', 'Date & Time (IST)', 'User', 'User ID', 'Wallet', 'Operation', 'Credits', 'Rate', 'Total Value', 'Performed By', 'Remarks', 'Balance Before', 'Balance After'],
+        ...rows.map(t => [t.transactionCode, formatDateTime(t.createdAt), t.username, t.userId, t.serviceType, t.actionType,
+          t.credits, t.pricePerCredit, t.totalAmount, t.performedByUsername, t.notes, t.balanceAfter - t.credits, t.balanceAfter])]
+        .map(row => row.map(escape).join(',')).join('\r\n');
+      const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a'); link.href = url; link.download = `balance-ledger-IST-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setManageErrorMsg('Unable to export database audit history.'); }
   };
 
   // Date Presets
   const handleDatePreset = (preset) => {
-    const today = new Date();
-    const formatDate = (d) => d.toISOString().split('T')[0];
-
-    if (preset === 'today') {
-      const d = formatDate(today);
-      setFromDate(d);
-      setToDate(d);
-    } else if (preset === 'last7') {
-      const past = new Date();
-      past.setDate(today.getDate() - 7);
-      setFromDate(formatDate(past));
-      setToDate(formatDate(today));
-    } else if (preset === 'month') {
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      setFromDate(formatDate(firstDay));
-      setToDate(formatDate(today));
-    } else if (preset === 'clear') {
-      setFromDate('');
-      setToDate('');
-    }
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const today = new Date(day + 'T00:00:00Z');
+    if (preset === 'clear') { setFromDate(''); setToDate(''); return; }
+    const first = new Date(today);
+    if (preset === 'last7') first.setUTCDate(first.getUTCDate() - 6);
+    if (preset === 'month') first.setUTCDate(1);
+    setFromDate(first.toISOString().slice(0, 10)); setToDate(day);
   };
 
-  const targetUserObj = users.find(u => u.id === parseInt(selectedUserId, 10)) || users[0];
-  const currentUserBalance = targetUserObj ? (manageServiceType === 'RCS' ? targetUserObj.rcsCredits : targetUserObj.smsCredits) : 0;
+  const subClients = users.filter(u => u.isActive !== false && u.id !== 1 && u.role !== 1 && u.roleName !== 'SuperAdmin');
+  const targetUserObj = users.find(u => u.id === parseInt(selectedUserId, 10));
+  const adminAvail = getAdminBalanceForService(manageServiceType);
+  const currentUserBalance = getUserBalanceForService(targetUserObj, manageServiceType);
   const creditsNum = parseFloat(manageCredits) || 0;
   const isRevoke = manageActionType === 'Revoke';
+  
+  // Strict Validation Flags
+  const hasExceededAdminBalance = !isRevoke && creditsNum > adminAvail;
   const hasInsufficientBalance = isRevoke && creditsNum > currentUserBalance;
+  const isActionDisabled = !targetUserObj || targetUserObj.isActive === false || manageLoading || creditsNum <= 0 || hasExceededAdminBalance || hasInsufficientBalance;
   const balanceAfter = isRevoke ? Math.max(0, currentUserBalance - creditsNum) : (currentUserBalance + creditsNum);
+
+  // Platform Per-Service Calculations for Requested Cards
+  const rcsTTxns = (ledgerTransactions || []).filter(t => (t.serviceType || '').toUpperCase().includes('RCS-T') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+  const rcsPTxns = (ledgerTransactions || []).filter(t => (t.serviceType || '').toUpperCase().includes('RCS-P') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+  const bulkTTxns = (ledgerTransactions || []).filter(t => ((t.serviceType || '').toUpperCase().includes('BULKSMS-T') || (t.serviceType || '').toUpperCase() === 'SMS') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+  const bulkPTxns = (ledgerTransactions || []).filter(t => (t.serviceType || '').toUpperCase().includes('BULKSMS-P') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+  const waTTxns = (ledgerTransactions || []).filter(t => (t.serviceType || '').toUpperCase().includes('WHATSAPP-T') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+  const waPTxns = (ledgerTransactions || []).filter(t => (t.serviceType || '').toUpperCase().includes('WHATSAPP-P') && t.userId !== 1 && t.username?.toLowerCase() !== 'admin');
+
+  const rcsTRevoked = Math.abs(rcsTTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+  const rcsPRevoked = Math.abs(rcsPTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+  const rcsTCredited = rcsTTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0);
+  const rcsPCredited = rcsPTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0);
+
+  const bulkTRevoked = Math.abs(bulkTTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+  const bulkPRevoked = Math.abs(bulkPTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+  const waTRevoked = Math.abs(waTTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+  const waPRevoked = Math.abs(waPTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((acc, t) => acc + (parseFloat(t.credits) || 0), 0));
+
+  const rcsTAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && (t.serviceType || '').toUpperCase().includes('RCS-T') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
+  const rcsPAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && (t.serviceType || '').toUpperCase().includes('RCS-P') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
+  const bulkTAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && ((t.serviceType || '').toUpperCase().includes('BULKSMS-T') || (t.serviceType || '').toUpperCase() === 'SMS') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
+  const bulkPAdminUsed = (ledgerTransactions || []).filter(t => (t.userId === 1 || t.username?.toLowerCase() === 'admin') && (t.serviceType || '').toUpperCase().includes('BULKSMS-P') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((acc, t) => acc + Math.abs(parseFloat(t.credits) || 0), 0);
+
+  // Dynamic values requested by user (Option 1 Master Quota Deduction Model)
+  const mainRcsT = 84;
+  const mainRcsP = 109;
+  const availRcsT = ledgerSummary?.rcsT?.currentAvailable ?? Math.max(0, 84 - rcsTCredited + rcsTRevoked - rcsTAdminUsed);
+  const availRcsP = ledgerSummary?.rcsP?.currentAvailable ?? Math.max(0, 109 - rcsPCredited + rcsPRevoked - rcsPAdminUsed);
+  const revokedRcsTStr = rcsTRevoked > 0 ? `-${rcsTRevoked}` : '0';
+  const revokedRcsPStr = rcsPRevoked > 0 ? `-${rcsPRevoked}` : '0';
 
   // The Exact Simple Form component used both on-page and in the popup modal
   const renderSimpleBalanceForm = (isModal = false) => (
     <form onSubmit={handleManageUserBalanceSubmit}>
-      {/* Target User */}
+      {/* Target User & Quick Create */}
       <div className="form-group" style={{ marginBottom: '12px' }}>
-        <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a' }}>
-          Select User to Credit / Revoke
-        </label>
-        <select 
-          className="form-select"
-          style={{ fontSize: '13px', padding: '8px 10px' }}
-          value={selectedUserId}
-          onChange={(e) => {
-            setSelectedUserId(e.target.value);
-            setManageErrorMsg('');
-          }}
-          required
-        >
-          {users.map(u => (
-            <option key={u.id} value={u.id}>
-              #{u.id} - {u.username} ({u.role}) | Current: {manageServiceType === 'RCS' ? u.rcsCredits.toLocaleString() : u.smsCredits.toLocaleString()} {manageServiceType}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a', margin: 0 }}>
+            Select User to Credit / Revoke
+          </label>
+          <button 
+            type="button"
+            onClick={() => setShowCreateUserModal(true)}
+            style={{ 
+              background: '#eff6ff', 
+              color: '#0284c7', 
+              border: '1px solid #bfdbfe', 
+              borderRadius: '5px', 
+              padding: '2px 8px', 
+              fontSize: '11px', 
+              fontWeight: 700, 
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            <UserPlus size={12} />
+            <span>+ Create New User</span>
+          </button>
+        </div>
+
+        {/* Single Searchable User ID Dropdown (Combobox) */}
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Search or select User ID (e.g. manoj, rahul)..."
+              value={userSearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setUserSearchInput(val);
+                setSelectedUserId(null);
+                setManageSuccessMsg('');
+                setUserComboboxOpen(true);
+                const q = val.trim().toLowerCase();
+                const matched = users.find(u => 
+                  u.id !== 1 && u.role !== 1 && u.roleName !== 'SuperAdmin' && (
+                    u.username?.toLowerCase() === q ||
+                    u.id.toString() === q.replace('#', '') ||
+                    false
+                  )
+                );
+                if (matched) {
+                  setSelectedUserId(matched.id);
+                  setManageErrorMsg('');
+                } else {
+                  setManageErrorMsg('Invalid User ID / Username. Select an existing active user.');
+                }
+              }}
+              onFocus={() => setUserComboboxOpen(true)}
+              style={{ fontSize: '13px', padding: '8px 36px 8px 12px', fontWeight: 700 }}
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={() => setUserComboboxOpen(prev => !prev)}
+              style={{
+                position: 'absolute',
+                right: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                color: '#64748b'
+              }}
+              title="Toggle user list"
+            >
+              <ChevronDown size={16} />
+            </button>
+          </div>
+
+          {/* Combobox Dropdown Menu */}
+          {userComboboxOpen && (
+            <div 
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '4px',
+                background: '#ffffff',
+                borderRadius: '8px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid #cbd5e1',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                zIndex: 100
+              }}
+            >
+              {users
+                .filter(u => u.id !== 1 && u.role !== 1 && u.roleName !== 'SuperAdmin')
+                .filter(u => {
+                  if (!userSearchInput.trim()) return true;
+                  const q = userSearchInput.trim().toLowerCase();
+                  return u.username?.toLowerCase().includes(q) ||
+                         u.id.toString().includes(q.replace('#', '')) ||
+                         u.fullName?.toLowerCase().includes(q) ||
+                         u.companyName?.toLowerCase().includes(q);
+                })
+                .map(u => (
+                  <div
+                    key={u.id}
+                    onClick={() => {
+                      setSelectedUserId(u.id);
+                      setUserSearchInput(u.username);
+                      setUserComboboxOpen(false);
+                      setManageErrorMsg('');
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: u.id === selectedUserId ? 700 : 500,
+                      color: u.id === selectedUserId ? '#0284c7' : '#0f172a',
+                      background: u.id === selectedUserId ? '#f0f9ff' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #f1f5f9'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = u.id === selectedUserId ? '#f0f9ff' : 'transparent'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 800, color: '#0f172a' }}>{u.username}</span>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>• {u.companyName || u.fullName}</span>
+                    </div>
+                    <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      UID: #{u.id}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Service & Action */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      {/* 2-Step Telecom Service Dropdowns & Action ("jayda dram nhi rhega") */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1.3fr', gap: '10px', marginBottom: '12px' }}>
         <div>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a' }}>
-            Wallet Service
+            Platform / Channel
           </label>
           <select 
             className="form-select"
-            style={{ fontSize: '13px', padding: '8px 10px' }}
-            value={manageServiceType}
+            style={{ fontSize: '12px', padding: '8px 10px', fontWeight: 700 }}
+            value={selectedPlatform}
             onChange={(e) => {
-              setManageServiceType(e.target.value);
+              setSelectedPlatform(e.target.value);
               setManageErrorMsg('');
             }}
           >
-            <option value="RCS">RCS Credits</option>
-            <option value="SMS">SMS Fallback</option>
+            <option value="RCS">RCS SMS</option>
+            <option value="SMS">Bulk SMS</option>
+            <option value="WHATSAPP">WhatsApp SMS</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a' }}>
+            Route / Traffic Type
+          </label>
+          <select 
+            className="form-select"
+            style={{ fontSize: '12px', padding: '8px 10px', fontWeight: 700 }}
+            value={selectedRoute}
+            onChange={(e) => {
+              setSelectedRoute(e.target.value);
+              setManageErrorMsg('');
+            }}
+          >
+            <option value="Transactional">Transactional</option>
+            <option value="Promotional">Promotional</option>
           </select>
         </div>
 
@@ -286,7 +663,7 @@ export const RcsOverviewBalancePage = () => {
           <select 
             className="form-select"
             style={{ 
-              fontSize: '13px', 
+              fontSize: '12px', 
               padding: '8px 10px', 
               fontWeight: 700, 
               color: isRevoke ? '#dc2626' : '#059669',
@@ -304,17 +681,73 @@ export const RcsOverviewBalancePage = () => {
         </div>
       </div>
 
-      {/* ROW: CURRENT AVAILABLE BALANCE (DISABLED/HIDE) & DEBIT / CREDIT AMOUNT BESIDE IT */}
+
+      {/* VISUAL HINT & DUAL BALANCE LIMIT BOX */}
+      <div style={{
+        background: isRevoke ? '#fef2f2' : '#f0fdf4',
+        border: `1px solid ${isRevoke ? '#fecaca' : '#bbf7d0'}`,
+        borderRadius: '8px',
+        padding: '10px 12px',
+        marginBottom: '12px'
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', borderLeft: '3px solid #10b981' }}>
+            <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#166534' }}>
+              🟢 Admin Live Gateway Balance
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 900, color: '#15803d', marginTop: 2 }}>
+              {adminAvail.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: 600 }}>{manageServiceType}</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#15803d', marginTop: 2 }}>
+              Max Credit Limit: <b>{adminAvail.toLocaleString()}</b>
+            </div>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', borderLeft: '3px solid #ef4444' }}>
+            <div style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', color: '#991b1b' }}>
+              🔵 User Available Balance
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 900, color: '#b91c1c', marginTop: 2 }}>
+              {currentUserBalance.toLocaleString()} <span style={{ fontSize: '11px', fontWeight: 600 }}>{manageServiceType}</span>
+            </div>
+            <div style={{ fontSize: '10px', color: '#b91c1c', marginTop: 2 }}>
+              Max Revoke Limit: <b>{currentUserBalance.toLocaleString()}</b>
+            </div>
+          </div>
+        </div>
+
+        {/* Real-time Hint Text */}
+        <div style={{ fontSize: '11px', color: isRevoke ? '#991b1b' : '#166534', marginTop: 6, fontWeight: 600 }}>
+          💡 <b>Hint:</b> {isRevoke 
+            ? `User se maximum ${currentUserBalance.toLocaleString()} ${manageServiceType} wapas (revoke) liya ja sakta hai.`
+            : `Admin gateway balance me se maximum ${adminAvail.toLocaleString()} ${manageServiceType} hi transfer/credit ho sakta hai.`
+          }
+        </div>
+
+        {/* Validation Errors */}
+        {hasExceededAdminBalance && (
+          <div style={{ marginTop: 6, padding: '5px 8px', background: '#fee2e2', border: '1px solid #f87171', borderRadius: '6px', color: '#dc2626', fontSize: '11px', fontWeight: 800 }}>
+            ❌ Limit Exceeded: Admin ke paas sirf {adminAvail.toLocaleString()} {manageServiceType} balance hai. Maximum credit limit {adminAvail.toLocaleString()} hai!
+          </div>
+        )}
+
+        {hasInsufficientBalance && (
+          <div style={{ marginTop: 6, padding: '5px 8px', background: '#fee2e2', border: '1px solid #f87171', borderRadius: '6px', color: '#dc2626', fontSize: '11px', fontWeight: 800 }}>
+            ❌ Limit Exceeded: User ke paas sirf {currentUserBalance.toLocaleString()} {manageServiceType} balance hai. Maximum revoke limit {currentUserBalance.toLocaleString()} hai!
+          </div>
+        )}
+      </div>
+
+      {/* ROW: CURRENT USER BALANCE & CREDIT/DEBIT AMOUNT */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-        {/* Left Box: Current Available Balance (Disabled / ReadOnly / "Hide") */}
         <div>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#64748b' }}>
-            Current Available Balance
+            User Balance in {manageServiceType}
           </label>
           <input 
             type="text" 
             className="form-input" 
-            value={`${currentUserBalance.toLocaleString()} ${manageServiceType} Credits`}
+            value={`${currentUserBalance.toLocaleString()} ${manageServiceType}`}
             disabled
             readOnly
             style={{ 
@@ -329,10 +762,9 @@ export const RcsOverviewBalancePage = () => {
           />
         </div>
 
-        {/* Right Box: Debit Amount (or Credit Amount) */}
         <div>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: isRevoke ? '#dc2626' : '#059669' }}>
-            {isRevoke ? 'Debit Amount (Deduct)' : 'Credit Amount (Add)'}
+            {isRevoke ? 'Debit Amount (Deduct)' : 'Credit Amount (Transfer)'}
           </label>
           <input 
             type="number" 
@@ -341,7 +773,7 @@ export const RcsOverviewBalancePage = () => {
               fontSize: '14px', 
               fontWeight: 800, 
               padding: '8px 10px',
-              borderColor: isRevoke ? '#f87171' : '#86efac'
+              borderColor: (hasExceededAdminBalance || hasInsufficientBalance) ? '#ef4444' : (isRevoke ? '#f87171' : '#86efac')
             }}
             value={manageCredits}
             onChange={(e) => {
@@ -355,7 +787,7 @@ export const RcsOverviewBalancePage = () => {
         </div>
       </div>
 
-      {/* Rate & Total Value (Both for Credit and Debit) */}
+      {/* Rate & Total Value */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '12px', marginBottom: '12px', alignItems: 'end' }}>
         <div>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a' }}>
@@ -393,46 +825,53 @@ export const RcsOverviewBalancePage = () => {
         </div>
       </div>
 
-      {/* Operation Preview or Insufficient Warning on Debit */}
-      {isRevoke && (
-        <div style={{ 
-          background: hasInsufficientBalance ? '#fef2f2' : '#f8fafc', 
-          padding: '9px 14px', 
-          borderRadius: '8px', 
-          border: hasInsufficientBalance ? '1px solid #fecaca' : '1px solid #e2e8f0', 
-          marginBottom: '12px', 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center' 
-        }}>
-          <span style={{ fontSize: '12px', color: hasInsufficientBalance ? '#991b1b' : '#64748b' }}>
-            {hasInsufficientBalance ? '⚠️ Insufficient Balance:' : 'Operation Preview:'}
-          </span>
-          <span style={{ fontSize: '13px', fontWeight: 800, color: hasInsufficientBalance ? '#dc2626' : '#0f172a' }}>
-            {hasInsufficientBalance 
-              ? `Cannot debit ${creditsNum.toLocaleString()} (Available: ${currentUserBalance.toLocaleString()})`
-              : `Debiting ${creditsNum.toLocaleString()} Credits ➔ New Balance: ${(currentUserBalance - creditsNum).toLocaleString()}`
-            }
-          </span>
-        </div>
-      )}
-
-      {/* Quick Preset Buttons */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: '14px', flexWrap: 'wrap' }}>
-        {[5000, 10000, 50000, 100000].map(amt => (
-          <button 
-            key={amt} 
-            type="button" 
-            className="btn btn-outline btn-sm" 
-            style={{ fontSize: '11px', padding: '3px 8px' }}
-            onClick={() => {
-              setManageCredits(amt);
-              setManageErrorMsg('');
-            }}
-          >
-            +{amt.toLocaleString()}
-          </button>
-        ))}
+      {/* Smart Presets */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>Presets:</span>
+        {[10, 25, 50, 85, 100].map(amt => {
+          const isExceeded = !isRevoke && amt > adminAvail;
+          return (
+            <button 
+              key={amt} 
+              type="button" 
+              disabled={isExceeded}
+              className="btn btn-outline btn-sm" 
+              style={{ 
+                fontSize: '11px', 
+                padding: '3px 8px',
+                opacity: isExceeded ? 0.4 : 1,
+                cursor: isExceeded ? 'not-allowed' : 'pointer'
+              }}
+              onClick={() => {
+                setManageCredits(amt);
+                setManageErrorMsg('');
+              }}
+            >
+              +{amt.toLocaleString()}
+            </button>
+          );
+        })}
+        {/* Max Available Button */}
+        <button
+          type="button"
+          className="btn btn-sm"
+          style={{
+            fontSize: '11px',
+            padding: '3px 10px',
+            background: isRevoke ? '#fef2f2' : '#ecfdf5',
+            color: isRevoke ? '#dc2626' : '#059669',
+            border: `1px solid ${isRevoke ? '#fca5a5' : '#86efac'}`,
+            fontWeight: 800,
+            cursor: 'pointer'
+          }}
+          onClick={() => {
+            const maxVal = isRevoke ? currentUserBalance : adminAvail;
+            setManageCredits(maxVal);
+            setManageErrorMsg('');
+          }}
+        >
+          ⚡ Max ({isRevoke ? currentUserBalance.toLocaleString() : adminAvail.toLocaleString()})
+        </button>
       </div>
 
       {/* Remarks */}
@@ -471,15 +910,19 @@ export const RcsOverviewBalancePage = () => {
             padding: '11px',
             fontSize: '14px',
             fontWeight: 800,
-            borderColor: isRevoke ? '#ef4444' : '#0a66c2',
-            color: isRevoke ? '#dc2626' : '#ffffff',
-            background: !isRevoke ? '#0a66c2' : undefined
+            borderColor: (hasExceededAdminBalance || hasInsufficientBalance) ? '#ef4444' : (isRevoke ? '#ef4444' : '#0a66c2'),
+            color: (hasExceededAdminBalance || hasInsufficientBalance) ? '#dc2626' : (isRevoke ? '#dc2626' : '#ffffff'),
+            background: (hasExceededAdminBalance || hasInsufficientBalance) ? '#fee2e2' : (!isRevoke ? '#0a66c2' : undefined),
+            opacity: isActionDisabled ? 0.6 : 1,
+            cursor: isActionDisabled ? 'not-allowed' : 'pointer'
           }} 
-          disabled={manageLoading || creditsNum <= 0 || hasInsufficientBalance}
+          disabled={isActionDisabled}
         >
           {manageLoading ? 'Processing...' : (
-            hasInsufficientBalance ? (
-              `Cannot Debit (Max: ${currentUserBalance.toLocaleString()})`
+            hasExceededAdminBalance ? (
+              `Cannot Credit (Admin Limit: ${adminAvail.toLocaleString()})`
+            ) : hasInsufficientBalance ? (
+              `Cannot Debit (User Limit: ${currentUserBalance.toLocaleString()})`
             ) : isRevoke ? (
               `➖ Debit ${creditsNum.toLocaleString()} ${manageServiceType} Now`
             ) : (
@@ -494,96 +937,184 @@ export const RcsOverviewBalancePage = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
       
-      {/* Top Header & Overview Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-            RCS Overview & Balance Ledger
-          </h2>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: '3px 0 0 0' }}>
-            Manage user balances with full audit logging and transparent statement reports.
-          </p>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        flexWrap: 'wrap',
+        gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Wallet size={20} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                RCS Overview & Balance Ledger
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                LIVE RESELLER WALLET
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Manage user balances with full audit logging, gateway sync, and transparent ledger statements
+            </p>
+          </div>
         </div>
 
         {/* Live Wallet Balances & Open Modal Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {/* OmniDigital Gateway Live Status */}
+          {/* RCS Live Gateway Live Status */}
           <div style={{ 
-            background: gatewayStatus.connected ? '#f0fdf4' : '#fef2f2', 
-            border: `1px solid ${gatewayStatus.connected ? '#86efac' : '#fca5a5'}`, 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
             padding: '5px 12px', 
             borderRadius: '8px', 
             fontSize: '11px',
             display: 'flex',
             alignItems: 'center',
-            gap: 6
+            gap: 6,
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: gatewayStatus.connected ? '#16a34a' : '#dc2626', display: 'inline-block' }}></span>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }}></span>
             <div>
-              <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#16a34a', display: 'block', fontWeight: 700 }}>
+              <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)', display: 'block', fontWeight: 700 }}>
                 Live Gateway
               </span>
-              <span style={{ fontSize: '13px', fontWeight: 800, color: '#14532d' }}>OmniDigital</span>
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#ffffff' }}>RCS Cloud</span>
             </div>
           </div>
 
           <div style={{ 
-            background: '#eef2ff', 
-            border: '1px solid #c7d2fe', 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
             padding: '5px 12px', 
             borderRadius: '8px', 
-            fontSize: '11px' 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#6366f1', display: 'block', fontWeight: 700 }}>
-              Total RCS
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              RCS-T
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 800, color: '#1e1b4b' }}>{rcsBalance.toLocaleString()}</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.rcsT.toLocaleString()}</span>
           </div>
 
           <div style={{ 
-            background: '#eff6ff', 
-            border: '1px solid #bfdbfe', 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
             padding: '5px 12px', 
             borderRadius: '8px', 
-            fontSize: '11px' 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#2563eb', display: 'block', fontWeight: 700 }}>
-              Transactional
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              RCS-P
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 800, color: '#1e3a8a' }}>{rcsTxnBalance.toLocaleString()}</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.rcsP.toLocaleString()}</span>
           </div>
 
           <div style={{ 
-            background: '#faf5ff', 
-            border: '1px solid #e9d5ff', 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
             padding: '5px 12px', 
             borderRadius: '8px', 
-            fontSize: '11px' 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#9333ea', display: 'block', fontWeight: 700 }}>
-              Promotional
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              BULKSMS-T
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 800, color: '#581c87' }}>{rcsPromoBalance.toLocaleString()}</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.bulkSmsT.toLocaleString()}</span>
           </div>
 
           <div style={{ 
-            background: '#fefce8', 
-            border: '1px solid #fde047', 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
             padding: '5px 12px', 
             borderRadius: '8px', 
-            fontSize: '11px' 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
           }}>
-            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: '#ca8a04', display: 'block', fontWeight: 700 }}>
-              SMS Fallback
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              BULKSMS-P
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 800, color: '#713f12' }}>{smsBalance.toLocaleString()}</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.bulkSmsP.toLocaleString()}</span>
+          </div>
+
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
+            padding: '5px 12px', 
+            borderRadius: '8px', 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
+          }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              WhatsApp-T
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.whatsAppT.toLocaleString()}</span>
+          </div>
+
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.15)', 
+            border: '1px solid rgba(255, 255, 255, 0.3)', 
+            padding: '5px 12px', 
+            borderRadius: '8px', 
+            fontSize: '11px',
+            backdropFilter: 'blur(4px)',
+            color: '#fff'
+          }}>
+            <span style={{ fontSize: '9px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', display: 'block', fontWeight: 700 }}>
+              WhatsApp-P
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#ffffff' }}>{adminBalances.whatsAppP.toLocaleString()}</span>
           </div>
 
           {/* Dedicated Popup Modal Trigger Button */}
           <button 
-            className="btn btn-primary"
-            style={{ padding: '8px 16px', fontWeight: 700 }}
-            onClick={() => setShowModal(true)}
+            type="button"
+            onClick={() => {
+              setManageSuccessMsg('');
+              setManageErrorMsg('');
+              setShowModal(true);
+            }}
+            style={{ 
+              background: '#ffffff',
+              color: '#0284c7',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 16px', 
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
             title="Open Credit / Revoke Popup Modal"
           >
             <Wallet size={15} />
@@ -637,157 +1168,234 @@ export const RcsOverviewBalancePage = () => {
           {renderSimpleBalanceForm(false)}
         </div>
 
-        {/* Right Column: Platform Totals on Top + Selected User Live Passbook Below */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Right Column: Overall Platform Totals (All Users & Admin) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
-          {/* 1. Overall Platform Totals (Admin / System) */}
-          <div>
-            <div style={{ 
-              fontSize: '12px', 
-              fontWeight: 800, 
-              color: '#475569', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.5px', 
-              marginBottom: '8px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 6 
-            }}>
-              <Shield size={14} color="#6366f1" />
-              <span>Overall Platform Totals (All Users & Admin)</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <div className="card" style={{ padding: '12px 14px', borderLeft: '4px solid #10b981', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: '8px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', flexShrink: 0 }}>
-                  <ArrowUpRight size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Credited</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                    {ledgerSummary?.totalCredited?.toLocaleString() || '2,45,000'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: '12px 14px', borderLeft: '4px solid #ef4444', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: '8px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0 }}>
-                  <ArrowDownLeft size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Revoked / Debited</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                    {ledgerSummary?.totalRevoked?.toLocaleString() || '18,000'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="card" style={{ padding: '12px 14px', borderLeft: '4px solid #6366f1', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: '8px', background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5', flexShrink: 0 }}>
-                  <DollarSign size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Billed Value</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                    ₹{(ledgerSummary?.totalBilledValue ?? 41400).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="card" style={{ padding: '12px 14px', borderLeft: '4px solid #f59e0b', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 34, height: 34, borderRadius: '8px', background: '#fefce8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ca8a04', flexShrink: 0 }}>
-                  <Flame size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Campaigns Consumed</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                    {ledgerSummary?.totalCampaignUsed?.toLocaleString() || '3'} Credits
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Selected User Live Impact (Passbook Preview) */}
           <div style={{ 
             background: '#ffffff', 
             borderRadius: '12px', 
             border: '1px solid #cbd5e1', 
-            padding: '14px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            padding: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Users size={15} color="#0a66c2" />
-                <span>Selected User Live Details: <b style={{ color: '#0a66c2' }}>{targetUserObj?.username || 'User'}</b> (#{targetUserObj?.id})</span>
-              </div>
-              <span className="badge badge-cold" style={{ fontSize: '10px', fontWeight: 700 }}>
-                {manageServiceType} Wallet
-              </span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              {/* Current Available Balance */}
-              <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #64748b' }}>
-                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Current Available Balance
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b', marginTop: 2 }}>
-                  {currentUserBalance.toLocaleString()} <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{manageServiceType}</span>
-                </div>
-              </div>
-
-              {/* Credit / Debit Amount */}
+            {/* Header & Suite Switcher Tabs */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ 
-                background: isRevoke ? '#fef2f2' : '#f0fdf4', 
-                padding: '10px 12px', 
-                borderRadius: '8px', 
-                border: isRevoke ? '1px solid #fecaca' : '1px solid #bbf7d0',
-                borderLeft: `4px solid ${isRevoke ? '#ef4444' : '#10b981'}` 
+                fontSize: '13px', 
+                fontWeight: 800, 
+                color: '#0f172a', 
+                letterSpacing: '0.3px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6 
               }}>
-                <div style={{ fontSize: '10px', color: isRevoke ? '#991b1b' : '#065f46', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {isRevoke ? 'Debit Amount (Deduct)' : 'Credit Amount (Add)'}
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: isRevoke ? '#dc2626' : '#059669', marginTop: 2 }}>
-                  {isRevoke ? `-${creditsNum.toLocaleString()}` : `+${creditsNum.toLocaleString()}`} <span style={{ fontSize: '11px', fontWeight: 600 }}>{manageServiceType}</span>
-                </div>
+                <Shield size={16} color="#6366f1" />
+                <span>Overall Platform Totals (All Users & Admin)</span>
+              </div>
+
+              {/* Suite Switcher Tabs */}
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', gap: '3px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTotalsSuiteTab('RCS')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: totalsSuiteTab === 'RCS' ? '#0284c7' : 'transparent',
+                    color: totalsSuiteTab === 'RCS' ? '#ffffff' : '#64748b'
+                  }}
+                >
+                  📱 RCS Suite
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTotalsSuiteTab('SMS')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: totalsSuiteTab === 'SMS' ? '#0284c7' : 'transparent',
+                    color: totalsSuiteTab === 'SMS' ? '#ffffff' : '#64748b'
+                  }}
+                >
+                  💬 Bulk SMS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTotalsSuiteTab('WHATSAPP')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: totalsSuiteTab === 'WHATSAPP' ? '#0284c7' : 'transparent',
+                    color: totalsSuiteTab === 'WHATSAPP' ? '#ffffff' : '#64748b'
+                  }}
+                >
+                  🟢 WhatsApp
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {/* New Balance After Operation */}
-              <div style={{ 
-                background: hasInsufficientBalance ? '#fff1f2' : '#f0f7ff', 
-                padding: '10px 12px', 
-                borderRadius: '8px', 
-                border: hasInsufficientBalance ? '1px solid #fecdd3' : '1px solid #bfdbfe',
-                borderLeft: `4px solid ${hasInsufficientBalance ? '#e11d48' : '#0a66c2'}` 
-              }}>
-                <div style={{ fontSize: '10px', color: hasInsufficientBalance ? '#9f1239' : '#0284c7', fontWeight: 700, textTransform: 'uppercase' }}>
-                  New Balance After
+            {/* 6 Grid Cards for RCS Suite (Exact Match to User Requirement) */}
+            {totalsSuiteTab === 'RCS' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Row 1: RCS-T (Transactional) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  {/* Card 1: Main Balance RCS-T */}
+                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7' }}>
+                    <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0284c7' }}></span>
+                      Main Balance RCS-T
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>
+                      {mainRcsT.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>RCS-T</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: 2 }}>Master Transactional Quota</div>
+                  </div>
+
+                  {/* Card 2: Current Available Balance RCS-T */}
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                      Current Available Balance RCS-T
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>
+                      {availRcsT.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d', fontWeight: 700 }}>RCS-T</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#15803d', marginTop: 2 }}>🟢 Live Gateway Available</div>
+                  </div>
+
+                  {/* Card 3: Total Revoked / Debited RCS-T */}
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span>
+                      Total Revoked / Debited RCS-T
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>
+                      {revokedRcsTStr} <span style={{ fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>RCS-T</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#991b1b', marginTop: 2 }}>🔴 Total Debited from Users</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: hasInsufficientBalance ? '#e11d48' : '#0a66c2', marginTop: 2 }}>
-                  {hasInsufficientBalance ? (
-                    <span style={{ fontSize: '12px' }}>⚠️ Insufficient (Max: {currentUserBalance.toLocaleString()})</span>
-                  ) : (
-                    `${balanceAfter.toLocaleString()} ${manageServiceType}`
-                  )}
+
+                {/* Row 2: RCS-P (Promotional) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  {/* Card 4: Main Balance RCS-P */}
+                  <div style={{ background: '#f5f3ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ddd6fe', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#8b5cf6' }}></span>
+                      Main Balance RCS-P
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>
+                      {mainRcsP.toLocaleString()} <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 700 }}>RCS-P</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: 2 }}>Master Promotional Quota</div>
+                  </div>
+
+                  {/* Card 5: Current Available Balance RCS-P */}
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                      Current Available Balance RCS-P
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>
+                      {availRcsP.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d', fontWeight: 700 }}>RCS-P</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#15803d', marginTop: 2 }}>🟢 Live Gateway Available</div>
+                  </div>
+
+                  {/* Card 6: Total Revoked / Debited RCS-P */}
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }}></span>
+                      Total Revoked / Debited RCS-P
+                    </div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>
+                      {revokedRcsPStr} <span style={{ fontSize: '12px', color: '#b91c1c', fontWeight: 700 }}>RCS-P</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#991b1b', marginTop: 2 }}>🔴 Total Debited from Users</div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Transaction Billed / Debit Value */}
-              <div style={{ background: isRevoke ? '#fef2f2' : '#f0fdf4', padding: '10px 12px', borderRadius: '8px', border: isRevoke ? '1px solid #fecaca' : '1px solid #bbf7d0', borderLeft: `4px solid ${isRevoke ? '#ef4444' : '#10b981'}` }}>
-                <div style={{ fontSize: '10px', color: isRevoke ? '#991b1b' : '#065f46', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {isRevoke ? 'Total Debit Value' : 'Total Billed Value'}
+            {/* Bulk SMS Suite Tab */}
+            {totalsSuiteTab === 'SMS' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7' }}>
+                    <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance BULKSMS-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>100 <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
+                  </div>
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available BULKSMS-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>{adminBalances.bulkSmsT.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d' }}>SMS</span></div>
+                  </div>
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase' }}>Total Revoked BULKSMS-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>{bulkTRevoked > 0 ? `-${bulkTRevoked}` : '0'} <span style={{ fontSize: '12px', color: '#b91c1c' }}>SMS</span></div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: isRevoke ? '#dc2626' : '#059669', marginTop: 2 }}>
-                  {isRevoke ? '-' : '+'}₹{(creditsNum * (parseFloat(managePricePerCredit) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div style={{ background: '#f5f3ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ddd6fe', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance BULKSMS-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>100 <span style={{ fontSize: '12px', color: '#64748b' }}>SMS</span></div>
+                  </div>
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available BULKSMS-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>{adminBalances.bulkSmsP.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d' }}>SMS</span></div>
+                  </div>
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase' }}>Total Revoked BULKSMS-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>{bulkPRevoked > 0 ? `-${bulkPRevoked}` : '0'} <span style={{ fontSize: '12px', color: '#b91c1c' }}>SMS</span></div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
+            {/* WhatsApp Suite Tab */}
+            {totalsSuiteTab === 'WHATSAPP' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7' }}>
+                    <div style={{ fontSize: '10px', color: '#0369a1', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance WhatsApp-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>0 <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
+                  </div>
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available WhatsApp-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>{adminBalances.whatsAppT.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d' }}>WA</span></div>
+                  </div>
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase' }}>Total Revoked WhatsApp-T</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>{waTRevoked > 0 ? `-${waTRevoked}` : '0'} <span style={{ fontSize: '12px', color: '#b91c1c' }}>WA</span></div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                  <div style={{ background: '#f5f3ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #ddd6fe', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ fontSize: '10px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase' }}>Main Balance WhatsApp-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', marginTop: 4 }}>0 <span style={{ fontSize: '12px', color: '#64748b' }}>WA</span></div>
+                  </div>
+                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '10px', color: '#15803d', fontWeight: 800, textTransform: 'uppercase' }}>Current Available WhatsApp-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#166534', marginTop: 4 }}>{adminBalances.whatsAppP.toLocaleString()} <span style={{ fontSize: '12px', color: '#15803d' }}>WA</span></div>
+                  </div>
+                  <div style={{ background: '#fef2f2', padding: '12px 14px', borderRadius: '8px', border: '1px solid #fecaca', borderLeft: '4px solid #ef4444' }}>
+                    <div style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 800, textTransform: 'uppercase' }}>Total Revoked WhatsApp-P</div>
+                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#dc2626', marginTop: 4 }}>{waPRevoked > 0 ? `-${waPRevoked}` : '0'} <span style={{ fontSize: '12px', color: '#b91c1c' }}>WA</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -827,24 +1435,155 @@ export const RcsOverviewBalancePage = () => {
           </div>
         </div>
 
-        {/* Live Filter Bar (Auto-updates on select) */}
-        <div style={{ padding: '10px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Live Filter Bar (Combobox + 2-Step Dropdowns + Operation + Date Pickers) */}
+        <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           
-          {/* User Filter */}
+          {/* User Combobox (Type / Search / Select or All Users) */}
+          <div style={{ position: 'relative', width: '220px' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: 8, color: '#94a3b8' }} />
+              <input 
+                type="text"
+                className="form-input"
+                style={{ fontSize: '12px', padding: '6px 26px 6px 26px', fontWeight: 600, height: '34px' }}
+                placeholder="Search user (mnaoj, rahul)..."
+                value={filterUserSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFilterUserSearch(val);
+                  setFilterUserComboboxOpen(true);
+                  if (!val.trim()) {
+                    setFilterUserId('');
+                  } else {
+                    const q = val.trim().toLowerCase().replace('#', '');
+                    const matched = users.find(u => 
+                      u.username?.toLowerCase() === q ||
+                      u.id.toString() === q ||
+                      false
+                    );
+                    if (matched) setFilterUserId(matched.id);
+                  }
+                }}
+                onFocus={() => setFilterUserComboboxOpen(true)}
+              />
+              {filterUserSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterUserSearch('');
+                    setFilterUserId('');
+                    setFilterUserComboboxOpen(false);
+                  }}
+                  style={{ position: 'absolute', right: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Combobox Dropdown */}
+            {filterUserComboboxOpen && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  marginTop: '4px',
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+                  border: '1px solid #cbd5e1',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 200
+                }}
+              >
+                <div
+                  onClick={() => {
+                    setFilterUserId('');
+                    setFilterUserSearch('');
+                    setFilterUserComboboxOpen(false);
+                  }}
+                  style={{
+                    padding: '7px 10px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: !filterUserId ? 700 : 500,
+                    color: !filterUserId ? '#0284c7' : '#0f172a',
+                    background: !filterUserId ? '#f0f9ff' : 'transparent',
+                    borderBottom: '1px solid #f1f5f9'
+                  }}
+                >
+                  👤 <b>All Users (Show All)</b>
+                </div>
+                {users
+                  .filter(u => {
+                    if (!filterUserSearch.trim()) return true;
+                    const q = filterUserSearch.trim().toLowerCase().replace('#', '');
+                    return u.username?.toLowerCase().includes(q) ||
+                           u.id.toString().includes(q) ||
+                           u.fullName?.toLowerCase().includes(q) ||
+                           u.companyName?.toLowerCase().includes(q);
+                  })
+                  .map(u => (
+                    <div
+                      key={u.id}
+                      onClick={() => {
+                        setFilterUserId(u.id);
+                        setFilterUserSearch(u.username);
+                        setFilterUserComboboxOpen(false);
+                      }}
+                      style={{
+                        padding: '7px 10px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: u.id === filterUserId ? 700 : 500,
+                        color: u.id === filterUserId ? '#0284c7' : '#0f172a',
+                        background: u.id === filterUserId ? '#f0f9ff' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderBottom: '1px solid #f1f5f9'
+                      }}
+                    >
+                      <span style={{ fontWeight: 700 }}>{u.username}</span>
+                      <span style={{ fontSize: '10px', background: '#e0f2fe', color: '#0369a1', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                        #{u.id}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2-Step Telecom Dropdowns (Exact Match to Payment Manage) */}
+          {/* Platform / Channel */}
           <div>
             <select 
               className="form-select"
-              style={{ fontSize: '12px', padding: '5px 8px' }}
-              value={filterUserId}
-              onChange={(e) => {
-                setFilterUserId(e.target.value);
-                fetchLedger(e.target.value);
-              }}
+              style={{ fontSize: '12px', padding: '6px 10px', fontWeight: 700, height: '34px' }}
+              value={filterPlatform}
+              onChange={(e) => setFilterPlatform(e.target.value)}
             >
-              <option value="">👤 All Users</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>User: {u.username} (#{u.id})</option>
-              ))}
+              <option value="All">🌐 All Channels</option>
+              <option value="RCS">📱 RCS SMS</option>
+              <option value="SMS">💬 Bulk SMS</option>
+              <option value="WHATSAPP">🟢 WhatsApp SMS</option>
+            </select>
+          </div>
+
+          {/* Route / Traffic Type */}
+          <div>
+            <select 
+              className="form-select"
+              style={{ fontSize: '12px', padding: '6px 10px', fontWeight: 700, height: '34px' }}
+              value={filterRoute}
+              onChange={(e) => setFilterRoute(e.target.value)}
+            >
+              <option value="All">🔄 All Routes</option>
+              <option value="Transactional">Transactional</option>
+              <option value="Promotional">Promotional</option>
             </select>
           </div>
 
@@ -852,53 +1591,35 @@ export const RcsOverviewBalancePage = () => {
           <div>
             <select 
               className="form-select"
-              style={{ fontSize: '12px', padding: '5px 8px' }}
+              style={{ fontSize: '12px', padding: '6px 10px', fontWeight: 700, height: '34px' }}
               value={filterActionType}
-              onChange={(e) => {
-                setFilterActionType(e.target.value);
-              }}
+              onChange={(e) => setFilterActionType(e.target.value)}
             >
-              <option value="All">All Operations</option>
+              <option value="All">📋 All Operations</option>
               <option value="Credit">➕ Credits Only (+)</option>
               <option value="Revoke">➖ Revokes Only (-)</option>
-              <option value="CampaignUsage">Campaign Usage</option>
-            </select>
-          </div>
-
-          {/* Service Filter */}
-          <div>
-            <select 
-              className="form-select"
-              style={{ fontSize: '12px', padding: '5px 8px' }}
-              value={filterServiceType}
-              onChange={(e) => {
-                setFilterServiceType(e.target.value);
-              }}
-            >
-              <option value="All">All Services (RCS + SMS)</option>
-              <option value="RCS">RCS Only</option>
-              <option value="SMS">SMS Only</option>
+              <option value="Usage">📊 Campaign Usage</option>
             </select>
           </div>
 
           {/* Date Pickers */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>From:</span>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>From:</span>
             <input 
               type="date" 
               className="form-input" 
-              style={{ fontSize: '11px', padding: '4px 6px' }}
+              style={{ fontSize: '11px', padding: '5px 6px', height: '34px' }}
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
             />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>To:</span>
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>To:</span>
             <input 
               type="date" 
               className="form-input" 
-              style={{ fontSize: '11px', padding: '4px 6px' }}
+              style={{ fontSize: '11px', padding: '5px 6px', height: '34px' }}
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
             />
@@ -906,16 +1627,23 @@ export const RcsOverviewBalancePage = () => {
 
           {/* Quick Date Presets */}
           <div style={{ display: 'flex', gap: 3 }}>
-            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => { handleDatePreset('today'); }}>Today</button>
-            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => { handleDatePreset('last7'); }}>7 Days</button>
-            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => { handleDatePreset('month'); }}>Month</button>
-            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '3px 6px' }} onClick={() => { handleDatePreset('clear'); }}>Clear</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '4px 6px', height: '34px' }} onClick={() => handleDatePreset('today')}>Today</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '4px 6px', height: '34px' }} onClick={() => handleDatePreset('last7')}>7 Days</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '4px 6px', height: '34px' }} onClick={() => handleDatePreset('month')}>Month</button>
+            <button type="button" className="btn btn-outline btn-sm" style={{ fontSize: '10px', padding: '4px 6px', height: '34px' }} onClick={() => {
+              handleDatePreset('clear');
+              setFilterUserSearch('');
+              setFilterUserId('');
+              setFilterPlatform('All');
+              setFilterRoute('All');
+              setFilterActionType('All');
+            }}>Clear All</button>
           </div>
 
           <button 
             type="button" 
             className="btn btn-primary btn-sm" 
-            style={{ fontSize: '11px', padding: '5px 12px' }}
+            style={{ fontSize: '11px', padding: '6px 14px', height: '34px', fontWeight: 800 }}
             onClick={() => fetchLedger()}
           >
             Apply
@@ -937,19 +1665,20 @@ export const RcsOverviewBalancePage = () => {
                 <th>Total Value</th>
                 <th>Performed By</th>
                 <th>Note / Remarks</th>
+                <th>Balance Before</th>
                 <th>Balance After</th>
               </tr>
             </thead>
             <tbody>
-              {ledgerTransactions.length === 0 ? (
+              {displayedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
                     {ledgerLoading ? 'Loading audit records...' : 'No balance transactions found for the selected filter.'}
                   </td>
                 </tr>
               ) : (
-                ledgerTransactions.map(t => (
-                  <tr key={t.id}>
+                displayedTransactions.map(t => (
+                  <tr key={t.id || t.transactionCode}>
                     <td>
                       <code style={{ color: '#4f46e5', fontWeight: 700, fontSize: '11px' }}>{t.transactionCode}</code>
                     </td>
@@ -961,8 +1690,28 @@ export const RcsOverviewBalancePage = () => {
                       <div style={{ fontSize: '10px', color: '#64748b' }}>User ID: #{t.userId}</div>
                     </td>
                     <td>
-                      <span className={`badge ${t.serviceType === 'RCS' ? 'badge-hot' : 'badge-warm'}`} style={{ fontSize: '10px' }}>
-                        {t.serviceType}
+                      <span className="badge" style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        background: t.serviceType?.includes('RCS-T') ? '#e0f2fe' :
+                                    t.serviceType?.includes('RCS-P') ? '#eff6ff' :
+                                    t.serviceType?.includes('BULKSMS-T') ? '#ecfdf5' :
+                                    t.serviceType?.includes('BULKSMS-P') ? '#f0fdf4' :
+                                    t.serviceType?.includes('WHATSAPP') ? '#dcfce7' : '#f1f5f9',
+                        color: t.serviceType?.includes('RCS-T') ? '#0369a1' :
+                               t.serviceType?.includes('RCS-P') ? '#1d4ed8' :
+                               t.serviceType?.includes('BULKSMS-T') ? '#047857' :
+                               t.serviceType?.includes('BULKSMS-P') ? '#15803d' :
+                               t.serviceType?.includes('WHATSAPP') ? '#166534' : '#475569',
+                        border: `1px solid ${
+                          t.serviceType?.includes('RCS-T') ? '#bae6fd' :
+                          t.serviceType?.includes('RCS-P') ? '#bfdbfe' :
+                          t.serviceType?.includes('BULKSMS-T') ? '#a7f3d0' :
+                          t.serviceType?.includes('BULKSMS-P') ? '#bbf7d0' :
+                          t.serviceType?.includes('WHATSAPP') ? '#86efac' : '#cbd5e1'
+                        }`
+                      }}>
+                        {t.serviceType || 'RCS-T'}
                       </span>
                     </td>
                     <td>
@@ -971,7 +1720,7 @@ export const RcsOverviewBalancePage = () => {
                         t.actionType === 'Revoke' ? 'badge-dnd' : 'badge-cold'
                       }`} style={{ fontSize: '10px' }}>
                         {t.actionType === 'Credit' ? '➕ Credit' :
-                         t.actionType === 'Revoke' ? '➖ Debit' : 'Usage'}
+                         t.actionType === 'Revoke' ? '➖ Revoke' : t.actionType}
                       </span>
                     </td>
                     <td style={{ 
@@ -982,28 +1731,26 @@ export const RcsOverviewBalancePage = () => {
                       {t.credits > 0 ? `+${t.credits.toLocaleString()}` : t.credits.toLocaleString()}
                     </td>
                     <td style={{ fontSize: '12px', fontWeight: 600 }}>
-                      {t.pricePerCredit > 0 ? `₹${t.pricePerCredit.toFixed(2)}` : (t.actionType === 'CampaignUsage' ? '—' : '₹0.20')}
+                      {`₹${Number(t.pricePerCredit || 0).toFixed(4)}`}
                     </td>
                     <td style={{ 
                       fontWeight: 800, 
                       fontSize: '12px', 
                       color: t.actionType === 'Credit' ? '#059669' : (t.actionType === 'Revoke' ? '#dc2626' : '#ea580c') 
                     }}>
-                      {t.totalAmount > 0 
-                        ? `${t.actionType === 'Revoke' ? '-' : '+'}₹${t.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` 
-                        : (t.pricePerCredit > 0 
-                            ? `${t.actionType === 'Revoke' ? '-' : '+'}₹${(Math.abs(t.credits) * t.pricePerCredit).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-                            : '—')
-                      }
+                      {`${t.totalAmount < 0 ? '-' : t.totalAmount > 0 ? '+' : ''}₹${Math.abs(t.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                     </td>
-                    <td style={{ fontSize: '12px', color: '#475569' }}>
-                      {t.performedByUsername || 'SuperAdmin'}
+                    <td style={{ fontSize: '12px' }}>
+                      <span className="badge badge-subtle">{t.performedByUsername || 'admin'}</span>
                     </td>
-                    <td style={{ fontSize: '12px', color: '#64748b', maxWidth: '180px' }} title={t.notes}>
+                    <td style={{ fontSize: '12px', color: '#475569', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.notes}>
                       {t.notes || '-'}
                     </td>
-                    <td style={{ fontWeight: 800, color: '#0f172a', fontSize: '13px' }}>
-                      {t.balanceAfter.toLocaleString()}
+                    <td style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>
+                      {(t.balanceAfter !== undefined && t.credits !== undefined) ? (t.balanceAfter - t.credits).toLocaleString() : '-'}
+                    </td>
+                    <td style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                      {t.balanceAfter !== undefined ? t.balanceAfter.toLocaleString() : '-'}
                     </td>
                   </tr>
                 ))
@@ -1030,7 +1777,7 @@ export const RcsOverviewBalancePage = () => {
           <div style={{
             background: '#ffffff',
             borderRadius: '16px',
-            width: '480px',
+            width: '500px',
             padding: '24px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
@@ -1040,6 +1787,7 @@ export const RcsOverviewBalancePage = () => {
                 <span>Manage User Balance (Credit / Revoke)</span>
               </div>
               <button 
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setShowModal(false)}
                 style={{ border: 'none', padding: '4px' }}
@@ -1052,6 +1800,20 @@ export const RcsOverviewBalancePage = () => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* UNIFIED CREATE NEW USER POPUP MODAL                                       */}
+      {/* ========================================================================= */}
+      <CreateUserModal
+        isOpen={showCreateUserModal}
+        onClose={() => setShowCreateUserModal(false)}
+        onSuccess={(newUser) => {
+          fetchUsers();
+          if (newUser?.id) {
+            setSelectedUserId(newUser.id);
+          }
+        }}
+      />
 
     </div>
   );

@@ -267,27 +267,67 @@ export const RcsDlrExportPage = ({ onNavigateToReports }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', margin: 0 }}>RCS DLR Reports & Bulk Export Hub</h2>
-            <span className="badge badge-hot" style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ShieldCheck size={12} />
-              <span>Permission Protected Menu</span>
-            </span>
+      {/* 1. TOP BLUE BANNER (MATCHING SUITE STANDARDS) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '12px 20px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Download size={20} color="#ffffff" />
           </div>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: 3 }}>
-            Download complete master DLR logs in 1-click, export by customized date ranges, or download individual campaign reports.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px', color: '#ffffff' }}>
+                RCS DLR Reports & Bulk Export Hub
+              </h1>
+              <span style={{ background: '#22c55e', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px' }}>
+                PROTECTED MENU
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Download complete master DLR logs in 1-click, export by customized date ranges, or download individual campaign reports
+            </p>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           {onNavigateToReports && (
             <button 
-              className="btn btn-outline"
+              type="button"
               onClick={onNavigateToReports}
-              style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ 
+                background: 'rgba(255, 255, 255, 0.18)', 
+                color: '#ffffff', 
+                border: '1px solid rgba(255, 255, 255, 0.35)',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                fontWeight: 700, 
+                fontSize: '12px',
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                cursor: 'pointer',
+                backdropFilter: 'blur(4px)'
+              }}
             >
               <FileText size={14} />
               <span>Live Delivery Reports</span>
@@ -295,9 +335,22 @@ export const RcsDlrExportPage = ({ onNavigateToReports }) => {
           )}
 
           <button 
-            className="btn btn-outline"
+            type="button"
             onClick={fetchCampaigns}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ 
+              background: '#ffffff', 
+              color: '#0284c7', 
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 14px',
+              fontWeight: 700, 
+              fontSize: '12px',
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+            }}
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
             <span>Refresh Data</span>

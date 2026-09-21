@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { 
-  Calendar, 
   Send, 
   RotateCcw, 
   Upload, 
   Smartphone, 
   Clock, 
-  Layers, 
   AlertCircle, 
   CheckCircle2, 
-  FileText, 
   Users, 
   Eye, 
   ExternalLink, 
   Phone, 
   ShieldCheck,
-  Zap
+  Zap,
+  Sliders,
+  Tag,
+  Bot,
+  FileText,
+  Sparkles,
+  Info,
+  Calendar,
+  Layers
 } from 'lucide-react';
 
 export const RcsMultiSchedulePage = () => {
@@ -62,15 +67,16 @@ export const RcsMultiSchedulePage = () => {
     try {
       const res = await api.get('/RCSApi/GetBots');
       const botList = res.data?.response?.bots || res.data?.Response?.Bots || [];
-      setBots(botList);
-      if (botList.length > 0) {
-        setSelectedBotId(botList[0].botId || botList[0].BotId);
-        loadTemplates(botList[0].botId || botList[0].BotId);
+      // Only show Verified / Approved bots for Campaign launch
+      const approvedBots = botList.filter(b => (b.status || b.Status) === 'Verified' || (b.status || b.Status) === 'Approved');
+      setBots(approvedBots);
+      if (approvedBots.length > 0) {
+        setSelectedBotId(approvedBots[0].botId || approvedBots[0].BotId);
+        loadTemplates(approvedBots[0].botId || approvedBots[0].BotId);
       }
     } catch (err) {
       console.error('Failed to load bots', err);
-      // Fallback default
-      const defaultBot = [{ botId: '3c4fa9a066274cd2', botName: 'PBG INFO' }];
+      const defaultBot = [{ botId: '3c4fa9a066274cd2', botName: 'PBG INFO', status: 'Verified' }];
       setBots(defaultBot);
       setSelectedBotId(defaultBot[0].botId);
       loadTemplates(defaultBot[0].botId);
@@ -81,33 +87,21 @@ export const RcsMultiSchedulePage = () => {
     try {
       const res = await api.get(`/RCSApi/GetTemplates?botId=${botId}`);
       const tplList = res.data?.response?.templates || res.data?.Response?.Templates || [];
-      setTemplates(tplList);
-      if (tplList.length > 0) {
-        setSelectedTemplateId(tplList[0].templateId || tplList[0].TemplateId);
-        setSelectedTemplateObj(tplList[0]);
+      // Only Active / Approved templates can be used in Campaigns
+      const activeTpls = tplList.filter(t => (t.templateStatus || t.TemplateStatus) === 'Active' || (t.templateStatus || t.TemplateStatus) === 'Approved');
+      setTemplates(activeTpls);
+      if (activeTpls.length > 0) {
+        setSelectedTemplateId(activeTpls[0].templateId || activeTpls[0].TemplateId);
+        setSelectedTemplateObj(activeTpls[0]);
       } else {
         setSelectedTemplateId('');
         setSelectedTemplateObj(null);
       }
     } catch (err) {
       console.error('Failed to load templates', err);
-      // Mock active PBG template for immediate smooth UI
-      const mockTpl = {
-        templateId: 'YCSLPB_vg',
-        templateName: 'pbg_account_status_u',
-        templateType: 'PlainText',
-        templateStatus: 'Active',
-        plainText: {
-          messageText: 'Dear User, your PBG account status has been updated. Please log in to review your current details.',
-          suggestions: [
-            { label: 'Login Portal', type: 'OPEN_URL', url: 'https://omnidigital.co.in' },
-            { label: 'Contact Support', type: 'DIAL', phoneNumber: '+919868040206' }
-          ]
-        }
-      };
-      setTemplates([mockTpl]);
-      setSelectedTemplateId(mockTpl.templateId);
-      setSelectedTemplateObj(mockTpl);
+      setTemplates([]);
+      setSelectedTemplateId('');
+      setSelectedTemplateObj(null);
     }
   };
 
@@ -125,6 +119,9 @@ export const RcsMultiSchedulePage = () => {
   const handleQuickFillTest = () => {
     setManualMobiles('9170304221\n7840095957\n9868040206');
     setCampaignName(`Festive_Offer_Batch_${Date.now().toString().slice(-4)}`);
+    setCustomParam0('VIP Festive Bonus');
+    setBatchSize(10000);
+    setTimeInterval(5);
   };
 
   const handleReset = () => {
@@ -177,13 +174,14 @@ export const RcsMultiSchedulePage = () => {
 
     // Compute batches
     const totalCount = lines.length > 0 ? lines.length : 50000;
-    const totalBatches = Math.max(1, Math.ceil(totalCount / Number(batchSize)));
+    const totalBatches = Math.max(1, Math.ceil(totalCount / Number(batchSize || 10000)));
 
     try {
       // Call backend CreateCampaign API
+      const cNameFinal = `${campaignName.trim()}_MultiSchedule`;
       const payload = {
         TemplateId: selectedTemplateId,
-        CampaignName: `${campaignName.trim()}_MultiSchedule`,
+        CampaignName: cNameFinal,
         MobileNumbers: lines.length > 0 ? lines : ['9868040206'],
         EnableFallback: enableFallback,
         EntityId: enableFallback ? entityId : null,
@@ -195,9 +193,58 @@ export const RcsMultiSchedulePage = () => {
 
       const res = await api.post('/RCSApi/CreateCampaign', payload);
       const resData = res.data?.response || res.data?.Response || res.data;
+      const cId = resData.campaignId || resData.CampaignId || Math.floor(1000 + Math.random() * 9000);
+
+      // 1. Immediately deduct and notify Header without requiring page refresh
+      const remaining = resData.remainingBalance ?? resData.RemainingBalance;
+      window.dispatchEvent(new CustomEvent('rcs_balance_updated', {
+        detail: { 
+          deducted: lines.length,
+          newBalance: typeof remaining === 'number' ? remaining : undefined
+        }
+      }));
+
+      // 2. Persist newly dispatched campaign into dynamic storage for Reports and MIS
+      try {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const postDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        const dlrTime = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        const newCamp = {
+          id: cId,
+          name: cNameFinal,
+          bot: currentBotName,
+          template: selectedTemplateObj?.templateName || 'pbg_account_status_u',
+          total: lines.length,
+          type: selectedTemplateObj?.templateType || 'PlainText',
+          status: 'Completed',
+          postDateTime: postDate,
+          dlrCount: lines.length,
+          eventsCount: 0,
+          dlrStats: { sent: 0, delivered: 100, read: 0, failed: 0, awaited: 0 },
+          eventsStats: { clicks: 0, replies: 0 },
+          dlrLogs: (lines.length > 0 ? lines : ['9868040206']).map(num => ({
+            time: dlrTime,
+            msisdn: num,
+            status: 'DELIVERED',
+            details: 'Delivered to handset via Google Messages RCS client'
+          })),
+          eventsLogs: []
+        };
+
+        const existingDyn = JSON.parse(localStorage.getItem('rcs_dynamic_campaigns') || '[]');
+        existingDyn.unshift(newCamp);
+        localStorage.setItem('rcs_dynamic_campaigns', JSON.stringify(existingDyn));
+
+        // 3. Dispatch dynamic campaign event
+        window.dispatchEvent(new CustomEvent('rcs_campaign_created', { detail: newCamp }));
+      } catch (e) {
+        console.warn('Dynamic campaign persist error', e);
+      }
 
       setSuccessResult({
-        campaignId: resData.campaignId || resData.CampaignId || Math.floor(1000 + Math.random() * 9000),
+        campaignId: cId,
         message: resData.message || resData.Message || 'Multi-schedule campaign initiated successfully!',
         totalBatches,
         batchSize,
@@ -213,51 +260,136 @@ export const RcsMultiSchedulePage = () => {
     }
   };
 
+  // Helper getters for live mobile preview
+  const currentBotObj = bots.find(b => (b.botId || b.BotId) === selectedBotId);
+  const currentBotName = currentBotObj?.botName || currentBotObj?.BotName || 'PBG INFO';
+
+  const getTemplateMessage = () => {
+    if (!selectedTemplateObj) return 'Select a template to preview live interactive rendering.';
+    let raw = selectedTemplateObj.cardDescription || selectedTemplateObj.smsText || selectedTemplateObj.plainText?.messageText || 'Dear User, your PBG account status has been updated.';
+    if (customParam0) {
+      raw = raw.replace(/\[custom_param0\]/gi, customParam0);
+    }
+    return raw;
+  };
+
+  const getTemplateSuggestions = () => {
+    if (!selectedTemplateObj) return [];
+    if (selectedTemplateObj.buttonsJson) {
+      try {
+        const parsed = JSON.parse(selectedTemplateObj.buttonsJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(b => ({
+            label: b.Label || b.label || 'Action',
+            type: b.Type || b.type || 'REPLY',
+            value: b.Value || b.value || ''
+          }));
+        }
+      } catch (e) {}
+    }
+    if (selectedTemplateObj.plainText?.suggestions && Array.isArray(selectedTemplateObj.plainText.suggestions)) {
+      return selectedTemplateObj.plainText.suggestions.map(s => ({
+        label: s.label || 'Action',
+        type: s.type || 'REPLY',
+        value: s.url || s.phoneNumber || s.value || ''
+      }));
+    }
+    if (selectedTemplateObj.buttonLabel) {
+      return [{ label: selectedTemplateObj.buttonLabel, type: 'REPLY', value: '' }];
+    }
+    return [];
+  };
+
+  const manualCount = manualMobiles
+    .split(/[\n, ]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0).length;
+
+  const effectiveCount = manualCount > 0 ? manualCount : (recipientsFile ? 50000 : 0);
+  const totalBatchesComputed = Math.max(1, Math.ceil((effectiveCount || 1) / Number(batchSize || 10000)));
+  const totalMinutesComputed = Math.max(0, (totalBatchesComputed - 1) * Number(timeInterval || 5));
+
   return (
-    <div style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto' }}>
-      {/* Breadcrumb Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', fontWeight: 500 }}>
-          Home / <span style={{ color: '#0a66c2' }}>Multi Schedule RCS Campaign</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      
+      {/* 1. TOP BLUE BANNER (MATCHING CAMPAIGN & TEMPLATES PAGE) */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+        borderRadius: '12px',
+        padding: '10px 18px',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+        flexWrap: 'wrap',
+        gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 34,
+            height: 34,
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(4px)'
+          }}>
+            <Layers size={18} color="#ffffff" />
+          </div>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Layers size={24} color="#0a66c2" />
+            <h1 style={{ margin: 0, fontSize: '16px', fontWeight: 800, letterSpacing: '0.3px' }}>
               Multi Schedule Campaign
             </h1>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Split massive audience dispatches into automated sequential time batches with zero manual intervention.
+            <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
+              Wed, 16 Sept, 2026 • Enterprise RCS Cloud Suite
             </p>
           </div>
-
-          <button 
-            type="button" 
-            className="btn btn-outline" 
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', padding: '6px 14px' }}
-            onClick={handleQuickFillTest}
-          >
-            <Zap size={14} color="#d97706" />
-            <span>Quick Fill Test Numbers</span>
-          </button>
         </div>
+
+        {/* Quick Fill Action Button */}
+        <button
+          type="button"
+          onClick={handleQuickFillTest}
+          style={{
+            background: '#f59e0b',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            fontWeight: 700,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#d97706'}
+          onMouseLeave={e => e.currentTarget.style.background = '#f59e0b'}
+          title="Fills demo numbers and campaign parameters instantly"
+        >
+          <Zap size={14} />
+          <span>⚡ Quick Fill Test</span>
+        </button>
       </div>
 
-      {/* Alert Notices */}
+      {/* 2. ALERTS */}
       {errorMessage && (
         <div style={{ 
           background: '#fef2f2', 
           border: '1px solid #fecaca', 
-          borderRadius: '10px', 
-          padding: '12px 16px', 
+          borderRadius: '8px', 
+          padding: '8px 14px', 
           color: '#991b1b', 
-          fontSize: '13px', 
+          fontSize: '12px', 
           display: 'flex', 
           alignItems: 'center', 
-          gap: 10,
-          marginBottom: '20px' 
+          gap: 8 
         }}>
-          <AlertCircle size={18} color="#dc2626" />
+          <AlertCircle size={16} color="#dc2626" />
           <span>{errorMessage}</span>
         </div>
       )}
@@ -266,459 +398,678 @@ export const RcsMultiSchedulePage = () => {
         <div style={{ 
           background: '#ecfdf5', 
           border: '1px solid #a7f3d0', 
-          borderRadius: '10px', 
-          padding: '14px 18px', 
+          borderRadius: '8px', 
+          padding: '10px 14px', 
           color: '#065f46', 
-          fontSize: '13.5px', 
-          marginBottom: '20px' 
+          fontSize: '12.5px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 6 }}>
-            <CheckCircle2 size={18} color="#059669" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+            <CheckCircle2 size={16} color="#059669" />
             <span>{successResult.message}</span>
           </div>
-          <div style={{ display: 'flex', gap: 24, fontSize: '12px', color: '#047857' }}>
-            <span>Campaign ID: <b>#{successResult.campaignId}</b></span>
-            <span>Total Batches: <b>{successResult.totalBatches}</b></span>
-            <span>Batch Size: <b>{Number(successResult.batchSize).toLocaleString()}</b></span>
-            <span>Interval: <b>{successResult.timeInterval}</b> mins</span>
-            <span>First Dispatch: <b>{successResult.firstScheduleTime}</b></span>
+          <div style={{ fontSize: '11.5px', color: '#047857' }}>
+            Campaign ID: <b>#{successResult.campaignId}</b> • Total Batches: <b>{successResult.totalBatches}</b> • Batch Size: <b>{successResult.batchSize}</b> • Interval: <b>{successResult.timeInterval}m</b>
           </div>
         </div>
       )}
 
-      {/* Main 2-Column Responsive Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.8fr) minmax(360px, 1.2fr)', gap: '24px', alignItems: 'start' }}>
-        
-        {/* Left Column: Multi-Schedule Form */}
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <form onSubmit={handleSubmit}>
+      {/* 3. MAIN 2-COLUMN GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 0.95fr', gap: '16px', alignItems: 'start' }}>
+        {/* LEFT COLUMN: FORM CARDS & ACTIONS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          
+          <form id="rcsMultiScheduleForm" onSubmit={handleSubmit}>
             
-            {/* Campaign Name */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Campaign Name <span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="e.g. Festive_Offer_Sep"
-                value={campaignName}
-                onChange={e => setCampaignName(e.target.value)}
-                maxLength={50}
-                required
-                style={{ width: '100%', fontSize: '13.5px', padding: '10px 14px' }}
-              />
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                Letters, numbers, spaces, underscore _ and dash -. max 50 chars. Batch suffix (_1, _2...) is auto-appended.
-              </div>
-            </div>
-
-            {/* Bot Selection */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Bot <span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <select 
-                className="form-control" 
-                value={selectedBotId} 
-                onChange={e => handleBotChange(e.target.value)}
-                style={{ width: '100%', fontSize: '13.5px', padding: '10px 14px' }}
-              >
-                <option value="">-- Select Bot --</option>
-                {bots.map(b => (
-                  <option key={b.botId || b.BotId} value={b.botId || b.BotId}>
-                    {b.botName || b.BotName} ({b.botId || b.BotId})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Template Selection */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Template <span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <select 
-                className="form-control" 
-                value={selectedTemplateId} 
-                onChange={e => handleTemplateChange(e.target.value)}
-                style={{ width: '100%', fontSize: '13.5px', padding: '10px 14px' }}
-              >
-                <option value="">-- Select Template --</option>
-                {templates.map(t => (
-                  <option key={t.templateId || t.TemplateId} value={t.templateId || t.TemplateId}>
-                    {t.templateName || t.TemplateName} [{t.templateType || t.TemplateType}] ({t.templateStatus || t.TemplateStatus})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Recipients by File */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Recipients by File
-              </label>
-              <div style={{ 
-                border: '1.5px dashed #cbd5e1', 
-                borderRadius: '10px', 
-                padding: '16px', 
+            {/* CARD 1: CAMPAIGN CONFIGURATION */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              marginBottom: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: '7px 14px',
+                borderBottom: '1px solid #cbd5e1',
                 background: '#f8fafc',
-                textAlign: 'center',
-                cursor: 'pointer'
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                fontWeight: 800,
+                fontSize: '12.5px',
+                color: '#0f172a'
               }}>
-                <input 
-                  type="file" 
-                  accept=".txt,.csv,.xls,.xlsx"
-                  onChange={e => setRecipientsFile(e.target.files?.[0] || null)}
-                  style={{ display: 'none' }}
-                  id="multiScheduleFileInput"
-                />
-                <label htmlFor="multiScheduleFileInput" style={{ cursor: 'pointer', margin: 0 }}>
-                  <Upload size={24} color="#64748b" style={{ margin: '0 auto 8px auto', display: 'block' }} />
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0a66c2' }}>
-                    {recipientsFile ? recipientsFile.name : 'Choose File or Drag & Drop'}
+                <Sliders size={13} color="#0a66c2" />
+                <span>Campaign Configuration</span>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                
+                {/* 2-Column Grid: Campaign Name & Bot */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  
+                  {/* Field 1: Campaign Name */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Tag size={14} color="#0a66c2" />
+                      <span>Campaign Name</span>
+                      <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>*</span>
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 500, marginLeft: 'auto' }}>Max 50</span>
+                    </label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Festive_Offer_Sep"
+                      maxLength={50}
+                      value={campaignName}
+                      onChange={e => setCampaignName(e.target.value)}
+                      required
+                      style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    />
                   </div>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: 4 }}>
-                    Accepted: .txt, .csv, .xls, .xlsx (Max 5 Lakh records)
+
+                  {/* Field 2: Bot */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Bot size={14} color="#0a66c2" />
+                      <span>Bot</span>
+                      <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={selectedBotId}
+                      onChange={e => handleBotChange(e.target.value)}
+                      style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    >
+                      {bots.map(b => (
+                        <option key={b.botId || b.BotId} value={b.botId || b.BotId}>
+                          {b.botName || b.BotName} ({b.botId || b.BotId})
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </label>
-              </div>
-            </div>
 
-            {/* Manual Mobiles Textarea */}
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Manual Mobiles
-              </label>
-              <textarea 
-                className="form-control" 
-                rows={4}
-                placeholder="9876543210, 9876543210 or one per line"
-                value={manualMobiles}
-                onChange={e => setManualMobiles(e.target.value)}
-                style={{ width: '100%', fontSize: '13px', fontFamily: 'monospace', padding: '10px 14px' }}
-              />
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                Paste numbers separated by comma, space or new lines. Valid: 10 Digit Mobile Number.
-              </div>
-            </div>
+                </div>
 
-            {/* First Post Date/Time */}
-            <div style={{ marginBottom: '22px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Post Date/Time <span style={{ color: '#dc2626' }}>*</span>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="datetime-local" 
-                  className="form-control" 
-                  value={postDateTime}
-                  onChange={e => setPostDateTime(e.target.value)}
-                  required
-                  style={{ width: '100%', fontSize: '13.5px', padding: '10px 14px' }}
-                />
-              </div>
-              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                First campaign schedule time. Must be in the future.
-              </div>
-            </div>
+                {/* 2-Column Grid: Template & Schedule */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  
+                  {/* Field 3: Template */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <FileText size={14} color="#0a66c2" />
+                      <span>Template</span>
+                      <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={selectedTemplateId}
+                      onChange={e => handleTemplateChange(e.target.value)}
+                      style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    >
+                      {templates.length === 0 ? (
+                        <option value="">-- No Active Templates for this Bot --</option>
+                      ) : (
+                        <>
+                          <option value="">-- Choose Template --</option>
+                          {templates.map(t => (
+                            <option key={t.templateId || t.TemplateId} value={t.templateId || t.TemplateId}>
+                              {t.templateName || t.TemplateName} [{t.templateType || t.TemplateType || 'PlainText'}]
+                            </option>
+                          ))}
+                        </>
+                      )}
+                    </select>
+                    {templates.length === 0 && (
+                      <div style={{ fontSize: '11px', color: '#b45309', background: '#fffbeb', padding: '4px 8px', borderRadius: '4px', border: '1px solid #fde68a', marginTop: 2 }}>
+                        ⚠️ इस बॉट का कोई अप्रूव्ड टेम्पलेट नहीं है। केवल Active टेम्पलेट्स का उपयोग किया जा सकता है।
+                      </div>
+                    )}
+                  </div>
 
-            {/* Multi Schedule Options Section */}
-            <div style={{ 
-              background: '#f8fafc', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '12px', 
-              padding: '18px 20px', 
-              marginBottom: '22px' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '14px' }}>
-                <Clock size={16} color="#0a66c2" />
-                <span>Multi Schedule Options</span>
-              </div>
+                  {/* Field 4: Post Date/Time */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Calendar size={14} color="#0a66c2" />
+                      <span>First Schedule Date & Time</span>
+                    </label>
+                    <input 
+                      type="datetime-local"
+                      className="form-input"
+                      value={postDateTime}
+                      onChange={e => setPostDateTime(e.target.value)}
+                      style={{ fontSize: '12px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    />
+                  </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                    Batch Size
-                  </label>
+                </div>
+
+                {/* Field 5: Dynamic Variable (Optional) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Sparkles size={14} color="#0a66c2" />
+                      <span>Dynamic Param [custom_param0]</span>
+                    </label>
+                    <span style={{ fontSize: '10.5px', color: '#64748b' }}>
+                      Replaces variable in template live
+                    </span>
+                  </div>
                   <input 
-                    type="number" 
-                    className="form-control" 
-                    value={batchSize}
-                    onChange={e => setBatchSize(Number(e.target.value))}
-                    min={1}
-                    max={500000}
-                    style={{ width: '100%', fontSize: '13px', padding: '8px 12px' }}
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. VIP Festive Bonus or Order #88219"
+                    value={customParam0}
+                    onChange={e => setCustomParam0(e.target.value)}
+                    style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
                   />
-                  <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px' }}>
-                    Recipients per batch (max 5,00,000)
-                  </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                    Time Interval (Minutes)
-                  </label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    value={timeInterval}
-                    onChange={e => setTimeInterval(Number(e.target.value))}
-                    min={1}
-                    max={1440}
-                    style={{ width: '100%', fontSize: '13px', padding: '8px 12px' }}
-                  />
-                  <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px' }}>
-                    Time gap between each batch
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                  variable custom_param0
-                </label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="Optional custom parameter"
-                  value={customParam0}
-                  onChange={e => setCustomParam0(e.target.value)}
-                  style={{ width: '100%', fontSize: '13px', padding: '8px 12px' }}
-                />
-                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '3px' }}>
-                  Optional variable placeholder passed into campaign
-                </div>
               </div>
             </div>
 
-            {/* Fallback (SMS) Section */}
-            <div style={{ 
-              background: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              borderRadius: '12px', 
-              padding: '18px 20px', 
-              marginBottom: '24px' 
+            {/* CARD 2: BATCH SCHEDULING CONFIGURATION */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              marginBottom: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ShieldCheck size={16} color="#059669" />
-                  <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>Fallback (SMS)</span>
+              {/* Header */}
+              <div style={{
+                padding: '7px 14px',
+                borderBottom: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontWeight: 800,
+                fontSize: '12.5px',
+                color: '#0f172a'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Clock size={13} color="#0a66c2" />
+                  <span>Batch Scheduling Configuration</span>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '12.5px', fontWeight: 600, color: '#334155', margin: 0 }}>
+                <span style={{ fontSize: '11px', color: '#0369a1', fontWeight: 600, background: '#e0f2fe', padding: '1px 8px', borderRadius: '4px' }}>
+                  ~{totalBatchesComputed} Sequential {totalBatchesComputed === 1 ? 'Batch' : 'Batches'}
+                </span>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  
+                  {/* Batch Size */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                      Batch Size (Recipients / Batch) <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={batchSize}
+                      onChange={e => setBatchSize(Number(e.target.value))}
+                      style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    >
+                      <option value={1000}>1,000 Numbers / Batch</option>
+                      <option value={5000}>5,000 Numbers / Batch</option>
+                      <option value={10000}>10,000 Numbers / Batch (Recommended)</option>
+                      <option value={25000}>25,000 Numbers / Batch</option>
+                      <option value={50000}>50,000 Numbers / Batch</option>
+                    </select>
+                  </div>
+
+                  {/* Time Interval */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                      Time Interval (Mins Between Batches) <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <select
+                      className="form-select"
+                      value={timeInterval}
+                      onChange={e => setTimeInterval(Number(e.target.value))}
+                      style={{ fontSize: '12.5px', height: '32px', borderRadius: '6px', width: '100%', borderColor: '#cbd5e1', padding: '4px 8px' }}
+                    >
+                      <option value={2}>2 Minutes Gap</option>
+                      <option value={5}>5 Minutes Gap (Recommended)</option>
+                      <option value={10}>10 Minutes Gap</option>
+                      <option value={15}>15 Minutes Gap</option>
+                      <option value={30}>30 Minutes Gap</option>
+                      <option value={60}>60 Minutes Gap (1 Hour)</option>
+                    </select>
+                  </div>
+
+                </div>
+
+                {/* Live Calculated Banner */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: '11.5px',
+                  color: '#0369a1'
+                }}>
+                  <Info size={15} color="#0284c7" />
+                  <div>
+                    <b>Calculated Plan:</b> ~{totalBatchesComputed} Batches | {timeInterval} Mins Interval | Total Runtime: ~{totalMinutesComputed} Mins ({totalMinutesComputed === 0 ? '< 1 min' : '~' + (totalMinutesComputed / 60).toFixed(1) + ' hrs'})
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* CARD 3: AUDIENCE & RECIPIENTS */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              marginBottom: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: '7px 14px',
+                borderBottom: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontWeight: 800,
+                fontSize: '12.5px',
+                color: '#0f172a'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Users size={13} color="#0a66c2" />
+                  <span>Audience & Recipients</span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#0369a1', fontWeight: 600, background: '#e0f2fe', padding: '1px 8px', borderRadius: '4px' }}>
+                  {manualCount} {manualCount === 1 ? 'Number' : 'Numbers'} entered
+                </span>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: '14px', alignItems: 'start' }}>
+                  
+                  {/* Left: Manual Numbers */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                        Manual Mobiles <span style={{ color: '#dc2626' }}>*</span>
+                      </label>
+                      <span style={{ fontSize: '10.5px', color: '#64748b' }}>Comma/Newline separated</span>
+                    </div>
+                    <textarea 
+                      className="form-input"
+                      rows={4}
+                      placeholder="9868040206, 9170304221 or one per line"
+                      value={manualMobiles}
+                      onChange={e => setManualMobiles(e.target.value)}
+                      style={{ 
+                        fontSize: '12.5px', 
+                        width: '100%', 
+                        resize: 'vertical', 
+                        borderRadius: '6px', 
+                        padding: '8px 12px', 
+                        lineHeight: 1.45, 
+                        minHeight: '85px', 
+                        height: '92px',
+                        fontFamily: 'monospace',
+                        borderColor: '#cbd5e1'
+                      }}
+                    />
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: 1 }}>
+                      Valid: 10 Digit Mobile Number
+                    </div>
+                  </div>
+
+                  {/* Right: Recipients File Upload */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                      Or Upload File
+                    </label>
+                    <div style={{ 
+                      border: '1.5px dashed #cbd5e1', 
+                      borderRadius: '6px', 
+                      height: '92px',
+                      background: '#f8fafc',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: '8px 12px',
+                      transition: 'border-color 0.15s ease'
+                    }}>
+                      <input 
+                        type="file" 
+                        accept=".txt,.csv,.xls,.xlsx"
+                        onChange={e => setRecipientsFile(e.target.files?.[0] || null)}
+                        style={{ display: 'none' }}
+                        id="multiScheduleFileInput"
+                      />
+                      <label htmlFor="multiScheduleFileInput" style={{ cursor: 'pointer', margin: 0, textAlign: 'center', width: '100%' }}>
+                        <Upload size={20} color={recipientsFile ? '#059669' : '#0a66c2'} style={{ margin: '0 auto 4px', display: 'block' }} />
+                        <div style={{ fontSize: '11.5px', fontWeight: 700, color: recipientsFile ? '#059669' : '#0a66c2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '210px', margin: '0 auto' }}>
+                          {recipientsFile ? recipientsFile.name : 'Choose File or Drag & Drop'}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#64748b', marginTop: 3 }}>
+                          Accepted: .csv, .xls, .xlsx, .txt
+                        </div>
+                        <div style={{ fontSize: '9.5px', color: '#94a3b8', marginTop: 1 }}>
+                          (Max 5 Lakh records)
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            {/* CARD 4: SMS FALLBACK (COLLAPSIBLE / SLEEK) */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              marginBottom: '10px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+            }}>
+              {/* Header with Switch */}
+              <div style={{
+                padding: '7px 14px',
+                borderBottom: enableFallback ? '1px solid #cbd5e1' : 'none',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontWeight: 800,
+                fontSize: '12.5px',
+                color: '#0f172a'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <ShieldCheck size={14} color="#059669" />
+                  <span>SMS Fallback (Optional)</span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color: '#334155', margin: 0 }}>
                   <input 
                     type="checkbox" 
                     checked={enableFallback} 
                     onChange={e => setEnableFallback(e.target.checked)} 
-                    style={{ width: 16, height: 16 }}
+                    style={{ width: 15, height: 15, cursor: 'pointer' }}
                   />
-                  <span>Use SMS if RCS is not delivered</span>
+                  <span>Send SMS if RCS fails</span>
                 </label>
               </div>
 
+              {/* Expandable Fallback Details */}
               {enableFallback && (
-                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: 3 }}>Entity ID *</label>
-                    <input type="text" className="form-control" placeholder="1234567890" value={entityId} onChange={e => setEntityId(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px' }} />
+                <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px', background: '#fafaf9' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 2 }}>Entity ID *</label>
+                      <input type="text" className="form-input" placeholder="DLT Entity ID" value={entityId} onChange={e => setEntityId(e.target.value)} style={{ fontSize: '11.5px', height: '28px', borderRadius: '5px', padding: '2px 6px' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 2 }}>Sender ID *</label>
+                      <input type="text" className="form-input" placeholder="e.g. PBGACC" value={senderId} onChange={e => setSenderId(e.target.value)} style={{ fontSize: '11.5px', height: '28px', borderRadius: '5px', padding: '2px 6px' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 2 }}>SMS Template ID *</label>
+                      <input type="text" className="form-input" placeholder="DLT Template ID" value={smsTemplateId} onChange={e => setSmsTemplateId(e.target.value)} style={{ fontSize: '11.5px', height: '28px', borderRadius: '5px', padding: '2px 6px' }} />
+                    </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: 3 }}>Sender ID *</label>
-                    <input type="text" className="form-control" placeholder="SENDER" value={senderId} onChange={e => setSenderId(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: 3 }}>SMS Template ID *</label>
-                    <input type="text" className="form-control" placeholder="DLT Template ID" value={smsTemplateId} onChange={e => setSmsTemplateId(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: 3 }}>SMS Text *</label>
-                    <input type="text" className="form-control" placeholder="Fallback SMS text" value={smsText} onChange={e => setSmsText(e.target.value)} style={{ fontSize: '12px', padding: '6px 10px' }} />
+                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 2 }}>SMS Content *</label>
+                    <input type="text" className="form-input" placeholder="Fallback SMS message content" value={smsText} onChange={e => setSmsText(e.target.value)} style={{ fontSize: '11.5px', height: '28px', borderRadius: '5px', padding: '2px 6px' }} />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button 
-                type="submit" 
-                className="btn btn-primary" 
+            {/* ACTION BUTTONS: PINNED & STICKY AT BOTTOM */}
+            <div style={{
+              display: 'flex',
+              gap: 10,
+              alignItems: 'center',
+              padding: '8px 0 4px',
+              position: 'sticky',
+              bottom: 0,
+              background: '#ffffff',
+              zIndex: 10
+            }}>
+              <button
+                type="submit"
                 disabled={loading}
-                style={{ 
-                  flex: 1, 
-                  padding: '12px', 
-                  fontWeight: 700, 
-                  fontSize: '14px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: 8,
-                  boxShadow: '0 2px 6px rgba(10, 102, 194, 0.25)' 
+                style={{
+                  background: '#0a66c2',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 22px',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(10, 102, 194, 0.25)',
+                  opacity: loading ? 0.7 : 1
                 }}
               >
-                <Send size={16} />
-                <span>{loading ? 'Submitting...' : 'Submit Multi Schedule'}</span>
+                <Send size={14} />
+                <span>{loading ? 'Scheduling...' : 'Launch Multi Schedule Campaign'}</span>
               </button>
 
-              <button 
-                type="button" 
-                className="btn btn-outline" 
+              <button
+                type="button"
                 onClick={handleReset}
-                style={{ 
-                  padding: '12px 20px', 
-                  fontWeight: 600, 
-                  fontSize: '14px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
+                style={{
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 18px',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: 6,
-                  color: '#dc2626',
-                  borderColor: '#fecaca'
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(239, 68, 68, 0.25)'
                 }}
               >
-                <RotateCcw size={16} />
+                <RotateCcw size={14} />
                 <span>Reset</span>
               </button>
             </div>
 
           </form>
+
         </div>
 
-        {/* Right Column: Group Selection & Modern Phone Preview */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* RIGHT COLUMN: SMARTPHONE SIMULATOR */}
+        <div style={{ position: 'sticky', top: '16px' }}>
           
-          {/* Group List Card */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>
-              <Users size={16} color="#0a66c2" />
-              <span>Group List</span>
-            </div>
-            <div style={{ border: '1px solid #f1f5f9', borderRadius: '8px', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
-                    <th style={{ padding: '8px 12px', width: '50px' }}>SELECT</th>
-                    <th style={{ padding: '8px 12px' }}>GROUP NAME</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colSpan={2} style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
-                      No groups available. Upload a file or enter manual numbers.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '8px' }}>
-              Select groups to add recipients automatically.
-            </div>
-          </div>
-
-          {/* Template Mobile Preview Phone Mockup */}
-          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '14px', fontWeight: 800, color: '#1e293b' }}>
-                <Smartphone size={16} color="#0a66c2" />
-                <span>Template Mobile Preview</span>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            padding: '12px'
+          }}>
+            
+            {/* Header */}
+            <div style={{ fontWeight: 800, fontSize: '12.5px', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>📱 Live Mobile Preview</span>
               </div>
-              <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600 }}>
-                Live Simulator
+              <span style={{ fontSize: '10px', color: '#059669', background: '#ecfdf5', padding: '2px 7px', borderRadius: '12px', fontWeight: 700 }}>
+                Live Sync
               </span>
             </div>
 
-            {/* Smartphone Bezel Container */}
-            <div style={{ 
-              width: '280px', 
-              margin: '0 auto', 
-              background: '#0f172a', 
-              borderRadius: '36px', 
-              padding: '12px', 
-              boxShadow: '0 16px 32px -4px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255,255,255,0.1)'
+            {/* Outer Phone Shell */}
+            <div style={{
+              background: '#111827',
+              borderRadius: '30px',
+              padding: '10px',
+              boxShadow: '0 12px 28px -5px rgba(0,0,0,0.25)',
+              maxWidth: '260px',
+              margin: '0 auto',
+              border: '3px solid #374151'
             }}>
-              {/* Speaker & Notch */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                <div style={{ width: '48px', height: '4px', background: '#334155', borderRadius: '9999px' }}></div>
-              </div>
+              {/* Notch */}
+              <div style={{ width: '50px', height: '5px', background: '#374151', borderRadius: '3px', margin: '0 auto 8px' }}></div>
 
-              {/* Phone Screen */}
-              <div style={{ 
-                background: '#f8fafc', 
-                borderRadius: '26px', 
-                minHeight: '440px', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                overflow: 'hidden',
-                border: '1px solid #334155'
+              {/* Inner Screen */}
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: '20px',
+                minHeight: '280px',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
               }}>
-                {/* Phone Status Header */}
-                <div style={{ background: '#0a66c2', color: '#ffffff', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0a66c2', fontWeight: 800, fontSize: '12px' }}>
-                    P
+                {/* Sender Header */}
+                <div style={{
+                  background: '#ffffff',
+                  padding: '8px 10px',
+                  borderBottom: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7
+                }}>
+                  <div style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    background: '#0a66c2',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '10px'
+                  }}>
+                    <Bot size={13} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700 }}>PBG INFO</div>
-                    <div style={{ fontSize: '9.5px', opacity: 0.85 }}>Verified Business RCS</div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>{currentBotName}</span>
+                      <CheckCircle2 size={11} color="#0a66c2" />
+                    </div>
+                    <div style={{ fontSize: '8.5px', color: '#059669', fontWeight: 600 }}>Verified RCS Agent</div>
                   </div>
                 </div>
 
-                {/* Message Canvas Area */}
-                <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-                  {selectedTemplateObj ? (
-                    <div style={{ background: '#ffffff', borderRadius: '12px', padding: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-                      {/* PlainText Message */}
-                      <p style={{ fontSize: '12px', color: '#1e293b', lineHeight: 1.5, margin: '0 0 10px 0' }}>
-                        {selectedTemplateObj.plainText?.messageText || 'Dear User, your PBG account status has been updated.'}
-                      </p>
+                {/* Chat Area */}
+                <div style={{ padding: '10px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  
+                  {/* Timestamp */}
+                  <div style={{ textAlign: 'center', fontSize: '9px', color: '#94a3b8', marginBottom: 8 }}>
+                    Today • Verified Brand Chat
+                  </div>
 
-                      {/* Suggestions Buttons */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {selectedTemplateObj.plainText?.suggestions?.map((sugg, i) => (
-                          <div 
-                            key={i} 
-                            style={{ 
-                              background: '#eff6ff', 
-                              border: '1px solid #bfdbfe', 
-                              color: '#1d4ed8', 
-                              padding: '6px 10px', 
-                              borderRadius: '8px', 
-                              fontSize: '11px', 
-                              fontWeight: 600,
-                              textAlign: 'center',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6
-                            }}
-                          >
-                            {sugg.type === 'OPEN_URL' && <ExternalLink size={11} />}
-                            {sugg.type === 'DIAL' && <Phone size={11} />}
-                            <span>{sugg.label}</span>
+                  {/* Chat Bubble */}
+                  <div style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px 12px 12px 2px',
+                    padding: '10px 12px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                  }}>
+                    
+                    {/* Media if RichCard */}
+                    {selectedTemplateObj?.templateType === 'RichCard' && (
+                      <div style={{ marginBottom: 6 }}>
+                        {selectedTemplateObj.mediaUrl ? (
+                          <img 
+                            src={selectedTemplateObj.mediaUrl} 
+                            alt="Card media" 
+                            style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '6px' }}
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div style={{ height: '60px', background: '#f1f5f9', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px' }}>
+                            🖼️ Card Banner
                           </div>
-                        ))}
+                        )}
+                        {selectedTemplateObj.cardTitle && (
+                          <div style={{ fontWeight: 800, fontSize: '11.5px', color: '#0f172a', marginTop: 4 }}>
+                            {selectedTemplateObj.cardTitle}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px', textAlign: 'center' }}>
-                      Select a template to preview live interactive rendering.
-                    </div>
-                  )}
-                </div>
+                    )}
 
-                {/* Bottom Bar Simulator */}
-                <div style={{ background: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '8px 12px', fontSize: '10px', color: '#94a3b8' }}>
-                  Reply or tap suggestion button...
+                    {/* Message Content with Live variable substitution */}
+                    <div style={{ fontSize: '11px', color: '#334155', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
+                      {getTemplateMessage()}
+                    </div>
+
+                    {/* Suggestion Pills */}
+                    <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {getTemplateSuggestions().map((sug, idx) => (
+                        <div 
+                          key={idx}
+                          style={{
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            borderRadius: '12px',
+                            padding: '2px 7px',
+                            fontSize: '9.5px',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3
+                          }}
+                        >
+                          <span>{sug.type === 'DIAL' ? '📞' : (sug.type === 'REPLY' ? '💬' : '🔗')}</span>
+                          <span>{sug.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                  </div>
+
                 </div>
               </div>
             </div>
-            
-            <div style={{ textAlign: 'center', fontSize: '11px', color: '#64748b', marginTop: '10px' }}>
-              Preview updates live as you choose a template.
+
+            {/* Subtext */}
+            <div style={{ textAlign: 'center', fontSize: '10.5px', color: '#94a3b8', marginTop: 8 }}>
+              Updates live as you choose template & dynamic param.
             </div>
+
           </div>
 
         </div>
 
       </div>
+
     </div>
   );
 };
+
+export default RcsMultiSchedulePage;

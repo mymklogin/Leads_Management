@@ -55,6 +55,7 @@ builder.Services.AddScoped<ILeadRepository, LeadRepository>();
 builder.Services.AddScoped<ICampaignRepository, CampaignRepository>();
 builder.Services.AddScoped<IWebhookLogRepository, WebhookLogRepository>();
 builder.Services.AddScoped<IRcsTransactionRepository, RcsTransactionRepository>();
+builder.Services.AddSingleton<IRcsAssetRepository, RcsAssetRepository>();
 
 // 4. Register Template Strategies (Strategy Pattern for 0, 1, 2, 3, 4, 5, 7, 8, 9)
 builder.Services.AddScoped<ITemplateWebhookStrategy, Template0SimpleStrategy>();
@@ -68,6 +69,10 @@ builder.Services.AddScoped<ITemplateWebhookStrategy, Template8TtsDtmfStrategy>()
 builder.Services.AddScoped<ITemplateWebhookStrategy, Template9TtsCallPatchStrategy>();
 
 // 5. Register Application Services
+builder.Services.AddSingleton<IGatewayConfigService, GatewayConfigService>();
+builder.Services.AddSingleton<IResellerConnectivityService, ResellerConnectivityService>();
+builder.Services.AddSingleton<IDynamicMenuService, DynamicMenuService>();
+builder.Services.AddSingleton<IMasterDataService, MasterDataService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -76,7 +81,11 @@ builder.Services.AddScoped<IWebhookProcessorService, WebhookProcessorService>();
 builder.Services.AddScoped<ILeadService, LeadService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddHttpClient<IExpressIvrClient, ExpressIvrClient>();
-builder.Services.AddHttpClient<IOmniDigitalRcsService, OmniDigitalRcsService>();
+builder.Services.AddHttpClient<IRcsGatewayService, RcsGatewayService>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => true
+    });
 
 // 6. Configure JWT Authentication
 string jwtSecret = builder.Configuration["Jwt:SecretKey"] ?? "SUPER_SECRET_LEADS_MANAGEMENT_KEY_9999900000_VERY_SECURE";
@@ -152,6 +161,27 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Idempotent schema upgrade with resilience against remote DB handshake delays
+try
+{
+    using var scope = app.Services.CreateScope();
+    var connection = scope.ServiceProvider.GetRequiredService<LeadsManagement.Api.Helpers.DbConnectionHelpers>();
+    await using var db = new Npgsql.NpgsqlConnection(connection.Getdbconnection());
+    await db.OpenAsync();
+    var stream = typeof(LeadsManagement.Api.Helpers.DbConnectionHelpers).Assembly
+        .GetManifestResourceStream("LeadsManagement.Api.Migrations.20260917_balance_audit.sql");
+    if (stream != null)
+    {
+        using var reader = new StreamReader(stream);
+        await using var command = new Npgsql.NpgsqlCommand(await reader.ReadToEndAsync(), db);
+        await command.ExecuteNonQueryAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[STARTUP DB WARNING]: {ex.Message}");
+}
+
 // 9. Middleware pipeline
 app.UseStaticFiles();
 if (app.Environment.IsDevelopment() || true)
@@ -164,7 +194,6 @@ if (app.Environment.IsDevelopment() || true)
     });
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();

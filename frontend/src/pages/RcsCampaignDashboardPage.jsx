@@ -75,16 +75,53 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     }, 600);
   };
 
-  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 12 previous + 2 today = 14)
-  const [metrics, setMetrics] = useState({
-    totalCampaigns: 14,
-    totalSubmitted: 14,
-    delivered: 5,
-    read: 2,
+  // 3. Raw KPI Metrics Data (Synchronized with live campaigns: 12 on Sept 15 + 3 today Sept 16 = 15)
+  const baseMetrics = {
+    totalCampaigns: 15,
+    totalSubmitted: 15,
+    delivered: 6,
+    read: 6,
     clicks: 0,
     failed: 9,
     awaited: 0
+  };
+
+  const [dynExtra, setDynExtra] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('rcs_dynamic_campaigns') || '[]');
+      const extra = stored.filter(c => c.id !== 6457 && c.id !== 6422 && c.id !== 6416 && c.id !== 6324 && c.id !== 6320 && c.id !== 6318);
+      let count = extra.length;
+      let delivered = extra.reduce((sum, c) => sum + (c.total || 1), 0);
+      return { count, delivered };
+    } catch (_) {
+      return { count: 0, delivered: 0 };
+    }
   });
+
+  React.useEffect(() => {
+    const onCampCreated = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('rcs_dynamic_campaigns') || '[]');
+        const extra = stored.filter(c => c.id !== 6457 && c.id !== 6422 && c.id !== 6416 && c.id !== 6324 && c.id !== 6320 && c.id !== 6318);
+        let count = extra.length;
+        let delivered = extra.reduce((sum, c) => sum + (c.total || 1), 0);
+        setDynExtra({ count, delivered });
+      } catch (_) {}
+    };
+
+    window.addEventListener('rcs_campaign_created', onCampCreated);
+    return () => window.removeEventListener('rcs_campaign_created', onCampCreated);
+  }, []);
+
+  const metrics = useMemo(() => ({
+    totalCampaigns: baseMetrics.totalCampaigns + dynExtra.count,
+    totalSubmitted: baseMetrics.totalSubmitted + dynExtra.delivered,
+    delivered: baseMetrics.delivered + dynExtra.delivered,
+    read: baseMetrics.read + dynExtra.delivered,
+    clicks: baseMetrics.clicks,
+    failed: baseMetrics.failed,
+    awaited: baseMetrics.awaited
+  }), [dynExtra]);
 
   // 4. Delivery Status Overview (Donut Chart)
   const donutData = useMemo(() => {
@@ -235,7 +272,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     if (activeStatuses.delivered) {
       datasets.push({
         label: 'Delivered',
-        data: [0, 0, 0, 0, 0, 0, 3.0, 2.0],
+        data: [0, 0, 0, 0, 0, 0, 3.0, 3.0 + (dynExtra?.delivered || 0)],
         borderColor: '#10b981',
         backgroundColor: 'rgba(16, 185, 129, 0.85)',
         fill: true,
@@ -295,7 +332,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
       labels: trendLabels,
       datasets
     };
-  }, [activeStatuses]);
+  }, [activeStatuses, dynExtra]);
 
   const trendOptions = {
     responsive: true,
@@ -354,7 +391,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
     labels: ['Plain Text', 'RichCard', 'Carousel'],
     datasets: [
       {
-        data: [14, 0, 0],
+        data: [metrics.totalCampaigns, 0, 0],
         backgroundColor: ['#2563eb', '#1e3a8a', '#f59e0b'],
         borderWidth: 1,
         borderColor: '#ffffff'
@@ -375,7 +412,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
           label: function (context) {
             const label = context.label || '';
             const val = context.raw || 0;
-            const pct = val === 14 ? '100%' : '0%';
+            const pct = val === metrics.totalCampaigns ? '100%' : '0%';
             return ` ${label}: ${val} (${pct})`;
           }
         }
@@ -482,7 +519,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES DELIVERED</span>
             <span className="rcs-kpi-value">{metrics.delivered}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> 35.71% delivery rate
+              <ArrowUpRight size={13} /> {metrics.totalSubmitted > 0 ? ((metrics.delivered / metrics.totalSubmitted) * 100).toFixed(1) : '0'}% delivery rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-green">
@@ -496,7 +533,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">MESSAGES READ</span>
             <span className="rcs-kpi-value">{metrics.read}</span>
             <span className="rcs-kpi-trend trend-green">
-              <ArrowUpRight size={13} /> 66.67% read rate
+              <ArrowUpRight size={13} /> {metrics.delivered > 0 ? ((metrics.read / metrics.delivered) * 100).toFixed(2) : '0'}% read rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-cyan">
@@ -526,7 +563,7 @@ export function RcsCampaignDashboardPage({ onNavigateToCampaigns, onNavigateToRe
             <span className="rcs-kpi-title">FAILED MESSAGES</span>
             <span className="rcs-kpi-value">{metrics.failed}</span>
             <span className="rcs-kpi-trend trend-red">
-              <ArrowDownRight size={13} /> 64.29% failure rate
+              <ArrowDownRight size={13} /> {metrics.totalSubmitted > 0 ? ((metrics.failed / metrics.totalSubmitted) * 100).toFixed(1) : '0'}% failure rate
             </span>
           </div>
           <div className="rcs-kpi-icon-badge badge-red">

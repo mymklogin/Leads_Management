@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace LeadsManagement.Api.Services.Interfaces;
 
-public class OmniApiResponse<T>
+public class RcsApiResponse<T>
 {
     [JsonPropertyName("Status")]
     public string Status { get; set; } = "OK";
@@ -14,7 +14,7 @@ public class OmniApiResponse<T>
     public T? Response { get; set; }
 }
 
-public class OmniBalanceResponseDto
+public class RcsBalanceResponseDto
 {
     [JsonPropertyName("RcsBalance")]
     public int RcsBalance { get; set; }
@@ -29,7 +29,7 @@ public class OmniBalanceResponseDto
     public decimal? SmsBalance { get; set; }
 }
 
-public class OmniBotDto
+public class RcsBotDto
 {
     [JsonPropertyName("BotId")]
     public string BotId { get; set; } = string.Empty;
@@ -38,13 +38,13 @@ public class OmniBotDto
     public string BotName { get; set; } = string.Empty;
 }
 
-public class OmniBotsResponseDto
+public class RcsBotsResponseDto
 {
     [JsonPropertyName("Bots")]
-    public List<OmniBotDto> Bots { get; set; } = new();
+    public List<RcsBotDto> Bots { get; set; } = new();
 }
 
-public class OmniBotExtraDetailsDto
+public class RcsBotExtraDetailsDto
 {
     [JsonPropertyName("fullname")]
     public string Fullname { get; set; } = string.Empty;
@@ -71,8 +71,11 @@ public class OmniBotExtraDetailsDto
     public string? Subaggregator { get; set; }
 }
 
-public class OmniCreateBotRequestDto
+public class RcsCreateBotRequestDto
 {
+    [JsonPropertyName("bot_id")]
+    public string? BotId { get; set; }
+
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -130,11 +133,14 @@ public class OmniCreateBotRequestDto
     [JsonPropertyName("otherCarriercheck")]
     public string? OtherCarrierCheck { get; set; } = "false";
 
+    [JsonPropertyName("dlt_entity_id")]
+    public string? DltEntityId { get; set; }
+
     [JsonPropertyName("extra_details")]
-    public OmniBotExtraDetailsDto ExtraDetails { get; set; } = new();
+    public RcsBotExtraDetailsDto ExtraDetails { get; set; } = new();
 }
 
-public class OmniBotCreateResponseDto
+public class RcsBotCreateResponseDto
 {
     [JsonPropertyName("Message")]
     public string Message { get; set; } = string.Empty;
@@ -143,7 +149,7 @@ public class OmniBotCreateResponseDto
     public object? BotId { get; set; }
 }
 
-public class OmniSuggestionDto
+public class RcsSuggestionDto
 {
     [JsonPropertyName("Label")]
     public string Label { get; set; } = string.Empty;
@@ -161,16 +167,16 @@ public class OmniSuggestionDto
     public string? PhoneNumber { get; set; }
 }
 
-public class OmniPlainTextDto
+public class RcsPlainTextDto
 {
     [JsonPropertyName("MessageText")]
     public string MessageText { get; set; } = string.Empty;
 
     [JsonPropertyName("Suggestions")]
-    public List<OmniSuggestionDto>? Suggestions { get; set; }
+    public List<RcsSuggestionDto>? Suggestions { get; set; }
 }
 
-public class OmniRichCardDto
+public class RcsRichCardDto
 {
     [JsonPropertyName("Title")]
     public string Title { get; set; } = string.Empty;
@@ -203,10 +209,10 @@ public class OmniRichCardDto
     public string? PdfUrl { get; set; }
 
     [JsonPropertyName("Suggestions")]
-    public List<OmniSuggestionDto>? Suggestions { get; set; }
+    public List<RcsSuggestionDto>? Suggestions { get; set; }
 }
 
-public class OmniCarouselCardDto
+public class RcsCarouselCardDto
 {
     [JsonPropertyName("Title")]
     public string Title { get; set; } = string.Empty;
@@ -230,16 +236,16 @@ public class OmniCarouselCardDto
     public string? ThumbnailUrl { get; set; }
 
     [JsonPropertyName("Suggestions")]
-    public List<OmniSuggestionDto>? Suggestions { get; set; }
+    public List<RcsSuggestionDto>? Suggestions { get; set; }
 }
 
-public class OmniCarouselDto
+public class RcsCarouselDto
 {
     [JsonPropertyName("Cards")]
-    public List<OmniCarouselCardDto> Cards { get; set; } = new();
+    public List<RcsCarouselCardDto> Cards { get; set; } = new();
 }
 
-public class OmniTemplateItemDto
+public class RcsTemplateItemDto
 {
     [JsonPropertyName("BotId")]
     public string BotId { get; set; } = string.Empty;
@@ -269,26 +275,29 @@ public class OmniTemplateItemDto
     public string? FailedDescription { get; set; }
 
     [JsonPropertyName("PlainText")]
-    public OmniPlainTextDto? PlainText { get; set; }
+    public RcsPlainTextDto? PlainText { get; set; }
 
     [JsonPropertyName("RichCard")]
-    public OmniRichCardDto? RichCard { get; set; }
+    public RcsRichCardDto? RichCard { get; set; }
 
     [JsonPropertyName("Carousel")]
-    public OmniCarouselDto? Carousel { get; set; }
+    public RcsCarouselDto? Carousel { get; set; }
 }
 
-public class OmniTemplatesResponseDto
+public class RcsTemplatesResponseDto
 {
     [JsonPropertyName("Templates")]
-    public List<OmniTemplateItemDto> Templates { get; set; } = new();
+    public List<RcsTemplateItemDto> Templates { get; set; } = new();
 
     [JsonPropertyName("TotalCount")]
     public int TotalCount { get; set; }
 }
 
-public class OmniCreateTemplateRequestDto
+public class RcsCreateTemplateRequestDto
 {
+    [JsonPropertyName("template_id")]
+    public string? TemplateId { get; set; }
+
     [JsonPropertyName("TemplateType")]
     public string TemplateType { get; set; } = "PlainText";
 
@@ -299,19 +308,19 @@ public class OmniCreateTemplateRequestDto
     public string TemplateName { get; set; } = string.Empty;
 
     [JsonPropertyName("PlainText")]
-    public OmniPlainTextDto? PlainText { get; set; }
+    public RcsPlainTextDto? PlainText { get; set; }
 
     [JsonPropertyName("RichCard")]
-    public OmniRichCardDto? RichCard { get; set; }
+    public RcsRichCardDto? RichCard { get; set; }
 
     [JsonPropertyName("Cards")]
-    public List<OmniCarouselCardDto>? Cards { get; set; }
+    public List<RcsCarouselCardDto>? Cards { get; set; }
 
     [JsonPropertyName("Suggestions")]
-    public List<OmniSuggestionDto>? Suggestions { get; set; }
+    public List<RcsSuggestionDto>? Suggestions { get; set; }
 }
 
-public class OmniTemplateCreateResponseDto
+public class RcsTemplateCreateResponseDto
 {
     [JsonPropertyName("Message")]
     public string Message { get; set; } = string.Empty;
@@ -326,7 +335,7 @@ public class OmniTemplateCreateResponseDto
     public string? TemplateType { get; set; }
 }
 
-public class OmniCampaignRequestDto
+public class RcsCampaignRequestDto
 {
     [JsonPropertyName("TemplateId")]
     public string TemplateId { get; set; } = string.Empty;
@@ -365,7 +374,7 @@ public class OmniCampaignRequestDto
     public string? CustomParam4 { get; set; }
 }
 
-public class OmniCampaignResultDetailsDto
+public class RcsCampaignResultDetailsDto
 {
     [JsonPropertyName("Message")]
     public string Message { get; set; } = string.Empty;
@@ -377,16 +386,16 @@ public class OmniCampaignResultDetailsDto
     public int? TotalMobiles { get; set; }
 }
 
-public class OmniCampaignResponseDto
+public class RcsCampaignResponseDto
 {
     [JsonPropertyName("Status")]
     public string Status { get; set; } = "OK";
 
     [JsonPropertyName("Response")]
-    public OmniCampaignResultDetailsDto? Response { get; set; }
+    public RcsCampaignResultDetailsDto? Response { get; set; }
 }
 
-public class OmniSendChatMessageDto
+public class RcsSendChatMessageDto
 {
     [JsonPropertyName("BotId")]
     public string BotId { get; set; } = string.Empty;
@@ -398,7 +407,7 @@ public class OmniSendChatMessageDto
     public string MessageText { get; set; } = string.Empty;
 }
 
-public class OmniChatMessageResultDetailsDto
+public class RcsChatMessageResultDetailsDto
 {
     [JsonPropertyName("Message")]
     public string Message { get; set; } = string.Empty;
@@ -413,22 +422,22 @@ public class OmniChatMessageResultDetailsDto
     public string Status { get; set; } = "SENT";
 }
 
-public class OmniChatMessageResponseDto
+public class RcsChatMessageResponseDto
 {
     [JsonPropertyName("Status")]
     public string Status { get; set; } = "OK";
 
     [JsonPropertyName("Response")]
-    public OmniChatMessageResultDetailsDto? Response { get; set; }
+    public RcsChatMessageResultDetailsDto? Response { get; set; }
 }
 
-public interface IOmniDigitalRcsService
+public interface IRcsGatewayService
 {
-    Task<OmniBalanceResponseDto?> CheckBalanceAsync(string? apiKey = null, CancellationToken ct = default);
-    Task<List<OmniBotDto>> GetBotsAsync(string? apiKey = null, CancellationToken ct = default);
-    Task<OmniApiResponse<OmniBotCreateResponseDto>> CreateBotAsync(OmniCreateBotRequestDto dto, string? apiKey = null, CancellationToken ct = default);
-    Task<List<OmniTemplateItemDto>> GetTemplatesAsync(string botId, string? apiKey = null, string? templateName = null, string? templateType = null, string? status = null, CancellationToken ct = default);
-    Task<OmniApiResponse<OmniTemplateCreateResponseDto>> CreateTemplateAsync(OmniCreateTemplateRequestDto dto, string? apiKey = null, CancellationToken ct = default);
-    Task<OmniCampaignResponseDto> CreateCampaignAsync(OmniCampaignRequestDto dto, string? apiKey = null, CancellationToken ct = default);
-    Task<OmniChatMessageResponseDto> SendChatMessageAsync(OmniSendChatMessageDto dto, string? apiKey = null, CancellationToken ct = default);
+    Task<RcsBalanceResponseDto?> CheckBalanceAsync(string? apiKey = null, CancellationToken ct = default);
+    Task<List<RcsBotDto>> GetBotsAsync(string? apiKey = null, CancellationToken ct = default);
+    Task<RcsApiResponse<RcsBotCreateResponseDto>> CreateBotAsync(RcsCreateBotRequestDto dto, string? apiKey = null, CancellationToken ct = default);
+    Task<List<RcsTemplateItemDto>> GetTemplatesAsync(string botId, string? apiKey = null, string? templateName = null, string? templateType = null, string? status = null, CancellationToken ct = default);
+    Task<RcsApiResponse<RcsTemplateCreateResponseDto>> CreateTemplateAsync(RcsCreateTemplateRequestDto dto, string? apiKey = null, CancellationToken ct = default);
+    Task<RcsCampaignResponseDto> CreateCampaignAsync(RcsCampaignRequestDto dto, string? apiKey = null, CancellationToken ct = default);
+    Task<RcsChatMessageResponseDto> SendChatMessageAsync(RcsSendChatMessageDto dto, string? apiKey = null, CancellationToken ct = default);
 }
