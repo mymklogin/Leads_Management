@@ -104,13 +104,13 @@ const getInitialTab = () => {
     if (path.includes('smpp') || hash.includes('smpp') || path.includes('carrier') || hash.includes('carrier')) return 'SMPP_ROUTING';
     if (path.includes('gateway') || hash.includes('gateway')) return 'GATEWAY_SETTINGS';
     if (path.includes('user') || hash.includes('user')) return 'USER_MANAGEMENT';
+    if (path.includes('consolidate') || hash.includes('consolidate')) return 'RCS_CONSOLIDATE_REPORT';
     if (path.includes('campaign') || hash.includes('campaign')) return 'RCS_CAMPAIGNS';
     if (path.includes('report') || hash.includes('report')) return 'RCS_REPORTS';
     if (path.includes('template') || hash.includes('template')) return 'RCS_TEMPLATES';
     if (path.includes('bot') || hash.includes('bot')) return 'RCS_BOTS';
     if (path.includes('schedule') || hash.includes('schedule')) return 'RCS_MULTI_SCHEDULE';
     if (path.includes('chat') || hash.includes('chat')) return 'RCS_CHAT';
-    if (path.includes('consolidate') || hash.includes('consolidate')) return 'RCS_CONSOLIDATE_REPORT';
     if (path.includes('doc') || path.includes('api') || RCS_DOC_HASHES.includes(hash)) return 'RCS_API_DOC';
     if (path.includes('payment') || hash.includes('payment')) return 'RCS_PAYMENT_MANAGE';
     if (path.includes('lead') || hash.includes('lead')) return 'LEADS_CRM';
