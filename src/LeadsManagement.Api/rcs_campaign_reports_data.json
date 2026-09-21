@@ -1,6 +1,42 @@
 {
   "Campaigns": [
     {
+      "CampaignId": 8687,
+      "CampaignName": "PBG_Live_9830",
+      "TemplateId": "YCSLPB_vg",
+      "TemplateName": "pbg_account_status_u",
+      "TemplateType": "PlainText",
+      "BotName": "PBG INFO",
+      "TotalMobiles": 1,
+      "DeliveredRcs": 1,
+      "ReadRcs": 1,
+      "FallbackSms": 0,
+      "Failed": 0,
+      "DeliveryRate": 100,
+      "ReadRate": 100,
+      "HasFallback": false,
+      "Status": "Delivered",
+      "CreatedAt": "2026-09-21 16:30"
+    },
+    {
+      "CampaignId": 8686,
+      "CampaignName": "PBG_Account_Status",
+      "TemplateId": "YCSLPB_vg",
+      "TemplateName": "pbg_account_status_u",
+      "TemplateType": "PlainText",
+      "BotName": "PBG INFO",
+      "TotalMobiles": 1,
+      "DeliveredRcs": 1,
+      "ReadRcs": 1,
+      "FallbackSms": 0,
+      "Failed": 0,
+      "DeliveryRate": 100,
+      "ReadRate": 100,
+      "HasFallback": false,
+      "Status": "Delivered",
+      "CreatedAt": "2026-09-21 16:19"
+    },
+    {
       "CampaignId": 8637,
       "CampaignName": "PBG_Account_Status",
       "TemplateId": "YCSLPB_vg",
@@ -578,6 +614,32 @@
     }
   ],
   "DeliveryLogs": [
+    {
+      "LogId": "DLR-4780",
+      "CampaignId": 8687,
+      "CampaignName": "PBG_Live_9830",
+      "MobileNumber": "9868040206",
+      "BotName": "PBG INFO",
+      "Status": "DELIVERED",
+      "SentAt": "2026-09-21 16:30:40",
+      "DeliveredAt": "2026-09-21 16:30:41",
+      "Latency": "0.7s",
+      "Carrier": "Jio/Airtel 5G",
+      "Reason": "Handset ACK: Delivered to Google Messages RCS client"
+    },
+    {
+      "LogId": "DLR-7512",
+      "CampaignId": 8686,
+      "CampaignName": "PBG_Account_Status",
+      "MobileNumber": "9868040206",
+      "BotName": "PBG INFO",
+      "Status": "DELIVERED",
+      "SentAt": "2026-09-21 16:19:52",
+      "DeliveredAt": "2026-09-21 16:19:53",
+      "Latency": "0.7s",
+      "Carrier": "Jio/Airtel 5G",
+      "Reason": "Handset ACK: Delivered to Google Messages RCS client"
+    },
     {
       "LogId": "DLR-8637-1",
       "CampaignId": 8637,
