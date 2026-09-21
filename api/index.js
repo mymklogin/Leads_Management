@@ -12,6 +12,40 @@ async function getPgClient() {
   return client;
 }
 
+// Indian Standard Time (IST = UTC + 5:30) helper functions matching OmniDigital Telecom Portal
+function toIstString(date, withSeconds = false) {
+  if (!date) return '';
+  const d = new Date(date);
+  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  const hours = String(ist.getUTCHours()).padStart(2, '0');
+  const minutes = String(ist.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(ist.getUTCSeconds()).padStart(2, '0');
+  if (withSeconds) {
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function getIstHour(date) {
+  if (!date) return 0;
+  const d = new Date(date);
+  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+  return ist.getUTCHours();
+}
+
+function getIstDateOnly(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000));
+  const year = ist.getUTCFullYear();
+  const month = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(ist.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const DEFAULT_MENUS = [
   { id: 1, title: 'Dashboard', menuKey: 'RCS_DASHBOARD', icon: 'fa-tachometer-alt', route: '/rcs/campaign-dashboard', subMenus: [] },
   { id: 2, title: 'RCS Messaging', menuKey: 'RCS', icon: 'fa-comment-dots', route: '/rcs', subMenus: [
@@ -153,10 +187,7 @@ async function handler(req, res) {
       try {
         const campRes = await client.query(`SELECT * FROM rcs_campaigns ORDER BY campaign_id DESC LIMIT 100;`);
         const campaigns = campRes.rows.map(c => {
-          let postDate = '';
-          if (c.created_at) {
-            postDate = new Date(c.created_at).toISOString().replace('T', ' ').slice(0, 16);
-          }
+          const postDate = toIstString(c.created_at);
           return {
             campaignId: c.campaign_id,
             id: c.campaign_id,
@@ -217,10 +248,7 @@ async function handler(req, res) {
 
         const logsRes = await client.query(query, params);
         const logs = logsRes.rows.map(l => {
-          let timeStr = '';
-          if (l.delivered_at) {
-            timeStr = new Date(l.delivered_at).toISOString().replace('T', ' ').slice(0, 19);
-          }
+          const timeStr = toIstString(l.delivered_at, true);
           return {
             logId: l.id,
             id: l.id,
@@ -283,13 +311,12 @@ async function handler(req, res) {
 
           const dayCamps = allCampaigns.filter(c => {
             if (!c.created_at) return false;
-            const dStr = new Date(c.created_at).toISOString().slice(0, 10);
+            const dStr = getIstDateOnly(c.created_at);
             return dStr === dayPrefix;
           });
 
           for (const c of dayCamps) {
-            const d = new Date(c.created_at);
-            const hour = d.getUTCHours();
+            const hour = getIstHour(c.created_at);
             const count = Number(c.total_mobiles) || 1;
             if (hour >= 0 && hour < 24) {
               hours[hour] += count;
@@ -310,10 +337,7 @@ async function handler(req, res) {
         }
 
         const formattedCampaigns = allCampaigns.map(c => {
-          let postDate = '';
-          if (c.created_at) {
-            postDate = new Date(c.created_at).toISOString().replace('T', ' ').slice(0, 16);
-          }
+          const postDate = toIstString(c.created_at);
           return {
             campaignId: c.campaign_id,
             id: c.campaign_id,
