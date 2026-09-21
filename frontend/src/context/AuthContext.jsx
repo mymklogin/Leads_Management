@@ -4,10 +4,32 @@ import api from '../services/api';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('lead_mgmt_token') || null);
-  const [allowedMenus, setAllowedMenus] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('lead_mgmt_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('lead_mgmt_token') || null);
+  const [allowedMenus, setAllowedMenus] = useState(() => {
+    try {
+      const savedMenus = localStorage.getItem('lead_mgmt_menus');
+      return savedMenus ? JSON.parse(savedMenus) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const savedToken = localStorage.getItem('lead_mgmt_token');
+      const savedUser = localStorage.getItem('lead_mgmt_user');
+      return !(savedToken && savedUser);
+    } catch (e) {
+      return false;
+    }
+  });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('lead_mgmt_user');
@@ -15,11 +37,12 @@ export const AuthProvider = ({ children }) => {
 
     if (savedUser && token) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
         if (savedMenus) {
           setAllowedMenus(JSON.parse(savedMenus));
         }
-        // Fetch fresh menus from backend
+        // Fetch fresh menus from backend in background without blocking UI
         fetchFreshMenus();
       } catch (e) {
         logout();
