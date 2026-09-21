@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { 
