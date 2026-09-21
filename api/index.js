@@ -1,15 +1,31 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
 const connStr = "postgresql://neondb_owner:npg_FzriwB8AoQ0X@ep-bitter-smoke-b3m1hg9u-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 const omniApiKey = "A58463AEB7AE41CD9901D23D18BC2482883";
 
-async function getPgClient() {
-  const client = new Client({
-    connectionString: connStr,
-    ssl: { rejectUnauthorized: false }
-  });
-  await client.connect();
-  return client;
+let poolInstance = null;
+function getPool() {
+  if (!poolInstance) {
+    poolInstance = new Pool({
+      connectionString: connStr,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000
+    });
+  }
+  return poolInstance;
+}
+
+// Ultra-fast in-memory serverless cache
+let misCache = {};
+let dashboardCache = { timestamp: 0, data: null };
+let campaignsCache = { timestamp: 0, data: null };
+
+function invalidateCaches() {
+  misCache = {};
+  dashboardCache = { timestamp: 0, data: null };
+  campaignsCache = { timestamp: 0, data: null };
 }
 
 // Indian Standard Time (IST = UTC + 5:30) helper functions matching OmniDigital Telecom Portal
@@ -131,159 +147,182 @@ async function handler(req, res) {
 
     // 2. DASHBOARD STATS API (Neon PostgreSQL Real-time Aggregation matching OmniDigital)
     if (url.includes('GetDashboardStats')) {
-      const client = await getPgClient();
-      try {
-        const statsRes = await client.query(`
-          SELECT 
-            COUNT(1) as total_campaigns,
-            COALESCE(SUM(total_mobiles), 0) as total_submitted,
-            COALESCE(SUM(delivered), 0) as delivered,
-            COALESCE(SUM(read_count), 0) as read,
-            COALESCE(SUM(failed), 0) as failed,
-            COALESCE(SUM(awaited), 0) as awaited
-          FROM rcs_campaigns;
-        `);
-        const r = statsRes.rows[0] || {};
-        const totalSubmitted = Number(r.total_submitted || 34);
-        const delivered = Number(r.delivered || 25);
-        const failed = Number(r.failed || 9);
-        const read = Number(r.read || 13);
-        const awaited = Number(r.awaited || 0);
-
-        return res.status(200).json({
-          ok: true,
-          status: "OK",
-          totalCampaigns: Number(r.total_campaigns || 34),
-          totalSubmitted: totalSubmitted,
-          delivered: delivered,
-          read: read,
-          clicks: 0,
-          failed: failed,
-          awaited: awaited,
-          deliveryRate: totalSubmitted > 0 ? +(delivered / totalSubmitted * 100).toFixed(2) : 73.53,
-          readRate: delivered > 0 ? +(read / delivered * 100).toFixed(2) : 52.0,
-          clickRate: 0.0,
-          failRate: totalSubmitted > 0 ? +(failed / totalSubmitted * 100).toFixed(2) : 26.47,
-          awaitRate: 0.0,
-          delivery: { delivered, read, failed, awaited },
-          engagement: { clicks: 0, replies: 0 },
-          trend: {
-            dates: ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21"],
-            delivered: [0, 3, 4, 0, 10, 0, 0, 8],
-            read: [0, 3, 4, 0, 1, 0, 0, 5],
-            failed: [0, 9, 0, 0, 0, 0, 0, 0],
-            awaited: [0, 0, 0, 0, 0, 0, 0, 0]
-          },
-          templates: { plainText: totalSubmitted, richCard: 0, carousel: 0 }
-        });
-      } finally {
-        await client.end();
+      const now = Date.now();
+      if (dashboardCache.data && (now - dashboardCache.timestamp < 20000)) {
+        res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        return res.status(200).json(dashboardCache.data);
       }
+
+      const pool = getPool();
+      const statsRes = await pool.query(`
+        SELECT 
+          COUNT(1) as total_campaigns,
+          COALESCE(SUM(total_mobiles), 0) as total_submitted,
+          COALESCE(SUM(delivered), 0) as delivered,
+          COALESCE(SUM(read_count), 0) as read,
+          COALESCE(SUM(failed), 0) as failed,
+          COALESCE(SUM(awaited), 0) as awaited
+        FROM rcs_campaigns;
+      `);
+      const r = statsRes.rows[0] || {};
+      const totalSubmitted = Number(r.total_submitted || 34);
+      const delivered = Number(r.delivered || 25);
+      const failed = Number(r.failed || 9);
+      const read = Number(r.read || 13);
+      const awaited = Number(r.awaited || 0);
+
+      const resultData = {
+        ok: true,
+        status: "OK",
+        totalCampaigns: Number(r.total_campaigns || 34),
+        totalSubmitted: totalSubmitted,
+        delivered: delivered,
+        read: read,
+        clicks: 0,
+        failed: failed,
+        awaited: awaited,
+        deliveryRate: totalSubmitted > 0 ? +(delivered / totalSubmitted * 100).toFixed(2) : 73.53,
+        readRate: delivered > 0 ? +(read / delivered * 100).toFixed(2) : 52.0,
+        clickRate: 0.0,
+        failRate: totalSubmitted > 0 ? +(failed / totalSubmitted * 100).toFixed(2) : 26.47,
+        awaitRate: 0.0,
+        delivery: { delivered, read, failed, awaited },
+        engagement: { clicks: 0, replies: 0 },
+        trend: {
+          dates: ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21"],
+          delivered: [0, 3, 4, 0, 10, 0, 0, 8],
+          read: [0, 3, 4, 0, 1, 0, 0, 5],
+          failed: [0, 9, 0, 0, 0, 0, 0, 0],
+          awaited: [0, 0, 0, 0, 0, 0, 0, 0]
+        },
+        templates: { plainText: totalSubmitted, richCard: 0, carousel: 0 }
+      };
+
+      dashboardCache = { timestamp: Date.now(), data: resultData };
+      res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+      return res.status(200).json(resultData);
     }
 
     // 3. CAMPAIGN REPORTS (Neon PostgreSQL Query for Delivery Reports Page)
     if (url.includes('GetCampaignReports') || url.includes('GetDeliveryReports')) {
-      const client = await getPgClient();
-      try {
-        const campRes = await client.query(`SELECT * FROM rcs_campaigns ORDER BY campaign_id DESC LIMIT 100;`);
-        const campaigns = campRes.rows.map(c => {
-          const postDate = toIstString(c.created_at);
-          return {
-            campaignId: c.campaign_id,
-            id: c.campaign_id,
-            campaignName: c.campaign_name,
-            name: c.campaign_name,
-            templateName: c.template_name,
-            template: c.template_name,
-            templateType: 'PlainText',
-            type: 'PlainText',
-            botName: c.bot_name || 'PBG INFO',
-            bot: c.bot_name || 'PBG INFO',
-            serviceType: c.service_type || 'RCS-T',
-            totalMobiles: c.total_mobiles,
-            total: c.total_mobiles,
-            mobileNumber: c.mobile_number,
-            mobile: c.mobile_number,
-            operator: c.operator || 'Airtel 5G',
-            circle: c.circle || 'Delhi NCR',
-            deliveredRcs: c.delivered,
-            delivered: c.delivered,
-            readRcs: c.read_count,
-            read: c.read_count,
-            failed: c.failed,
-            awaited: c.awaited,
-            status: c.status || (c.failed > 0 ? 'FAILED' : 'Completed'),
-            creditsDeducted: Number(c.credits_deducted || 1),
-            reason: c.reason || 'Handset ACK: Delivered to Google Messages RCS client',
-            ipAddress: c.ip_address || '49.36.218.10',
-            createdAt: postDate,
-            postDateTime: postDate
-          };
-        });
-
-        return res.status(200).json({
-          ok: true,
-          status: "OK",
-          total: campaigns.length,
-          response: { campaigns: campaigns },
-          campaigns: campaigns
-        });
-      } finally {
-        await client.end();
+      const now = Date.now();
+      if (campaignsCache.data && (now - campaignsCache.timestamp < 15000)) {
+        res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        return res.status(200).json(campaignsCache.data);
       }
+
+      const pool = getPool();
+      const campRes = await pool.query(`SELECT * FROM rcs_campaigns ORDER BY campaign_id DESC LIMIT 100;`);
+      const campaigns = campRes.rows.map(c => {
+        const postDate = toIstString(c.created_at);
+        return {
+          campaignId: c.campaign_id,
+          id: c.campaign_id,
+          campaignName: c.campaign_name,
+          name: c.campaign_name,
+          templateName: c.template_name,
+          template: c.template_name,
+          templateType: 'PlainText',
+          type: 'PlainText',
+          botName: c.bot_name || 'PBG INFO',
+          bot: c.bot_name || 'PBG INFO',
+          serviceType: c.service_type || 'RCS-T',
+          totalMobiles: c.total_mobiles,
+          total: c.total_mobiles,
+          mobileNumber: c.mobile_number,
+          mobile: c.mobile_number,
+          operator: c.operator || 'Airtel 5G',
+          circle: c.circle || 'Delhi NCR',
+          deliveredRcs: c.delivered,
+          delivered: c.delivered,
+          readRcs: c.read_count,
+          read: c.read_count,
+          failed: c.failed,
+          awaited: c.awaited,
+          status: c.status || (c.failed > 0 ? 'FAILED' : 'Completed'),
+          creditsDeducted: Number(c.credits_deducted || 1),
+          reason: c.reason || 'Handset ACK: Delivered to Google Messages RCS client',
+          ipAddress: c.ip_address || '49.36.218.10',
+          createdAt: postDate,
+          postDateTime: postDate
+        };
+      });
+
+      const resultData = {
+        ok: true,
+        status: "OK",
+        total: campaigns.length,
+        response: { campaigns: campaigns },
+        campaigns: campaigns
+      };
+
+      campaignsCache = { timestamp: Date.now(), data: resultData };
+      res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+      return res.status(200).json(resultData);
     }
 
     // 4. DELIVERY LOGS API (Neon PostgreSQL Query for Granular Drilldown)
     if (url.includes('GetDeliveryLogs')) {
-      const client = await getPgClient();
-      try {
-        const campId = searchParams.get('campaignId') || req.query?.campaignId;
-        let query = 'SELECT * FROM rcs_delivery_logs';
-        const params = [];
-        if (campId) {
-          query += ' WHERE campaign_id = $1';
-          params.push(Number(campId));
-        }
-        query += ' ORDER BY delivered_at DESC LIMIT 100;';
-
-        const logsRes = await client.query(query, params);
-        const logs = logsRes.rows.map(l => {
-          const timeStr = toIstString(l.delivered_at, true);
-          return {
-            logId: l.id,
-            id: l.id,
-            campaignId: l.campaign_id,
-            mobileNumber: l.mobile_number,
-            msisdn: l.mobile_number,
-            operator: l.operator || 'Airtel 5G',
-            circle: l.circle || 'Delhi NCR',
-            status: (l.status || 'DELIVERED').toUpperCase(),
-            deliveredAt: timeStr,
-            sentAt: timeStr,
-            time: timeStr,
-            latency: '0.8s',
-            carrier: l.operator || 'Airtel 5G',
-            reason: l.reason || 'Handset ACK: Delivered to Google Messages RCS client',
-            details: l.reason || 'Handset ACK: Delivered to Google Messages RCS client',
-            ipAddress: l.ip_address || '49.36.218.10'
-          };
-        });
-
-        return res.status(200).json({
-          ok: true,
-          status: "OK",
-          response: { logs: logs },
-          logs: logs
-        });
-      } finally {
-        await client.end();
+      const campId = searchParams.get('campaignId') || req.query?.campaignId;
+      let query = 'SELECT * FROM rcs_delivery_logs';
+      const params = [];
+      if (campId) {
+        query += ' WHERE campaign_id = $1';
+        params.push(Number(campId));
       }
+      query += ' ORDER BY delivered_at DESC LIMIT 100;';
+
+      const pool = getPool();
+      const logsRes = await pool.query(query, params);
+      const logs = logsRes.rows.map(l => {
+        const timeStr = toIstString(l.delivered_at, true);
+        return {
+          logId: l.id,
+          id: l.id,
+          campaignId: l.campaign_id,
+          mobileNumber: l.mobile_number,
+          msisdn: l.mobile_number,
+          operator: l.operator || 'Airtel 5G',
+          circle: l.circle || 'Delhi NCR',
+          status: (l.status || 'DELIVERED').toUpperCase(),
+          deliveredAt: timeStr,
+          sentAt: timeStr,
+          time: timeStr,
+          latency: '0.8s',
+          carrier: l.operator || 'Airtel 5G',
+          reason: l.reason || 'Handset ACK: Delivered to Google Messages RCS client',
+          details: l.reason || 'Handset ACK: Delivered to Google Messages RCS client',
+          ipAddress: l.ip_address || '49.36.218.10'
+        };
+      });
+
+      res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+      return res.status(200).json({
+        ok: true,
+        status: "OK",
+        response: { logs: logs },
+        logs: logs
+      });
     }
 
     // 5. MIS REPORT API (Neon PostgreSQL 24-Hour Matrix Calculation)
     if (url.includes('GetMisReport')) {
       const month = searchParams.get('month') || req.query?.month || 'September';
       const year = Number(searchParams.get('year') || req.query?.year || 2026);
+      const cacheKey = `${month}_${year}`;
+
+      const now = Date.now();
+      if (misCache[cacheKey] && (now - misCache[cacheKey].timestamp < 30000)) {
+        res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+        return res.status(200).json({
+          status: "OK",
+          Status: "OK",
+          ok: true,
+          response: misCache[cacheKey].data,
+          Response: misCache[cacheKey].data,
+          cached: true
+        });
+      }
 
       const monthsList = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -292,96 +331,98 @@ async function handler(req, res) {
       let monthIndex = monthsList.findIndex(m => m.toLowerCase() === month.toLowerCase());
       if (monthIndex < 0) monthIndex = 8; // Default September (0-indexed 8)
 
-      const client = await getPgClient();
-      try {
-        const campRes = await client.query('SELECT * FROM rcs_campaigns ORDER BY created_at ASC;');
-        const allCampaigns = campRes.rows;
+      const pool = getPool();
+      const campRes = await pool.query('SELECT * FROM rcs_campaigns ORDER BY created_at ASC;');
+      const allCampaigns = campRes.rows;
 
-        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-        const matrix = [];
-        const hourlyTotals = Array(24).fill(0);
-        let overallTotal = 0;
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      const matrix = [];
+      const hourlyTotals = Array(24).fill(0);
+      let overallTotal = 0;
 
-        const monthNumStr = String(monthIndex + 1).padStart(2, '0');
+      const monthNumStr = String(monthIndex + 1).padStart(2, '0');
 
-        for (let day = 1; day <= daysInMonth; day++) {
-          const hours = Array(24).fill(0);
-          const dayStr = String(day).padStart(2, '0');
-          const dayPrefix = `${year}-${monthNumStr}-${dayStr}`;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const hours = Array(24).fill(0);
+        const dayStr = String(day).padStart(2, '0');
+        const dayPrefix = `${year}-${monthNumStr}-${dayStr}`;
 
-          const dayCamps = allCampaigns.filter(c => {
-            if (!c.created_at) return false;
-            const dStr = getIstDateOnly(c.created_at);
-            return dStr === dayPrefix;
-          });
+        const dayCamps = allCampaigns.filter(c => {
+          if (!c.created_at) return false;
+          const dStr = getIstDateOnly(c.created_at);
+          return dStr === dayPrefix;
+        });
 
-          for (const c of dayCamps) {
-            const hour = getIstHour(c.created_at);
-            const count = Number(c.total_mobiles) || 1;
-            if (hour >= 0 && hour < 24) {
-              hours[hour] += count;
-            }
+        for (const c of dayCamps) {
+          const hour = getIstHour(c.created_at);
+          const count = Number(c.total_mobiles) || 1;
+          if (hour >= 0 && hour < 24) {
+            hours[hour] += count;
           }
-
-          const dayTotal = hours.reduce((acc, h) => acc + h, 0);
-          overallTotal += dayTotal;
-          for (let h = 0; h < 24; h++) {
-            hourlyTotals[h] += hours[h];
-          }
-
-          matrix.push({
-            day,
-            hours,
-            dayTotal
-          });
         }
 
-        const formattedCampaigns = allCampaigns.map(c => {
-          const postDate = toIstString(c.created_at);
-          return {
-            campaignId: c.campaign_id,
-            id: c.campaign_id,
-            campaignName: c.campaign_name,
-            name: c.campaign_name,
-            botName: c.bot_name || 'PBG INFO',
-            bot: c.bot_name || 'PBG INFO',
-            templateName: c.template_name,
-            template: c.template_name,
-            templateType: 'PlainText',
-            type: 'PlainText',
-            totalMobiles: c.total_mobiles || 1,
-            total: c.total_mobiles || 1,
-            recipients: c.total_mobiles || 1,
-            createdAt: postDate,
-            postedAt: postDate
-          };
-        });
+        const dayTotal = hours.reduce((acc, h) => acc + h, 0);
+        overallTotal += dayTotal;
+        for (let h = 0; h < 24; h++) {
+          hourlyTotals[h] += hours[h];
+        }
 
-        const responseObj = {
-          month,
-          Month: month,
-          year,
-          Year: year,
-          totalDispatches: overallTotal,
-          TotalDispatches: overallTotal,
-          hourlyTotals,
-          HourlyTotals: hourlyTotals,
-          matrix,
-          Matrix: matrix,
-          campaigns: formattedCampaigns,
-          Campaigns: formattedCampaigns
-        };
-
-        return res.status(200).json({
-          status: "OK",
-          Status: "OK",
-          ok: true,
-          response: responseObj,
-          Response: responseObj
+        matrix.push({
+          day,
+          hours,
+          dayTotal
         });
-      } finally {
-        await client.end();
       }
+
+      const formattedCampaigns = allCampaigns.map(c => {
+        const postDate = toIstString(c.created_at);
+        return {
+          campaignId: c.campaign_id,
+          id: c.campaign_id,
+          campaignName: c.campaign_name,
+          name: c.campaign_name,
+          botName: c.bot_name || 'PBG INFO',
+          bot: c.bot_name || 'PBG INFO',
+          templateName: c.template_name,
+          template: c.template_name,
+          templateType: 'PlainText',
+          type: 'PlainText',
+          totalMobiles: c.total_mobiles || 1,
+          total: c.total_mobiles || 1,
+          recipients: c.total_mobiles || 1,
+          createdAt: postDate,
+          postedAt: postDate
+        };
+      });
+
+      const responseObj = {
+        month,
+        Month: month,
+        year,
+        Year: year,
+        totalDispatches: overallTotal,
+        TotalDispatches: overallTotal,
+        hourlyTotals,
+        HourlyTotals: hourlyTotals,
+        matrix,
+        Matrix: matrix,
+        campaigns: formattedCampaigns,
+        Campaigns: formattedCampaigns
+      };
+
+      misCache[cacheKey] = {
+        timestamp: Date.now(),
+        data: responseObj
+      };
+
+      res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+      return res.status(200).json({
+        status: "OK",
+        Status: "OK",
+        ok: true,
+        response: responseObj,
+        Response: responseObj
+      });
     }
 
     // 6. GET BOTS API (OmniDigital Live Sync)
@@ -502,49 +543,48 @@ async function handler(req, res) {
         console.warn('Live CreateCampaign error:', e.message);
       }
 
-      const client = await getPgClient();
-      try {
-        const newCampId = Math.floor(8690 + Math.random() * 100);
-        const mobile = Array.isArray(body.MobileNumbers) ? body.MobileNumbers[0] : (body.MobileNumbers || '9868040206');
-        const campName = body.CampaignName || `Campaign_${Date.now()}`;
-        const templateName = body.TemplateName || 'pbg_account_status_u';
+      const pool = getPool();
+      const newCampId = Math.floor(8690 + Math.random() * 100);
+      const mobile = Array.isArray(body.MobileNumbers) ? body.MobileNumbers[0] : (body.MobileNumbers || '9868040206');
+      const campName = body.CampaignName || `Campaign_${Date.now()}`;
+      const templateName = body.TemplateName || 'pbg_account_status_u';
 
-        await client.query(`
-          INSERT INTO rcs_campaigns (
-            user_id, campaign_id, campaign_name, bot_name, template_name,
-            service_type, total_mobiles, mobile_number, operator, circle,
-            delivered, read_count, failed, awaited, status, credits_deducted,
-            reason, ip_address, sent_via, created_at
-          ) VALUES (
-            1, $1, $2, 'PBG INFO', $3, 'RCS-T', 1, $4, 'Airtel 5G', 'Delhi NCR',
-            1, 0, 0, 0, 'Delivered', 1.00, 'Handset ACK: Delivered to Google Messages RCS client',
-            '49.36.218.10', 'Web Panel', NOW()
-          );
-        `, [newCampId, campName, templateName, mobile]);
+      await pool.query(`
+        INSERT INTO rcs_campaigns (
+          user_id, campaign_id, campaign_name, bot_name, template_name,
+          service_type, total_mobiles, mobile_number, operator, circle,
+          delivered, read_count, failed, awaited, status, credits_deducted,
+          reason, ip_address, sent_via, created_at
+        ) VALUES (
+          1, $1, $2, 'PBG INFO', $3, 'RCS-T', 1, $4, 'Airtel 5G', 'Delhi NCR',
+          1, 0, 0, 0, 'Delivered', 1.00, 'Handset ACK: Delivered to Google Messages RCS client',
+          '49.36.218.10', 'Web Panel', NOW()
+        );
+      `, [newCampId, campName, templateName, mobile]);
 
-        await client.query(`
-          INSERT INTO rcs_delivery_logs (
-            campaign_id, mobile_number, operator, circle, status,
-            delivered_at, reason, ip_address
-          ) VALUES (
-            $1, $2, 'Airtel 5G', 'Delhi NCR', 'DELIVERED',
-            NOW(), 'Handset ACK: Delivered to Google Messages RCS client', '49.36.218.10'
-          );
-        `, [newCampId, mobile]);
+      await pool.query(`
+        INSERT INTO rcs_delivery_logs (
+          campaign_id, mobile_number, operator, circle, status,
+          delivered_at, reason, ip_address
+        ) VALUES (
+          $1, $2, 'Airtel 5G', 'Delhi NCR', 'DELIVERED',
+          NOW(), 'Handset ACK: Delivered to Google Messages RCS client', '49.36.218.10'
+        );
+      `, [newCampId, mobile]);
 
-        return res.status(200).json({
-          status: "OK",
-          Status: "OK",
-          ok: true,
-          response: {
-            campaignId: newCampId,
-            message: "Campaign dispatched successfully via OmniDigital Live Gateway & synced with Neon DB",
-            totalRecipients: 1
-          }
-        });
-      } finally {
-        await client.end();
-      }
+      // Immediately invalidate cache so fresh dispatch reflects everywhere
+      invalidateCaches();
+
+      return res.status(200).json({
+        status: "OK",
+        Status: "OK",
+        ok: true,
+        response: {
+          campaignId: newCampId,
+          message: "Campaign dispatched successfully via OmniDigital Live Gateway & synced with Neon DB",
+          totalRecipients: 1
+        }
+      });
     }
 
     // 9. MENUS API (/menus/my-menus & /DynamicMenus/tree)
