@@ -1430,7 +1430,7 @@ export function RcsApiDocPage() {
 
               {testConsoleLoading && (
                 <div style={{ padding: '14px', textAlign: 'center', color: '#0284c7', fontSize: '12px' }}>
-                  Executing request to http://localhost:5108/api/RCSApi...
+                  Executing request to /api/RCSApi...
                 </div>
               )}
 
