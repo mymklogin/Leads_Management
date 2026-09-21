@@ -1,8 +1,11 @@
 {
-  "name": "leads-management",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm install && npm run build"
-  }
+    "private":  true,
+    "name":  "leads-management",
+    "version":  "1.0.0",
+    "scripts": {
+        "build": "cd frontend && npm install && npm run build"
+    },
+    "dependencies": {
+        "pg": "^8.13.1"
+    }
 }
