@@ -49,7 +49,7 @@ export function ResellerSmppPage() {
   const fetchSmppServer = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://127.0.0.1:5108/api/ResellerConnectivity/smpp-server');
+      const res = await axios.get('/api/ResellerConnectivity/smpp-server');
       if (res.data.success) {
         setServerConfig(res.data.config);
         setLiveBinds(res.data.liveBinds || []);
@@ -65,7 +65,7 @@ export function ResellerSmppPage() {
 
   const fetchLiveBindsOnly = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:5108/api/ResellerConnectivity/live-binds');
+      const res = await axios.get('/api/ResellerConnectivity/live-binds');
       if (res.data.success) {
         setLiveBinds(res.data.liveBinds || []);
       }
@@ -118,7 +118,7 @@ export function ResellerSmppPage() {
     e.preventDefault();
     try {
       setSaveError('');
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/smpp-accounts', accountForm);
+      const res = await axios.post('/api/ResellerConnectivity/smpp-accounts', accountForm);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowAccountModal(false);
@@ -133,7 +133,7 @@ export function ResellerSmppPage() {
   const handleDeleteAccount = async (id, systemId) => {
     if (!window.confirm(`Are you sure you want to delete Reseller SMPP account '${systemId}'?`)) return;
     try {
-      const res = await axios.delete(`http://127.0.0.1:5108/api/ResellerConnectivity/smpp-accounts/${id}`);
+      const res = await axios.delete(`/api/ResellerConnectivity/smpp-accounts/${id}`);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchSmppServer();
@@ -147,7 +147,7 @@ export function ResellerSmppPage() {
   const handleSaveConfig = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/smpp-server', configForm);
+      const res = await axios.post('/api/ResellerConnectivity/smpp-server', configForm);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowConfigModal(false);
