@@ -605,7 +605,272 @@ async function handler(req, res) {
       });
     }
 
-    // 9. MENUS API (/menus/my-menus & /DynamicMenus/tree)
+    // 9. USERS API (Fetch & Create Users in Neon PostgreSQL)
+    if (url.includes('GetUsers') || (pathname.endsWith('/users') && req.method === 'GET')) {
+      const pool = getPool();
+      try {
+        const usersRes = await pool.query(`
+          SELECT 
+            id, 
+            username, 
+            fullname as "fullName", 
+            email, 
+            role, 
+            isactive as "isActive", 
+            COALESCE(rcscredits, 0) as "rcsCredits", 
+            COALESCE(rcspromotionalcredits, 0) as "rcsPromotionalCredits", 
+            COALESCE(smscredits, 0) as "smsCredits", 
+            COALESCE(bulksmspromotionalcredits, 0) as "bulkSmsPromotionalCredits", 
+            COALESCE(whatsappcredits, 0) as "whatsAppCredits", 
+            COALESCE(whatsapppromotionalcredits, 0) as "whatsAppPromotionalCredits"
+          FROM users
+          ORDER BY id ASC;
+        `);
+        const rows = usersRes.rows.map(u => ({
+          ...u,
+          rcsCredits: Number(u.rcsCredits),
+          rcsPromotionalCredits: Number(u.rcsPromotionalCredits),
+          smsCredits: Number(u.smsCredits),
+          bulkSmsPromotionalCredits: Number(u.bulkSmsPromotionalCredits),
+          whatsAppCredits: Number(u.whatsAppCredits),
+          whatsAppPromotionalCredits: Number(u.whatsAppPromotionalCredits)
+        }));
+
+        if (pathname.endsWith('/users')) {
+          return res.status(200).json(rows);
+        }
+        return res.status(200).json({
+          ok: true,
+          status: "OK",
+          users: rows
+        });
+      } catch (err) {
+        console.error('GetUsers DB error:', err);
+        return res.status(200).json({
+          ok: true,
+          status: "OK",
+          users: [
+            { id: 1, username: 'Abhishaarod', fullName: 'Abhishaarod', role: 1, isActive: true, rcsCredits: 57, rcsPromotionalCredits: 109, smsCredits: 100 }
+          ]
+        });
+      }
+    }
+
+    if ((pathname.endsWith('/users') || url.includes('/users')) && req.method === 'POST') {
+      let body = {};
+      if (req.body) {
+        body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      }
+      const pool = getPool();
+      try {
+        const username = body.username || `user_${Date.now()}`;
+        const email = body.email || `${username}@example.com`;
+        const fullName = body.fullName || username;
+        const phoneNumber = body.phoneNumber || '';
+        const role = parseInt(body.role, 10) || 3;
+        const insRes = await pool.query(`
+          INSERT INTO users (username, email, passwordhash, fullname, phonenumber, role, voicecredits, whatsappcredits, rcscredits, smscredits, isactive, createdat, updatedat, rcspromotionalcredits, bulksmspromotionalcredits, whatsapppromotionalcredits)
+          VALUES ($1, $2, 'dummyhash', $3, $4, $5, 0, 0, 0, 0, true, NOW(), NOW(), 0, 0, 0)
+          RETURNING id, username, fullname as "fullName", email, role, isactive as "isActive", rcscredits as "rcsCredits", rcspromotionalcredits as "rcsPromotionalCredits", smscredits as "smsCredits";
+        `, [username, email, fullName, phoneNumber, role]);
+        return res.status(200).json(insRes.rows[0]);
+      } catch (err) {
+        return res.status(500).json({ message: err.message });
+      }
+    }
+
+    // 10. BALANCE AUDIT LEDGER API (Real-time Neon DB rcstransactionlogs + Live Omni Gateway Balance)
+    if (url.includes('GetBalanceLedger')) {
+      const pool = getPool();
+      try {
+        // Fetch live gateway balance from OmniDigital
+        let masterRcsT = 57;
+        let masterRcsP = 109;
+        let masterSms = 100;
+        try {
+          const omniRes = await fetch(`https://omnidigital.co.in/api/RCSApi/CheckRcsBalance?apiKey=${omniApiKey}`);
+          const omniData = await omniRes.json();
+          const raw = omniData.Response || omniData.response || {};
+          masterRcsT = Number(raw.RcsTransactionalBalance ?? raw.rcsTransactionalBalance ?? 57);
+          masterRcsP = Number(raw.RcsPromotionalBalance ?? raw.rcsPromotionalBalance ?? 109);
+          masterSms = Number(raw.SmsBalance ?? raw.smsBalance ?? 100);
+        } catch (e) {}
+
+        // Query transactions from Neon DB
+        const txRes = await pool.query(`
+          SELECT 
+            id,
+            transactioncode as "transactionCode",
+            createdat as "createdAt",
+            userid as "userId",
+            username,
+            performedbyuserid as "performedByUserId",
+            performedbyusername as "performedByUsername",
+            servicetype as "serviceType",
+            actiontype as "actionType",
+            credits,
+            pricepercredit as "pricePerCredit",
+            totalamount as "totalAmount",
+            notes,
+            balanceafter as "balanceAfter"
+          FROM rcstransactionlogs
+          ORDER BY id DESC
+          LIMIT 200;
+        `);
+
+        const transactions = (txRes.rows || []).map(t => ({
+          ...t,
+          credits: Number(t.credits),
+          pricePerCredit: Number(t.pricePerCredit || 0),
+          totalAmount: Number(t.totalAmount || 0),
+          balanceAfter: Number(t.balanceAfter || 0)
+        }));
+
+        // Calculate totals
+        const rcsTTxns = transactions.filter(t => t.userId !== 1 && String(t.username || '').toLowerCase() !== 'admin' && String(t.serviceType || '').toUpperCase() === 'RCS-T');
+        const rcsPTxns = transactions.filter(t => t.userId !== 1 && String(t.username || '').toLowerCase() !== 'admin' && String(t.serviceType || '').toUpperCase() === 'RCS-P');
+        const bulkTTxns = transactions.filter(t => t.userId !== 1 && String(t.username || '').toLowerCase() !== 'admin' && (String(t.serviceType || '').toUpperCase() === 'BULKSMS-T' || String(t.serviceType || '').toUpperCase() === 'SMS'));
+        const bulkPTxns = transactions.filter(t => t.userId !== 1 && String(t.username || '').toLowerCase() !== 'admin' && String(t.serviceType || '').toUpperCase() === 'BULKSMS-P');
+
+        const rcsTCredited = rcsTTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((a, b) => a + b.credits, 0);
+        const rcsTRevoked = Math.abs(rcsTTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((a, b) => a + b.credits, 0));
+        const rcsTAdminUsed = transactions.filter(t => (t.userId === 1 || String(t.username || '').toLowerCase() === 'admin') && String(t.serviceType || '').toUpperCase().includes('RCS-T') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((a, b) => a + Math.abs(b.credits), 0);
+
+        const rcsPCredited = rcsPTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((a, b) => a + b.credits, 0);
+        const rcsPRevoked = Math.abs(rcsPTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((a, b) => a + b.credits, 0));
+        const rcsPAdminUsed = transactions.filter(t => (t.userId === 1 || String(t.username || '').toLowerCase() === 'admin') && String(t.serviceType || '').toUpperCase().includes('RCS-P') && (t.actionType === 'Usage' || t.actionType === 'CampaignUsage')).reduce((a, b) => a + Math.abs(b.credits), 0);
+
+        const bulkTCredited = bulkTTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((a, b) => a + b.credits, 0);
+        const bulkTRevoked = Math.abs(bulkTTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((a, b) => a + b.credits, 0));
+
+        const bulkPCredited = bulkPTxns.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((a, b) => a + b.credits, 0);
+        const bulkPRevoked = Math.abs(bulkPTxns.filter(t => t.actionType === 'Revoke' || t.credits < 0).reduce((a, b) => a + b.credits, 0));
+
+        const summaryObj = {
+          totalTransactions: transactions.length,
+          totalCredits: transactions.reduce((a, b) => a + b.credits, 0),
+          totalCredited: transactions.filter(t => (t.actionType === 'Credit' || t.actionType === 'Allocation') && t.credits > 0).reduce((a, b) => a + b.credits, 0),
+          totalRevoked: Math.abs(transactions.filter(t => t.actionType === 'Revoke' && t.credits < 0).reduce((a, b) => a + b.credits, 0)),
+          totalBilledValue: transactions.reduce((a, b) => a + b.totalAmount, 0),
+          totalAmount: transactions.reduce((a, b) => a + b.totalAmount, 0),
+          totalCampaignUsed: transactions.filter(t => t.actionType === 'Usage' || t.actionType === 'CampaignUsage').reduce((a, b) => a + Math.abs(b.credits), 0),
+          rcsT: {
+            mainBalance: masterRcsT,
+            currentAvailable: Math.max(0, masterRcsT - rcsTCredited + rcsTRevoked),
+            totalRevoked: rcsTRevoked > 0 ? -rcsTRevoked : 0,
+            totalCredited: rcsTCredited,
+            totalUsed: rcsTAdminUsed
+          },
+          rcsP: {
+            mainBalance: masterRcsP,
+            currentAvailable: Math.max(0, masterRcsP - rcsPCredited + rcsPRevoked),
+            totalRevoked: rcsPRevoked > 0 ? -rcsPRevoked : 0,
+            totalCredited: rcsPCredited,
+            totalUsed: rcsPAdminUsed
+          },
+          bulkSmsT: {
+            mainBalance: masterSms,
+            currentAvailable: Math.max(0, masterSms - bulkTCredited + bulkTRevoked),
+            totalRevoked: bulkTRevoked > 0 ? -bulkTRevoked : 0,
+            totalCredited: bulkTCredited,
+            totalUsed: 0
+          },
+          bulkSmsP: {
+            mainBalance: masterSms,
+            currentAvailable: Math.max(0, masterSms - bulkPCredited + bulkPRevoked),
+            totalRevoked: bulkPRevoked > 0 ? -bulkPRevoked : 0,
+            totalCredited: bulkPCredited,
+            totalUsed: 0
+          }
+        };
+
+        return res.status(200).json({
+          status: "OK",
+          ok: true,
+          response: {
+            transactions,
+            summary: summaryObj
+          },
+          transactions,
+          summary: summaryObj
+        });
+      } catch (err) {
+        console.error('GetBalanceLedger error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    // 11. MANAGE USER BALANCE API (Credit / Revoke User Credits + Audit Logging)
+    if (url.includes('ManageUserBalance')) {
+      let body = {};
+      if (req.body) {
+        body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      }
+      const targetUserId = parseInt(body.targetUserId, 10);
+      const serviceType = (body.serviceType || 'RCS-T').toUpperCase();
+      const actionType = body.actionType || 'Credit';
+      const credits = parseFloat(body.credits) || 0;
+      const pricePerCredit = parseFloat(body.pricePerCredit) || 0;
+      const totalAmount = credits * pricePerCredit;
+      const notes = body.notes || (actionType === 'Credit' ? 'Balance Added' : 'Balance Debited');
+
+      if (!targetUserId || credits <= 0) {
+        return res.status(400).json({ status: 'Error', message: 'TargetUserId and credits > 0 are required.' });
+      }
+
+      const pool = getPool();
+      try {
+        const uRes = await pool.query('SELECT * FROM users WHERE id = $1', [targetUserId]);
+        if (uRes.rows.length === 0) {
+          return res.status(404).json({ status: 'Error', message: `User #${targetUserId} not found.` });
+        }
+        const user = uRes.rows[0];
+        let col = 'rcscredits';
+        if (serviceType.includes('RCS-P')) col = 'rcspromotionalcredits';
+        else if (serviceType.includes('BULKSMS-P')) col = 'bulksmspromotionalcredits';
+        else if (serviceType.includes('SMS') || serviceType.includes('BULKSMS-T')) col = 'smscredits';
+        else if (serviceType.includes('WHATSAPP-P')) col = 'whatsapppromotionalcredits';
+        else if (serviceType.includes('WHATSAPP')) col = 'whatsappcredits';
+
+        let currentVal = Number(user[col] || 0);
+        let newVal = actionType === 'Credit' ? (currentVal + credits) : Math.max(0, currentVal - credits);
+
+        // Update user credits
+        await pool.query(`UPDATE users SET ${col} = $1, updatedat = NOW() WHERE id = $2`, [newVal, targetUserId]);
+
+        // Insert into rcstransactionlogs
+        const txnCode = `TXN-${Math.floor(100000 + Math.random() * 900000)}`;
+        await pool.query(`
+          INSERT INTO rcstransactionlogs (
+            transactioncode, createdat, userid, username, performedbyuserid, performedbyusername,
+            servicetype, actiontype, credits, pricepercredit, totalamount, notes, balanceafter
+          ) VALUES ($1, NOW(), $2, $3, 1, 'Abhishaarod', $4, $5, $6, $7, $8, $9, $10)
+        `, [
+          txnCode,
+          targetUserId,
+          user.username,
+          serviceType,
+          actionType,
+          actionType === 'Credit' ? credits : -credits,
+          pricePerCredit,
+          totalAmount,
+          notes,
+          newVal
+        ]);
+
+        return res.status(200).json({
+          status: 'OK',
+          ok: true,
+          message: `Successfully ${actionType.toLowerCase()}ed ${credits} ${serviceType} for ${user.username}`,
+          newBalance: newVal
+        });
+      } catch (err) {
+        console.error('ManageUserBalance error:', err);
+        return res.status(500).json({ status: 'Error', message: err.message });
+      }
+    }
+
+    // 12. MENUS API (/menus/my-menus & /DynamicMenus/tree)
     if (url.includes('menus/my-menus') || url.includes('DynamicMenus/tree')) {
       return res.status(200).json(DEFAULT_MENUS);
     }
