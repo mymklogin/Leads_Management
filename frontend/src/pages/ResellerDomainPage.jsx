@@ -40,7 +40,7 @@ export function ResellerDomainPage() {
   const fetchDomains = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://127.0.0.1:5108/api/ResellerConnectivity/domains');
+      const res = await axios.get('/api/ResellerConnectivity/domains');
       if (res.data.success) {
         setDomains(res.data.domains || []);
       }
@@ -88,7 +88,7 @@ export function ResellerDomainPage() {
         ...domainForm,
         customApiBaseUrl: domainForm.customApiBaseUrl || `https://${domainForm.customDomain}/api/RCSApi`
       };
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/domains', payload);
+      const res = await axios.post('/api/ResellerConnectivity/domains', payload);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowModal(false);
@@ -103,7 +103,7 @@ export function ResellerDomainPage() {
   const handleDelete = async (id, domainName) => {
     if (!window.confirm(`Delete domain mapping for '${domainName}'?`)) return;
     try {
-      const res = await axios.delete(`http://127.0.0.1:5108/api/ResellerConnectivity/domains/${id}`);
+      const res = await axios.delete(`/api/ResellerConnectivity/domains/${id}`);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchDomains();
@@ -118,7 +118,7 @@ export function ResellerDomainPage() {
     try {
       setVerifyingId(dm.id);
       setDnsResult(null);
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/verify-domain', { domain: dm.customDomain });
+      const res = await axios.post('/api/ResellerConnectivity/verify-domain', { domain: dm.customDomain });
       setDnsResult(res.data);
     } catch (err) {
       setSaveError('DNS verification check failed.');
