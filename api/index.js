@@ -425,22 +425,24 @@ async function handler(req, res) {
       });
     }
 
-    // 6. GET BOTS API (OmniDigital Live Sync)
+    // 6. GET BOTS API (From Neon PostgreSQL rcs_bots Table)
     if (url.includes('GetBots')) {
       try {
-        const omniRes = await fetch(`https://omnidigital.co.in/api/RCSApi/GetBots?apiKey=${omniApiKey}`);
-        const omniData = await omniRes.json();
-        if (omniData?.Response?.Bots) {
-          const bots = omniData.Response.Bots.map(b => ({
-            botId: b.BotId,
-            botName: b.BotName,
-            status: 'Verified',
-            messageType: 'Transactional',
-            brandName: b.BotName,
-            color: '#0a66c2',
+        const pool = getPool();
+        const dbRes = await pool.query('SELECT * FROM rcs_bots ORDER BY id ASC;');
+        if (dbRes.rows && dbRes.rows.length > 0) {
+          const bots = dbRes.rows.map(b => ({
+            botId: b.bot_id,
+            botName: b.bot_name,
+            status: b.status || 'Verified',
+            messageType: b.message_type || 'Transactional',
+            brandName: b.brand_name || b.bot_name,
+            color: b.color || '#0a66c2',
             templateCount: 3,
-            contactEmail: 'Abhishaarod@rcsflow.io',
-            websiteUrl: 'https://omnidigital.co.in'
+            contactPhone: b.contact_phone || '+919868040206',
+            contactEmail: b.contact_email || 'support@rcsflow.io',
+            websiteUrl: b.website_url || 'https://rcsflow.io',
+            description: b.description || ''
           }));
           return res.status(200).json({
             status: "OK",
@@ -451,8 +453,8 @@ async function handler(req, res) {
             bots
           });
         }
-      } catch (e) {
-        console.warn('Live GetBots fetch error:', e.message);
+      } catch (err) {
+        console.warn('Postgres GetBots error:', err.message);
       }
 
       const defaultBots = [{
@@ -474,22 +476,35 @@ async function handler(req, res) {
       });
     }
 
-    // 7. GET TEMPLATES API (OmniDigital Live Sync)
+    // 7. GET TEMPLATES API (From Neon PostgreSQL rcs_templates Table)
     if (url.includes('GetTemplates')) {
-      const botId = searchParams.get('botId') || req.query?.botId || '3c4fa9a066274cd2';
+      const botId = searchParams.get('botId') || req.query?.botId;
       try {
-        const omniRes = await fetch(`https://omnidigital.co.in/api/RCSApi/GetTemplates?apiKey=${omniApiKey}&botId=${botId}`);
-        const omniData = await omniRes.json();
-        if (omniData?.Response?.Templates) {
-          const templates = omniData.Response.Templates.map(t => ({
-            templateId: t.TemplateId,
-            templateName: t.TemplateName,
-            templateType: t.TemplateType || 'PlainText',
-            templateStatus: t.TemplateStatus || 'Active',
-            botId: t.BotId,
-            botName: t.BotName,
-            messageText: t.PlainText?.MessageText || '',
-            createdDate: t.CreatedDate || '2026-09-15 12:39'
+        const pool = getPool();
+        let query = 'SELECT * FROM rcs_templates';
+        const params = [];
+        if (botId) {
+          query += ' WHERE bot_id = $1';
+          params.push(botId);
+        }
+        query += ' ORDER BY id ASC;';
+
+        const dbRes = await pool.query(query, params);
+        if (dbRes.rows && dbRes.rows.length > 0) {
+          const templates = dbRes.rows.map(t => ({
+            templateId: t.template_id,
+            templateName: t.template_name,
+            templateType: t.template_type || 'PlainText',
+            templateStatus: t.template_status || 'Active',
+            botId: t.bot_id,
+            botName: t.bot_name,
+            messageText: t.sms_text || t.card_description || '',
+            cardTitle: t.card_title || '',
+            cardDescription: t.card_description || '',
+            mediaUrl: t.media_url || '',
+            buttonsJson: t.buttons_json || '',
+            buttonLabel: t.button_label || '',
+            createdDate: t.created_date || '2026-09-18 10:00'
           }));
           return res.status(200).json({
             status: "OK",
@@ -500,8 +515,8 @@ async function handler(req, res) {
             templates
           });
         }
-      } catch (e) {
-        console.warn('Live GetTemplates fetch error:', e.message);
+      } catch (err) {
+        console.warn('Postgres GetTemplates error:', err.message);
       }
 
       return res.status(200).json({
