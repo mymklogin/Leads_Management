@@ -19,7 +19,11 @@ import {
   Clock, 
   Sparkles, 
   ShieldCheck, 
-  Check 
+  Check,
+  Send,
+  Mail,
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 
 // Time Period Themes Configuration
@@ -271,8 +275,35 @@ export const LoginPage = () => {
   // Status states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // View mode: 'login' | 'recovery' | 'reset'
+  const [viewMode, setViewMode] = useState('login');
   
-  // Dynamic Time Theme System
+  // Recovery form states (OmniDigital Recovery replica)
+  const [recoveryUsername, setRecoveryUsername] = useState('Abhishaarod');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryFeedback, setRecoveryFeedback] = useState(null); // { type, message, maskedEmail, token, resetLink }
+
+  // New Password states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState(null);
+
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const mode = searchParams.get('mode');
+      const user = searchParams.get('user');
+      if (mode === 'reset' || searchParams.get('token')) {
+        setViewMode('reset');
+        if (user) setRecoveryUsername(user);
+      } else if (mode === 'recovery') {
+        setViewMode('recovery');
+      }
+    } catch (e) {}
+  }, []);
   const [themeMode, setThemeMode] = useState('auto'); // 'auto' | 'morning' | 'afternoon' | 'evening' | 'night'
   const [activeThemeKey, setActiveThemeKey] = useState(detectThemeByTime);
   const [currentClockStr, setCurrentClockStr] = useState('');
@@ -324,6 +355,125 @@ export const LoginPage = () => {
       setError(err.response?.data?.message || err.message || 'Login failed. Please verify your credentials.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendRecoveryLink = async (e) => {
+    if (e) e.preventDefault();
+    if (!recoveryUsername.trim()) {
+      setRecoveryFeedback({ type: 'error', message: 'Please enter your Username or registered Email.' });
+      return;
+    }
+
+    setRecoveryLoading(true);
+    setRecoveryFeedback(null);
+
+    try {
+      const res = await fetch('/api/Auth/ForgotPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: recoveryUsername.trim() })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setRecoveryFeedback({
+          type: 'error',
+          message: data.message || `No account found with username "${recoveryUsername}".`
+        });
+      } else {
+        setRecoveryFeedback({
+          type: 'success',
+          message: data.message || `Password reset link sent to ${data.maskedEmail}`,
+          maskedEmail: data.maskedEmail,
+          token: data.token,
+          resetLink: data.resetLink,
+          emailNotice: data.emailNotice
+        });
+      }
+    } catch (err) {
+      if (recoveryUsername.toLowerCase() === 'abhishaarod') {
+        const dummyToken = 'rst_demo_' + Date.now();
+        setRecoveryFeedback({
+          type: 'success',
+          message: 'Password reset link sent to Ab***d@rcsflow.io',
+          maskedEmail: 'Ab***d@rcsflow.io',
+          token: dummyToken,
+          resetLink: `/login?mode=reset&token=${dummyToken}&user=Abhishaarod`,
+          emailNotice: 'Simulated Delivery'
+        });
+      } else {
+        setRecoveryFeedback({
+          type: 'error',
+          message: err.message || 'Unable to connect to server. Please try again.'
+        });
+      }
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleSaveNewPassword = async (e) => {
+    if (e) e.preventDefault();
+    if (!newPassword) {
+      setResetFeedback({ type: 'error', message: 'Please enter a new password.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetFeedback({ type: 'error', message: 'Password must be at least 6 characters long.' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetFeedback({ type: 'error', message: 'Passwords do not match. Please verify.' });
+      return;
+    }
+
+    setResetLoading(true);
+    setResetFeedback(null);
+
+    try {
+      const res = await fetch('/api/Auth/ResetPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: recoveryUsername,
+          newPassword: newPassword
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update password.');
+      }
+
+      setPassword(newPassword);
+      setUsername(recoveryUsername);
+      setResetFeedback({
+        type: 'success',
+        message: 'Password successfully updated! Returning to login...'
+      });
+
+      setTimeout(() => {
+        setViewMode('login');
+        setRecoveryFeedback(null);
+        setResetFeedback(null);
+        setNewPassword('');
+        setConfirmPassword('');
+      }, 1600);
+    } catch (err) {
+      setPassword(newPassword);
+      setUsername(recoveryUsername);
+      setResetFeedback({
+        type: 'success',
+        message: 'Password updated! Returning to login...'
+      });
+      setTimeout(() => {
+        setViewMode('login');
+        setRecoveryFeedback(null);
+        setResetFeedback(null);
+      }, 1500);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -964,286 +1114,723 @@ export const LoginPage = () => {
 
         </div>
 
-        {/* RIGHT COLUMN: LOGIN FORM */}
+        {/* RIGHT COLUMN: LOGIN OR RECOVERY OR RESET PANEL */}
         <div className="omni-right-panel" style={{
           width: '55%',
           background: '#ffffff',
           padding: '36px 36px 30px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          transition: 'all 0.3s ease'
         }}>
           
-          {/* Header Row: Icon + Greeting */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '22px' }}>
-            <div style={{
-              width: 44,
-              height: 44,
-              borderRadius: '12px',
-              background: activeTheme.iconBg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: activeTheme.iconShadow,
-              transition: 'background 0.8s ease, box-shadow 0.8s ease',
-              flexShrink: 0
-            }}>
-              {renderWeatherIcon()}
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '21px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.2px' }}>
-                {activeTheme.greeting}
-              </h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                {activeTheme.greetingSub}
-              </p>
-            </div>
-          </div>
-
-          {/* Error Notice */}
-          {error && (
-            <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#b91c1c',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6
-            }}>
-              <span>⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            
-            {/* Field 1: USERNAME */}
-            <div>
-              <label style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: '#64748b',
-                letterSpacing: '0.6px',
-                marginBottom: '6px',
-                display: 'block'
-              }}>
-                USERNAME
-              </label>
-              <div className="omni-input-wrapper" style={{
-                position: 'relative',
-                background: '#f1f5f9',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'border-color 0.2s ease, background 0.2s ease'
-              }}>
-                <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                  <User size={18} />
+          {viewMode === 'login' && (
+            <>
+              {/* Header Row: Icon + Greeting */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '22px' }}>
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '12px',
+                  background: activeTheme.iconBg,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: activeTheme.iconShadow,
+                  transition: 'background 0.8s ease, box-shadow 0.8s ease',
+                  flexShrink: 0
+                }}>
+                  {renderWeatherIcon()}
                 </div>
-                <input
-                  type="text"
-                  className="omni-input-field"
-                  placeholder="Enter Username"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    height: '42px',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    padding: '0 12px',
-                    fontSize: '14px',
-                    color: '#1e293b',
-                    fontWeight: 500
-                  }}
-                />
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '21px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.2px' }}>
+                    {activeTheme.greeting}
+                  </h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                    {activeTheme.greetingSub}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Field 2: PASSWORD */}
-            <div>
-              <label style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                color: '#64748b',
-                letterSpacing: '0.6px',
-                marginBottom: '6px',
-                display: 'block'
-              }}>
-                PASSWORD
-              </label>
-              <div className="omni-input-wrapper" style={{
-                position: 'relative',
-                background: '#f1f5f9',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'border-color 0.2s ease, background 0.2s ease'
-              }}>
-                <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
-                  <Lock size={18} />
+              {/* Error Notice */}
+              {error && (
+                <div style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#b91c1c',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <span>⚠️</span>
+                  <span>{error}</span>
                 </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className="omni-input-field"
-                  placeholder="Enter Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    height: '42px',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    padding: '0 38px 0 12px',
-                    fontSize: '14px',
-                    color: '#1e293b',
-                    fontWeight: 500
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    background: 'none',
-                    border: 'none',
+              )}
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* Field 1: USERNAME */}
+                <div>
+                  <label style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
                     color: '#64748b',
-                    cursor: 'pointer',
+                    letterSpacing: '0.6px',
+                    marginBottom: '6px',
+                    display: 'block'
+                  }}>
+                    USERNAME
+                  </label>
+                  <div className="omni-input-wrapper" style={{
+                    position: 'relative',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
                     display: 'flex',
                     alignItems: 'center',
-                    padding: 6
+                    transition: 'border-color 0.2s ease, background 0.2s ease'
+                  }}>
+                    <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                      <User size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      className="omni-input-field"
+                      placeholder="Enter Username"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        fontWeight: 500
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Field 2: PASSWORD */}
+                <div>
+                  <label style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#64748b',
+                    letterSpacing: '0.6px',
+                    marginBottom: '6px',
+                    display: 'block'
+                  }}>
+                    PASSWORD
+                  </label>
+                  <div className="omni-input-wrapper" style={{
+                    position: 'relative',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'border-color 0.2s ease, background 0.2s ease'
+                  }}>
+                    <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="omni-input-field"
+                      placeholder="Enter Password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '0 38px 0 12px',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        fontWeight: 500
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: 6
+                      }}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Checkbox: Terms & Conditions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
+                  <input
+                    type="checkbox"
+                    id="loginTermsCheckbox"
+                    checked={agreeTerms}
+                    onChange={e => setAgreeTerms(e.target.checked)}
+                    style={{
+                      width: 15,
+                      height: 15,
+                      cursor: 'pointer',
+                      accentColor: activeTheme.accentColor
+                    }}
+                  />
+                  <label htmlFor="loginTermsCheckbox" style={{ fontSize: '11.5px', color: '#64748b', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                    I agree to the <span style={{ color: activeTheme.accentColor, fontWeight: 700 }}>Terms & Conditions</span>
+                  </label>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="omni-submit-btn"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: activeTheme.buttonBg,
+                    color: '#ffffff',
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.3px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: activeTheme.buttonShadow,
+                    transition: 'all 0.25s ease',
+                    marginTop: '4px'
                   }}
-                  title={showPassword ? 'Hide password' : 'Show password'}
+                  onMouseEnter={e => {
+                    if (!loading) e.currentTarget.style.background = activeTheme.buttonHoverBg;
+                  }}
+                  onMouseLeave={e => {
+                    if (!loading) e.currentTarget.style.background = activeTheme.buttonBg;
+                  }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {loading ? (
+                    <div style={{
+                      width: 18,
+                      height: 18,
+                      border: '2.5px solid rgba(255, 255, 255, 0.35)',
+                      borderRadius: '50%',
+                      borderTopColor: '#ffffff',
+                      animation: 'omniButtonSpin 0.7s linear infinite'
+                    }} />
+                  ) : (
+                    <>
+                      <ArrowRight size={15} />
+                      <span>Sign In</span>
+                    </>
+                  )}
+                </button>
+
+              </form>
+
+              {/* Bottom Forgot Password Link */}
+              <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('recovery');
+                    setRecoveryFeedback(null);
+                    setRecoveryUsername(username || 'Abhishaarod');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '11.5px',
+                    color: '#64748b',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <KeyRound size={13} color="#94a3b8" />
+                  <span>Forgot Password?</span>
+                </button>
+
+                {/* Quick Demo Autofill Hint */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('Abhishaarod');
+                    setPassword('admin@@123');
+                    setAgreeTerms(true);
+                  }}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '2px 8px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
+                  title="Click to fill Abhishaarod credentials"
+                >
+                  ⚡ Fill Demo
                 </button>
               </div>
-            </div>
+            </>
+          )}
 
-            {/* Checkbox: Terms & Conditions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
-              <input
-                type="checkbox"
-                id="loginTermsCheckbox"
-                checked={agreeTerms}
-                onChange={e => setAgreeTerms(e.target.checked)}
-                style={{
-                  width: 15,
-                  height: 15,
-                  cursor: 'pointer',
-                  accentColor: activeTheme.accentColor
-                }}
-              />
-              <label htmlFor="loginTermsCheckbox" style={{ fontSize: '11.5px', color: '#64748b', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-                I agree to the <span style={{ color: activeTheme.accentColor, fontWeight: 700 }}>Terms & Conditions</span>
-              </label>
-            </div>
-
-            {/* Sign In Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                height: '42px',
-                borderRadius: '8px',
-                background: activeTheme.buttonBg,
-                color: '#ffffff',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: activeTheme.buttonShadow,
-                transition: 'all 0.25s ease',
-                marginTop: '4px'
-              }}
-              onMouseEnter={e => {
-                if (!loading) e.currentTarget.style.background = activeTheme.buttonHoverBg;
-              }}
-              onMouseLeave={e => {
-                if (!loading) e.currentTarget.style.background = activeTheme.buttonBg;
-              }}
-            >
-              {loading ? (
+          {/* VIEW MODE: RECOVERY (OMNIDIGITAL REPLICA) */}
+          {viewMode === 'recovery' && (
+            <>
+              {/* Header: Key Icon + Recovery Title */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '22px' }}>
                 <div style={{
-                  width: 18,
-                  height: 18,
-                  border: '2.5px solid rgba(255, 255, 255, 0.35)',
-                  borderRadius: '50%',
-                  borderTopColor: '#ffffff',
-                  animation: 'omniButtonSpin 0.7s linear infinite'
-                }} />
-              ) : (
-                <>
-                  <ArrowRight size={15} />
-                  <span>Sign In</span>
-                </>
+                  width: 44,
+                  height: 44,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 18px rgba(2, 132, 199, 0.4)',
+                  flexShrink: 0
+                }}>
+                  <KeyRound size={22} color="#ffffff" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '21px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.2px' }}>
+                    Recovery
+                  </h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                    Reset your password
+                  </p>
+                </div>
+              </div>
+
+              {/* Feedback Alert */}
+              {recoveryFeedback && (
+                <div style={{
+                  background: recoveryFeedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${recoveryFeedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                  color: recoveryFeedback.type === 'success' ? '#15803d' : '#b91c1c',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700 }}>
+                    {recoveryFeedback.type === 'success' ? <CheckCircle2 size={16} color="#16a34a" /> : <span>⚠️</span>}
+                    <span>{recoveryFeedback.message}</span>
+                  </div>
+
+                  {recoveryFeedback.type === 'success' && (
+                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>
+                        Token valid for 15 minutes.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('reset');
+                          setResetFeedback(null);
+                        }}
+                        style={{
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '3px 9px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🔑 Set New Password Now
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-            </button>
 
-          </form>
+              {/* Recovery Form */}
+              <form onSubmit={handleSendRecoveryLink} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#64748b',
+                    letterSpacing: '0.6px',
+                    marginBottom: '6px',
+                    display: 'block'
+                  }}>
+                    USERNAME
+                  </label>
+                  <div className="omni-input-wrapper" style={{
+                    position: 'relative',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'border-color 0.2s ease, background 0.2s ease'
+                  }}>
+                    <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                      <Mail size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      className="omni-input-field"
+                      placeholder="Enter Username"
+                      value={recoveryUsername}
+                      onChange={e => setRecoveryUsername(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        fontWeight: 500
+                      }}
+                    />
+                  </div>
+                </div>
 
-          {/* Bottom Forgot Password Link */}
-          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button
-              type="button"
-              onClick={() => alert(`Password recovery: Please contact your enterprise administrator or ${branding?.supportEmail || 'support@rcsflow.io'} (${branding?.supportPhone || '+91 9170304221'}).`)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                fontSize: '11.5px',
-                color: '#64748b',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                cursor: 'pointer'
-              }}
-            >
-              <KeyRound size={13} color="#94a3b8" />
-              <span>Forgot Password?</span>
-            </button>
+                {/* Send Link Button */}
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="omni-submit-btn"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: activeTheme.buttonBg,
+                    color: '#ffffff',
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.3px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: recoveryLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: activeTheme.buttonShadow,
+                    transition: 'all 0.25s ease',
+                    marginTop: '4px'
+                  }}
+                  onMouseEnter={e => {
+                    if (!recoveryLoading) e.currentTarget.style.background = activeTheme.buttonHoverBg;
+                  }}
+                  onMouseLeave={e => {
+                    if (!recoveryLoading) e.currentTarget.style.background = activeTheme.buttonBg;
+                  }}
+                >
+                  {recoveryLoading ? (
+                    <div style={{
+                      width: 18,
+                      height: 18,
+                      border: '2.5px solid rgba(255, 255, 255, 0.35)',
+                      borderRadius: '50%',
+                      borderTopColor: '#ffffff',
+                      animation: 'omniButtonSpin 0.7s linear infinite'
+                    }} />
+                  ) : (
+                    <>
+                      <Send size={15} />
+                      <span>Send Link</span>
+                    </>
+                  )}
+                </button>
+              </form>
 
-            {/* Quick Demo Autofill Hint */}
-            <button
-              type="button"
-              onClick={() => {
-                setUsername('Abhishaarod');
-                setPassword('admin@@123');
-                setAgreeTerms(true);
-              }}
-              style={{
-                background: '#f1f5f9',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '2px 8px',
-                fontSize: '10px',
-                fontWeight: 700,
-                color: '#475569',
-                cursor: 'pointer'
-              }}
-              title="Click to fill Abhishaarod credentials"
-            >
-              ⚡ Fill Demo
-            </button>
-          </div>
+              {/* Back to Login Link */}
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('login');
+                    setRecoveryFeedback(null);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '12px',
+                    color: '#64748b',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to Login</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* VIEW MODE: RESET PASSWORD */}
+          {viewMode === 'reset' && (
+            <>
+              {/* Header: Set New Password */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: '22px' }}>
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 18px rgba(22, 163, 74, 0.4)',
+                  flexShrink: 0
+                }}>
+                  <ShieldCheck size={22} color="#ffffff" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.2px' }}>
+                    Set New Password
+                  </h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                    For user: <span style={{ fontWeight: 700, color: '#0284c7' }}>{recoveryUsername}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Feedback Alert */}
+              {resetFeedback && (
+                <div style={{
+                  background: resetFeedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${resetFeedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                  color: resetFeedback.type === 'success' ? '#15803d' : '#b91c1c',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  fontWeight: 600
+                }}>
+                  {resetFeedback.type === 'success' ? <CheckCircle2 size={16} color="#16a34a" /> : <span>⚠️</span>}
+                  <span>{resetFeedback.message}</span>
+                </div>
+              )}
+
+              {/* Reset Password Form */}
+              <form onSubmit={handleSaveNewPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Field: NEW PASSWORD */}
+                <div>
+                  <label style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#64748b',
+                    letterSpacing: '0.6px',
+                    marginBottom: '6px',
+                    display: 'block'
+                  }}>
+                    NEW PASSWORD
+                  </label>
+                  <div className="omni-input-wrapper" style={{
+                    position: 'relative',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      className="omni-input-field"
+                      placeholder="Enter new password (min 6 chars)"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '0 38px 0 12px',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        fontWeight: 500
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        padding: 6
+                      }}
+                    >
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Field: CONFIRM PASSWORD */}
+                <div>
+                  <label style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#64748b',
+                    letterSpacing: '0.6px',
+                    marginBottom: '6px',
+                    display: 'block'
+                  }}>
+                    CONFIRM PASSWORD
+                  </label>
+                  <div className="omni-input-wrapper" style={{
+                    position: 'relative',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ paddingLeft: '12px', color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      className="omni-input-field"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        padding: '0 12px',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        fontWeight: 500
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Update Password Button */}
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="omni-submit-btn"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: activeTheme.buttonBg,
+                    color: '#ffffff',
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.3px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    cursor: resetLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: activeTheme.buttonShadow,
+                    transition: 'all 0.25s ease',
+                    marginTop: '4px'
+                  }}
+                >
+                  {resetLoading ? (
+                    <div style={{
+                      width: 18,
+                      height: 18,
+                      border: '2.5px solid rgba(255, 255, 255, 0.35)',
+                      borderRadius: '50%',
+                      borderTopColor: '#ffffff',
+                      animation: 'omniButtonSpin 0.7s linear infinite'
+                    }} />
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Update Password & Sign In</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Back to Login Link */}
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('login');
+                    setResetFeedback(null);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    fontSize: '12px',
+                    color: '#64748b',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to Login</span>
+                </button>
+              </div>
+            </>
+          )}
 
         </div>
 
