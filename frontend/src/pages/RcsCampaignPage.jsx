@@ -229,7 +229,7 @@ export const RcsCampaignPage = () => {
 
       setSuccessResult({
         campaignId: cId,
-        message: resData.message || resData.Message || 'Campaign created successfully!',
+        message: `Campaign created successfully. ID: ${cId}, Recipients: ${count}`,
         totalMobiles: resData.totalMobiles || resData.TotalMobiles || count
       });
 
@@ -429,20 +429,16 @@ export const RcsCampaignPage = () => {
           background: '#ecfdf5', 
           border: '1px solid #a7f3d0', 
           borderRadius: '8px', 
-          padding: '10px 14px', 
+          padding: '10px 16px', 
           color: '#065f46', 
-          fontSize: '12.5px',
+          fontSize: '13px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          gap: 10,
+          fontWeight: 700
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
-            <CheckCircle2 size={16} color="#059669" />
-            <span>{successResult.message}</span>
-          </div>
-          <div style={{ fontSize: '11.5px', color: '#047857' }}>
-            Campaign ID: <b>#{successResult.campaignId}</b> • Total Mobiles: <b>{successResult.totalMobiles}</b>
-          </div>
+          <CheckCircle2 size={18} color="#059669" />
+          <span>{successResult.message}</span>
         </div>
       )}
 
