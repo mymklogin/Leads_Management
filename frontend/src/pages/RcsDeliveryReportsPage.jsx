@@ -87,6 +87,12 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
             type: c.templateType || 'PlainText',
             status: isFailed ? 'FAILED' : (isAwaited ? 'AWAITED' : 'Completed'),
             postDateTime: postDate,
+            mobile: c.mobileNumber || '',
+            operator: c.operator || 'BSNL/MTNL',
+            circle: c.circle || 'Delhi NCR',
+            ipAddress: c.ipAddress || '10.25.215.137',
+            credits: c.creditsDeducted || 1,
+            reason: c.reason || '',
             dlrCount: c.deliveredRcs || (isFailed ? 0 : (c.totalMobiles || 1)),
             eventsCount: 0,
             dlrStats: {
@@ -100,9 +106,12 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
             dlrLogs: [
               {
                 time: defaultDlrTime,
-                msisdn: isFailed ? '9582476747' : '9868040206',
+                msisdn: c.mobileNumber || (isFailed ? '9582476747' : '9868040206'),
+                operator: c.operator || 'BSNL/MTNL',
+                circle: c.circle || 'Delhi NCR',
                 status: isFailed ? 'FAILED' : (c.readRcs > 0 ? 'READ' : 'DELIVERED'),
-                details: isFailed ? 'TTL_EXPIRATION_REVOKED' : 'Handset ACK: Delivered to Google Messages RCS client'
+                details: c.reason || (isFailed ? 'TTL_EXPIRATION_REVOKED' : 'Handset ACK: Delivered to Google Messages RCS client'),
+                ipAddress: c.ipAddress || '10.25.215.137'
               }
             ],
             eventsLogs: []
@@ -171,6 +180,48 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
     return { submitted, delivered, failed, awaited };
   }, [filteredCampaigns]);
 
+  // Operator Badge Helper
+  const renderOperatorBadge = (op) => {
+    const operator = op || 'BSNL/MTNL';
+    let bg = '#f1f5f9';
+    let text = '#475569';
+    let border = '#cbd5e1';
+
+    if (operator.includes('Jio')) {
+      bg = '#eff6ff';
+      text = '#1d4ed8';
+      border = '#bfdbfe';
+    } else if (operator.includes('Airtel')) {
+      bg = '#fef2f2';
+      text = '#b91c1c';
+      border = '#fecaca';
+    } else if (operator.includes('Vodafone') || operator.includes('Vi')) {
+      bg = '#fff7ed';
+      text = '#c2410c';
+      border = '#fed7aa';
+    } else if (operator.includes('BSNL') || operator.includes('MTNL')) {
+      bg = '#ecfdf5';
+      text = '#047857';
+      border = '#a7f3d0';
+    }
+
+    return (
+      <span style={{
+        background: bg,
+        color: text,
+        border: `1px solid ${border}`,
+        borderRadius: '4px',
+        padding: '2px 8px',
+        fontSize: '11px',
+        fontWeight: 700,
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {operator}
+      </span>
+    );
+  };
+
   // Handle Search click
   const handleSearch = () => {
     setAppliedFilters({
@@ -192,8 +243,11 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
         const freshLogs = res.data.response.logs.map(l => ({
           time: l.deliveredAt || l.sentAt || camp.postDateTime,
           msisdn: l.mobileNumber,
-          status: l.status.toUpperCase(),
-          details: l.reason || 'Delivered to handset via Google Messages RCS client'
+          operator: l.operator || camp.operator || 'BSNL/MTNL',
+          circle: l.circle || camp.circle || 'Delhi NCR',
+          status: (l.status || '').toUpperCase(),
+          details: l.reason || 'Delivered to handset via Google Messages RCS client',
+          ipAddress: l.ipAddress || camp.ipAddress || '10.25.215.137'
         }));
         setSelectedCampaign(prev => ({
           ...prev,
@@ -216,8 +270,11 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
         const freshLogs = res.data.response.logs.map(l => ({
           time: l.deliveredAt || l.sentAt,
           msisdn: l.mobileNumber,
-          status: l.status.toUpperCase(),
-          details: l.reason || 'Delivered to handset via Google Messages RCS client'
+          operator: l.operator || selectedCampaign.operator || 'BSNL/MTNL',
+          circle: l.circle || selectedCampaign.circle || 'Delhi NCR',
+          status: (l.status || '').toUpperCase(),
+          details: l.reason || 'Delivered to handset via Google Messages RCS client',
+          ipAddress: l.ipAddress || selectedCampaign.ipAddress || '10.25.215.137'
         }));
         setSelectedCampaign(prev => ({
           ...prev,
@@ -240,7 +297,14 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
     campaigns.forEach(c => {
       const match = c.dlrLogs?.find(l => l.msisdn.includes(searchNumber.trim()));
       if (match) {
-        found.push({ ...match, campaignName: c.name, campaignId: c.id });
+        found.push({ 
+          ...match, 
+          campaignName: c.name, 
+          campaignId: c.id,
+          operator: c.operator,
+          circle: c.circle,
+          ipAddress: c.ipAddress
+        });
       }
     });
     setSearchNumberResult(found);
@@ -248,9 +312,9 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
 
   // Export CSV
   const downloadDlrCsv = (camp) => {
-    let csv = `Campaign: ${camp.name} (#${camp.id})\nTIME,MSISDN,STATUS,DETAILS\n`;
+    let csv = `Campaign: ${camp.name} (#${camp.id})\nTIME,MSISDN,OPERATOR,CIRCLE,STATUS,IP_ADDRESS,DETAILS\n`;
     (camp.dlrLogs || []).forEach(l => {
-      csv += `"${l.time}","${l.msisdn}","${l.status}","${l.details || ''}"\n`;
+      csv += `"${l.time}","${l.msisdn}","${l.operator || camp.operator || ''}","${l.circle || camp.circle || ''}","${l.status}","${l.ipAddress || camp.ipAddress || ''}","${l.details || ''}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

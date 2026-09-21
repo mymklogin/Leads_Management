@@ -56,6 +56,7 @@ builder.Services.AddScoped<ICampaignRepository, CampaignRepository>();
 builder.Services.AddScoped<IWebhookLogRepository, WebhookLogRepository>();
 builder.Services.AddScoped<IRcsTransactionRepository, RcsTransactionRepository>();
 builder.Services.AddSingleton<IRcsAssetRepository, RcsAssetRepository>();
+builder.Services.AddScoped<IRcsCampaignRepository, RcsCampaignRepository>();
 
 // 4. Register Template Strategies (Strategy Pattern for 0, 1, 2, 3, 4, 5, 7, 8, 9)
 builder.Services.AddScoped<ITemplateWebhookStrategy, Template0SimpleStrategy>();
