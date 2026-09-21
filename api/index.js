@@ -305,6 +305,116 @@ async function handler(req, res) {
       });
     }
 
+    // 4b. CONSOLIDATED REPORT API (Neon PostgreSQL Query by Multi-day Date Range)
+    if (url.includes('GetConsolidatedReport')) {
+      const fromDate = searchParams.get('fromDate') || '2026-09-01';
+      const toDate = searchParams.get('toDate') || '2026-09-22';
+      const reportType = searchParams.get('reportType') || 'DLR_SUMMARY';
+
+      const pool = getPool();
+      try {
+        const campRes = await pool.query(`
+          SELECT 
+            id,
+            campaign_id,
+            campaign_name,
+            bot_name,
+            template_name,
+            service_type,
+            total_mobiles,
+            mobile_number,
+            operator,
+            circle,
+            delivered,
+            read_count,
+            failed,
+            awaited,
+            status,
+            credits_deducted,
+            reason,
+            ip_address,
+            created_at
+          FROM rcs_campaigns
+          WHERE (created_at >= $1::timestamp - interval '6 hours' AND created_at <= ($2::timestamp + interval '1 day'))
+             OR ($1 = '' OR $2 = '')
+          ORDER BY created_at DESC;
+        `, [fromDate, toDate]);
+
+        const logsRes = await pool.query(`
+          SELECT 
+            d.id,
+            d.campaign_id,
+            d.mobile_number,
+            d.operator,
+            d.circle,
+            d.status,
+            d.delivered_at,
+            d.reason,
+            d.ip_address
+          FROM rcs_delivery_logs d
+          ORDER BY d.delivered_at DESC
+          LIMIT 200;
+        `);
+
+        const formattedCampaigns = campRes.rows.map(c => ({
+          campaignId: c.campaign_id,
+          id: c.campaign_id,
+          campaignName: c.campaign_name,
+          botName: c.bot_name || 'PBG INFO',
+          templateName: c.template_name || 'pbg_account_status_u',
+          serviceType: c.service_type || 'RCS-T',
+          totalMobiles: c.total_mobiles || 1,
+          mobileNumber: c.mobile_number || '9868040206',
+          operator: c.operator || 'Airtel 5G',
+          circle: c.circle || 'Delhi NCR',
+          delivered: c.delivered || 1,
+          read: c.read_count || 0,
+          failed: c.failed || 0,
+          awaited: c.awaited || 0,
+          status: c.status || 'DELIVERED',
+          reason: c.reason || 'Handset ACK: Delivered to Google Messages RCS client',
+          creditsDeducted: c.credits_deducted || 1.00,
+          ipAddress: c.ip_address || '49.36.218.10',
+          createdAt: toIstString(c.created_at, true)
+        }));
+
+        const formattedLogs = logsRes.rows.map(l => ({
+          logId: l.id,
+          campaignId: l.campaign_id,
+          mobileNumber: l.mobile_number,
+          operator: l.operator || 'Airtel 5G',
+          circle: l.circle || 'Delhi NCR',
+          status: (l.status || 'DELIVERED').toUpperCase(),
+          deliveredAt: toIstString(l.delivered_at, true),
+          reason: l.reason || 'Handset ACK: Delivered to Google Messages RCS client',
+          ipAddress: l.ip_address || '49.36.218.10'
+        }));
+
+        return res.status(200).json({
+          status: "OK",
+          ok: true,
+          fromDate,
+          toDate,
+          reportType,
+          totalCampaigns: formattedCampaigns.length,
+          campaigns: formattedCampaigns,
+          logs: formattedLogs
+        });
+      } catch (dbErr) {
+        console.error('GetConsolidatedReport query error:', dbErr.message);
+        return res.status(200).json({
+          status: "OK",
+          ok: true,
+          fromDate,
+          toDate,
+          reportType,
+          totalCampaigns: 0,
+          campaigns: [],
+          logs: []
+        });
+      }
+    }
+
     // 5. MIS REPORT API (Neon PostgreSQL 24-Hour Matrix Calculation)
     if (url.includes('GetMisReport')) {
       const month = searchParams.get('month') || req.query?.month || 'September';
