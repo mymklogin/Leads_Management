@@ -36,74 +36,24 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
     {
-        string identifier = request.UsernameOrEmail.Trim().ToLowerInvariant();
-        AppUser? user = null;
-
-        try
+        string identifier = request.UsernameOrEmail.Trim();
+        AppUser? user = await _userRepository.GetByUsernameAsync(identifier, cancellationToken);
+        if (user == null)
         {
-            user = await _userRepository.GetByUsernameAsync(identifier, cancellationToken);
-            if (user == null)
-            {
-                var allUsers = await _userRepository.GetAllUsersAsync(cancellationToken);
-                user = allUsers.Find(u => u.Email.Equals(identifier, StringComparison.OrdinalIgnoreCase));
-            }
-        }
-        catch (Exception)
-        {
-            // Resilient fallback when Neon PostgreSQL cloud SSL handshake drops locally
-            user = InMemoryUserRegistry.GetByUsername(identifier);
-            if (user == null)
-            {
-                user = InMemoryUserRegistry.GetAll().Find(u => u.Email.Equals(identifier, StringComparison.OrdinalIgnoreCase));
-            }
+            var allUsers = await _userRepository.GetAllUsersAsync(cancellationToken);
+            user = allUsers.Find(u => u.Email.Equals(identifier, StringComparison.OrdinalIgnoreCase) || 
+                                      u.Username.Equals(identifier, StringComparison.OrdinalIgnoreCase));
         }
 
         if (user == null)
         {
-            user = InMemoryUserRegistry.GetByUsername(identifier);
-            if (user == null)
-            {
-                user = InMemoryUserRegistry.GetAll().Find(u => u.Email.Equals(identifier, StringComparison.OrdinalIgnoreCase));
-            }
-        }
-
-        if (user == null)
-        {
-            if (identifier.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase) || 
-                identifier.Equals("abhishaarod@rcsflow.io", StringComparison.OrdinalIgnoreCase))
-            {
-                user = new AppUser
-                {
-                    Id = 1,
-                    Username = "Abhishaarod",
-                    FullName = "Abhishaarod",
-                    Email = "Abhishaarod@rcsflow.io",
-                    Role = UserRole.SuperAdmin,
-                    IsActive = true,
-                    PasswordHash = _passwordHasher.HashPassword("admin@@123"),
-                    RcsCredits = 100000,
-                    SmsCredits = 100000,
-                    VoiceCredits = 50000,
-                    WhatsAppCredits = 50000
-                };
-            }
-            else
-            {
-                throw new UnauthorizedAccessException("Invalid username or password.");
-            }
+            throw new UnauthorizedAccessException("Invalid username or password.");
         }
 
         bool isPasswordValid = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
         if (!isPasswordValid && request.Password == user.PasswordHash)
         {
             isPasswordValid = true;
-        }
-        if (!isPasswordValid && user.Username.Equals("abhishaarod", StringComparison.OrdinalIgnoreCase))
-        {
-            if (request.Password == "admin@@123")
-            {
-                isPasswordValid = true;
-            }
         }
 
         if (!isPasswordValid)

@@ -82,56 +82,16 @@ export const AuthProvider = ({ children }) => {
 
       setToken(jwtToken);
       setUser(userProfile);
-      setAllowedMenus(menus);
+      setAllowedMenus(menus || []);
 
       localStorage.setItem('lead_mgmt_token', jwtToken);
       localStorage.setItem('lead_mgmt_user', JSON.stringify(userProfile));
-      localStorage.setItem('lead_mgmt_menus', JSON.stringify(menus));
+      localStorage.setItem('lead_mgmt_menus', JSON.stringify(menus || []));
 
       return response.data;
     } catch (err) {
-      console.warn('API login failed, checking fallback credentials:', err.message);
-
-      const normalizedInput = (usernameOrEmail || '').trim().toLowerCase();
-      const isUserValid = normalizedInput === 'abhishaarod' || normalizedInput === 'abhishaarod@rcsflow.io';
-      const isPassValid = password === 'admin@@123';
-
-      if (!isUserValid || !isPassValid) {
-        throw new Error('Invalid username or password.');
-      }
-
-      // Resilient Client Fallback for Live Vercel Demo with Abhishaarod Master Account
-      const fallbackToken = 'jwt-token-abhishaarod-' + Date.now();
-      const fallbackUser = {
-        id: 1,
-        username: 'Abhishaarod',
-        fullName: 'Abhishaarod',
-        email: 'Abhishaarod@rcsflow.io',
-        phoneNumber: '9999900000',
-        companyName: 'OmniDigital Telecom Cloud',
-        role: 'SuperAdmin',
-        isActive: true,
-        rcsCredits: 100000,
-        rcsPromotionalCredits: 100000,
-        smsCredits: 100000,
-        voiceCredits: 50000,
-        whatsAppCredits: 50000
-      };
-
-      setToken(fallbackToken);
-      setUser(fallbackUser);
-      setAllowedMenus(DEFAULT_FALLBACK_MENUS);
-
-      localStorage.setItem('lead_mgmt_token', fallbackToken);
-      localStorage.setItem('lead_mgmt_user', JSON.stringify(fallbackUser));
-      localStorage.setItem('lead_mgmt_menus', JSON.stringify(DEFAULT_FALLBACK_MENUS));
-
-      return {
-        success: true,
-        token: fallbackToken,
-        user: fallbackUser,
-        allowedMenus: DEFAULT_FALLBACK_MENUS
-      };
+      const errorMsg = err.response?.data?.message || err.response?.data || err.message || 'Login failed. Please check your credentials.';
+      throw new Error(typeof errorMsg === 'string' ? errorMsg : 'Invalid username or password.');
     }
   };
 

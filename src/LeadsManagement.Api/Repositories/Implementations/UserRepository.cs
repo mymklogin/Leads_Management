@@ -67,10 +67,10 @@ public class UserRepository : IUserRepository
                 SELECT id, username, email, passwordhash, fullname, phonenumber, role, parentuserid, 
                        voicecredits, whatsappcredits, rcscredits, smscredits, rcspromotionalcredits, bulksmspromotionalcredits, whatsapppromotionalcredits, isactive, createdat, updatedat, lastloginat
                 FROM users 
-                WHERE username = @Username;";
+                WHERE LOWER(username) = LOWER(@Username) OR LOWER(email) = LOWER(@Username);";
 
             await using var cmd = new NpgsqlCommand(query, con);
-            cmd.Parameters.AddWithValue("@Username", username);
+            cmd.Parameters.AddWithValue("@Username", username.Trim());
 
             await using var dr = await cmd.ExecuteReaderAsync(cancellationToken);
             if (await dr.ReadAsync(cancellationToken))
