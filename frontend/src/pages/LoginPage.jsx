@@ -62,20 +62,20 @@ const THEMES = {
   },
   evening: {
     key: 'evening',
-    name: 'Evening Sunset',
+    name: 'Evening Dusk Sunset',
     greeting: 'Good Evening!',
     greetingSub: 'Sign in to your dashboard',
-    iconBg: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-    iconShadow: '0 6px 18px rgba(139, 92, 246, 0.35)',
-    leftCardBg: 'linear-gradient(150deg, #7c3aed 0%, #9333ea 50%, #c026d3 100%)',
-    buttonBg: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-    buttonHoverBg: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
-    buttonShadow: '0 6px 20px rgba(124, 58, 237, 0.35)',
-    accentColor: '#7c3aed',
-    skyBg: 'linear-gradient(180deg, #fce7f3 0%, #fed7aa 40%, #e9d5ff 75%, #fbcfe8 100%)',
-    sunGradient: 'radial-gradient(circle at 35% 35%, #fef08a 0%, #fb923c 45%, #ea580c 80%, #be185d 100%)',
-    sunGlow: '0 0 65px 25px rgba(251, 146, 60, 0.5), 0 0 130px 65px rgba(219, 39, 119, 0.25)',
-    sunPosition: { top: '22%', right: '15%' },
+    iconBg: 'linear-gradient(135deg, #c2410c 0%, #9a3412 50%, #7c1846 100%)',
+    iconShadow: '0 6px 18px rgba(194, 65, 12, 0.45)',
+    leftCardBg: 'linear-gradient(150deg, #1c0734 0%, #3a0d4c 35%, #691345 70%, #99281a 100%)',
+    buttonBg: 'linear-gradient(135deg, #c2410c 0%, #9a3412 45%, #7c1846 100%)',
+    buttonHoverBg: 'linear-gradient(135deg, #ea580c 0%, #c2410c 45%, #901b52 100%)',
+    buttonShadow: '0 6px 20px rgba(194, 65, 12, 0.45)',
+    accentColor: '#ea580c',
+    skyBg: 'linear-gradient(180deg, #100624 0%, #22093d 20%, #3f0e4b 42%, #6f1642 65%, #9e2a22 84%, #cf4c17 100%)',
+    sunGradient: 'radial-gradient(circle at 35% 35%, #fef08a 0%, #fb923c 35%, #ea580c 70%, #991b1b 100%)',
+    sunGlow: '0 0 75px 32px rgba(234, 88, 12, 0.65), 0 0 150px 75px rgba(153, 27, 27, 0.4)',
+    sunPosition: { top: '24%', right: '14%' },
     isNight: false
   },
   night: {
@@ -83,17 +83,17 @@ const THEMES = {
     name: 'Midnight Starry',
     greeting: 'Good Night!',
     greetingSub: 'Sign in to your dashboard',
-    iconBg: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-    iconShadow: '0 6px 18px rgba(59, 130, 246, 0.35)',
-    leftCardBg: 'linear-gradient(150deg, #0f172a 0%, #1e1b4b 50%, #1e3a8a 100%)',
-    buttonBg: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-    buttonHoverBg: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-    buttonShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
+    iconBg: 'linear-gradient(135deg, #1e40af 0%, #0369a1 100%)',
+    iconShadow: '0 6px 18px rgba(3, 105, 161, 0.45)',
+    leftCardBg: 'linear-gradient(150deg, #050814 0%, #0a1026 40%, #151d3b 75%, #0f172a 100%)',
+    buttonBg: 'linear-gradient(135deg, #0284c7 0%, #1d4ed8 100%)',
+    buttonHoverBg: 'linear-gradient(135deg, #0369a1 0%, #1e40af 100%)',
+    buttonShadow: '0 6px 20px rgba(2, 132, 199, 0.45)',
     accentColor: '#38bdf8',
-    skyBg: 'linear-gradient(180deg, #090d16 0%, #0f172a 40%, #1e1b4b 80%, #090d16 100%)',
+    skyBg: 'linear-gradient(180deg, #02040a 0%, #050b1a 25%, #08112b 55%, #0f172a 80%, #050b1a 100%)',
     sunGradient: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #e0f2fe 40%, #bae6fd 75%, #7dd3fc 100%)',
     sunGlow: '0 0 55px 22px rgba(186, 230, 253, 0.5), 0 0 110px 50px rgba(56, 189, 248, 0.25)',
-    sunPosition: { top: '16%', right: '20%' },
+    sunPosition: { top: '14%', right: '16%' },
     isNight: true
   }
 };
@@ -111,8 +111,8 @@ const detectThemeByTime = () => {
   return 'night';
 };
 
-// Stylized Fluffy Vector Cloud Component
-const FluffyCloud = ({ width = 140, height = 75, opacity = 0.85, style = {}, className = '' }) => (
+// Stylized Fluffy Vector Cloud Component (Day / Evening)
+const FluffyCloud = ({ width = 140, height = 75, opacity = 0.85, style = {}, className = '', fillColor = '#ffffff' }) => (
   <svg
     width={width}
     height={height}
@@ -124,9 +124,138 @@ const FluffyCloud = ({ width = 140, height = 75, opacity = 0.85, style = {}, cla
   >
     <path
       d="M30 65C18.9543 65 10 56.0457 10 45C10 34.6548 17.8447 26.1437 28.0268 25.1009C30.6558 13.7915 40.8354 5.5 53 5.5C64.6738 5.5 74.524 13.0645 77.5855 23.636C80.8986 21.3283 84.9392 20 89.3 20C99.2411 20 107.3 28.0589 107.3 38C107.3 38.3377 107.288 38.6727 107.265 39.0044C114.394 40.2641 119.8 46.5053 119.8 54C119.8 62.2843 113.084 69 104.8 69L30 69C30 67.6667 30 66.3333 30 65Z"
-      fill="#ffffff"
+      fill={fillColor}
     />
   </svg>
+);
+
+// Evening Sunset: Silhouette Bird in Flight with Flapping Wings
+const SilhouetteBird = ({ width = 28, height = 15, style = {}, flapDuration = '0.8s' }) => (
+  <div style={{ ...style, display: 'inline-block' }}>
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 44 24"
+      fill="none"
+      style={{
+        filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.45))',
+        animation: `birdWingFlap ${flapDuration} ease-in-out infinite alternate`
+      }}
+    >
+      <path
+        d="M22 14 C16 7 8 4 0 8 C6 12 14 14 20 20 C21 21 23 21 24 20 C30 14 38 12 44 8 C36 4 28 7 22 14 Z"
+        fill="#12051d"
+      />
+    </svg>
+  </div>
+);
+
+// Night-time: Luminous 3D Crescent Moon with Atmospheric Halo
+const CrescentMoon = () => (
+  <div
+    className="omni-crescent-moon"
+    style={{
+      position: 'absolute',
+      top: '12%',
+      right: '16%',
+      width: '140px',
+      height: '140px',
+      pointerEvents: 'none',
+      zIndex: 2,
+      animation: 'moonGentlyFloat 9s ease-in-out infinite alternate'
+    }}
+  >
+    <svg width="140" height="140" viewBox="0 0 140 140" fill="none">
+      <defs>
+        <radialGradient id="moonGlowAura" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#bae6fd" stopOpacity="0.45" />
+          <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="moonSurface" x1="15%" y1="10%" x2="85%" y2="85%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="30%" stopColor="#f0f9ff" />
+          <stop offset="70%" stopColor="#e0f2fe" />
+          <stop offset="100%" stopColor="#bae6fd" />
+        </linearGradient>
+        <filter id="moonShadowFilter" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="0" stdDeviation="12" floodColor="#7dd3fc" floodOpacity="0.8" />
+          <feDropShadow dx="0" dy="0" stdDeviation="28" floodColor="#0284c7" floodOpacity="0.4" />
+        </filter>
+      </defs>
+
+      <circle cx="70" cy="70" r="68" fill="url(#moonGlowAura)" />
+      <path
+        d="M 70 16 A 54 54 0 1 0 124 88 A 47 47 0 1 1 70 16 Z"
+        fill="url(#moonSurface)"
+        filter="url(#moonShadowFilter)"
+      />
+      <circle cx="56" cy="50" r="5" fill="#7dd3fc" opacity="0.32" />
+      <circle cx="44" cy="72" r="6.5" fill="#38bdf8" opacity="0.25" />
+      <circle cx="72" cy="95" r="4.2" fill="#7dd3fc" opacity="0.28" />
+      <circle cx="38" cy="54" r="3.5" fill="#93c5fd" opacity="0.3" />
+      <circle cx="52" cy="85" r="4" fill="#60a5fa" opacity="0.22" />
+    </svg>
+  </div>
+);
+
+// 4-Point Twinkling Sparkle Star Component
+const SparkleStar = ({ size = 12, color = '#ffffff' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path
+      d="M12 0 C12 6.5 17.5 12 24 12 C17.5 12 12 17.5 12 24 C12 17.5 6.5 12 0 12 C6.5 12 12 6.5 12 0 Z"
+      fill={color}
+    />
+  </svg>
+);
+
+// Night-time Star Field Coordinates (Distributed & Varied)
+const NIGHT_STARS = [
+  { top: '8%', left: '12%', size: 3, delay: '0s', dur: '2.5s', sparkle: true },
+  { top: '15%', left: '25%', size: 2, delay: '1.2s', dur: '3.2s' },
+  { top: '6%', left: '42%', size: 4, delay: '0.5s', dur: '2.8s', sparkle: true },
+  { top: '22%', left: '55%', size: 2.5, delay: '1.8s', dur: '3.6s' },
+  { top: '10%', left: '68%', size: 3.5, delay: '0.2s', dur: '2.4s', sparkle: true },
+  { top: '28%', left: '82%', size: 2, delay: '2.1s', dur: '3.8s' },
+  { top: '18%', left: '92%', size: 2.5, delay: '1.4s', dur: '3.1s' },
+  { top: '35%', left: '18%', size: 2, delay: '0.7s', dur: '3.4s' },
+  { top: '42%', left: '6%', size: 3, delay: '1.9s', dur: '2.7s' },
+  { top: '48%', left: '28%', size: 1.5, delay: '2.5s', dur: '4s' },
+  { top: '65%', left: '14%', size: 3, delay: '0.9s', dur: '2.9s', sparkle: true },
+  { top: '78%', left: '22%', size: 2, delay: '1.6s', dur: '3.5s' },
+  { top: '85%', left: '8%', size: 2.5, delay: '0.3s', dur: '3.1s' },
+  { top: '72%', left: '88%', size: 3, delay: '1.1s', dur: '2.6s', sparkle: true },
+  { top: '84%', left: '76%', size: 2, delay: '2.3s', dur: '3.7s' },
+  { top: '62%', left: '94%', size: 2, delay: '1.7s', dur: '3.3s' },
+  { top: '45%', left: '85%', size: 2.5, delay: '0.4s', dur: '2.8s' },
+  { top: '12%', left: '32%', size: 1.5, delay: '2.8s', dur: '4.2s' },
+  { top: '25%', left: '48%', size: 2, delay: '1.3s', dur: '3.0s' },
+  { top: '32%', left: '62%', size: 3, delay: '0.8s', dur: '2.5s', sparkle: true },
+  { top: '5%', left: '78%', size: 2, delay: '2.0s', dur: '3.6s' },
+  { top: '16%', left: '86%', size: 1.5, delay: '1.5s', dur: '3.9s' },
+  { top: '38%', left: '95%', size: 2, delay: '0.6s', dur: '3.2s' },
+  { top: '55%', left: '80%', size: 3.5, delay: '1.0s', dur: '2.7s', sparkle: true },
+  { top: '68%', left: '70%', size: 2, delay: '2.2s', dur: '3.5s' },
+  { top: '88%', left: '60%', size: 1.5, delay: '0.9s', dur: '4.0s' },
+  { top: '92%', left: '40%', size: 2.5, delay: '1.8s', dur: '3.1s' },
+  { top: '80%', left: '32%', size: 2, delay: '2.6s', dur: '3.4s' },
+  { top: '58%', left: '22%', size: 1.5, delay: '1.2s', dur: '3.8s' },
+  { top: '29%', left: '10%', size: 2, delay: '0.5s', dur: '3.0s' }
+];
+
+// Night-time: Shooting Meteor Star Component
+const ShootingStar = ({ style = {} }) => (
+  <div
+    style={{
+      position: 'absolute',
+      height: '2px',
+      background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(186,230,253,0.8) 50%, #ffffff 100%)',
+      borderRadius: '999px',
+      boxShadow: '0 0 10px 2px rgba(224, 242, 254, 0.85)',
+      pointerEvents: 'none',
+      ...style
+    }}
+  />
 );
 
 export const LoginPage = () => {
@@ -228,7 +357,7 @@ export const LoginPage = () => {
       fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
     }}>
 
-      {/* Embedded CSS Animations for Cloud Drift, Sun Glow & Spinner */}
+      {/* Embedded CSS Animations for Cloud Drift, Sun Glow, Flying Birds & Night Sky */}
       <style>{`
         @keyframes cloudFloatLeftRight {
           0% {
@@ -281,6 +410,139 @@ export const LoginPage = () => {
         @keyframes omniButtonSpin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+
+        /* Evening: Flying Bird Wing Flap Animation */
+        @keyframes birdWingFlap {
+          0% {
+            transform: scaleY(1) rotate(0deg);
+          }
+          50% {
+            transform: scaleY(0.35) rotate(4deg);
+          }
+          100% {
+            transform: scaleY(-0.3) rotate(-3deg);
+          }
+        }
+
+        /* Evening: Flying Bird Horizon Traversal */
+        @keyframes birdFlyAcross1 {
+          0% {
+            transform: translate3d(-100px, 0, 0);
+          }
+          100% {
+            transform: translate3d(calc(100vw + 120px), -60px, 0);
+          }
+        }
+
+        @keyframes birdFlyAcross2 {
+          0% {
+            transform: translate3d(-120px, 15px, 0);
+          }
+          100% {
+            transform: translate3d(calc(100vw + 100px), -40px, 0);
+          }
+        }
+
+        @keyframes birdFlyAcross3 {
+          0% {
+            transform: translate3d(-140px, -15px, 0);
+          }
+          100% {
+            transform: translate3d(calc(100vw + 80px), -80px, 0);
+          }
+        }
+
+        /* Night: Floating Moon Animation */
+        @keyframes moonGentlyFloat {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+          50% {
+            transform: translate3d(-12px, -10px, 0) rotate(-3deg);
+          }
+          100% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+        }
+
+        /* Night: Cosmic Stars Drift Animation */
+        @keyframes starsCosmicDrift {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          50% {
+            transform: translate3d(24px, -12px, 0);
+          }
+          100% {
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        /* Night: Star Twinkling Animations */
+        @keyframes starTwinkleFast {
+          0%, 100% {
+            opacity: 0.25;
+            transform: scale(0.75);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.3);
+          }
+        }
+
+        @keyframes starTwinkleSlow {
+          0%, 100% {
+            opacity: 0.9;
+            transform: scale(1.2);
+          }
+          50% {
+            opacity: 0.2;
+            transform: scale(0.65);
+          }
+        }
+
+        /* Night: Shooting Stars */
+        @keyframes shootingStar1 {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(-35deg);
+            opacity: 0;
+            width: 0px;
+          }
+          2% {
+            opacity: 1;
+            width: 140px;
+          }
+          12% {
+            transform: translate3d(-400px, 280px, 0) rotate(-35deg);
+            opacity: 0;
+            width: 170px;
+          }
+          100% {
+            opacity: 0;
+            width: 0px;
+          }
+        }
+
+        @keyframes shootingStar2 {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(-38deg);
+            opacity: 0;
+            width: 0px;
+          }
+          2% {
+            opacity: 1;
+            width: 110px;
+          }
+          14% {
+            transform: translate3d(-340px, 240px, 0) rotate(-38deg);
+            opacity: 0;
+            width: 140px;
+          }
+          100% {
+            opacity: 0;
+            width: 0px;
+          }
         }
 
         .omni-cloud-1 {
@@ -354,60 +616,176 @@ export const LoginPage = () => {
         }
       `}</style>
 
-      {/* 1. CELESTIAL ORB (SUN / MOON WITH REALISTIC 3D GLOW) */}
-      <div 
-        className="omni-sun-orb"
-        style={{
-          position: 'absolute',
-          top: activeTheme.sunPosition.top,
-          right: activeTheme.sunPosition.right,
-          width: '140px',
-          height: '140px',
-          borderRadius: '50%',
-          background: activeTheme.sunGradient,
-          boxShadow: activeTheme.sunGlow,
-          pointerEvents: 'none',
-          zIndex: 1,
-          transition: 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)'
-        }}
-      />
+      {/* 1. CELESTIAL ORB (CRESCENT MOON IN NIGHT / SUN ORB IN DAY & SUNSET) */}
+      {activeTheme.isNight ? (
+        <CrescentMoon />
+      ) : (
+        <div 
+          className="omni-sun-orb"
+          style={{
+            position: 'absolute',
+            top: activeTheme.sunPosition.top,
+            right: activeTheme.sunPosition.right,
+            width: '140px',
+            height: '140px',
+            borderRadius: '50%',
+            background: activeTheme.sunGradient,
+            boxShadow: activeTheme.sunGlow,
+            pointerEvents: 'none',
+            zIndex: 1,
+            transition: 'all 1.5s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        />
+      )}
 
-      {/* Night-time Starry Particles */}
+      {/* Night-time Starry Sky with Twinkling, Drifting Stars & Shooting Stars */}
       {activeTheme.isNight && (
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-          <div style={{ position: 'absolute', top: '12%', left: '20%', width: 3, height: 3, background: '#ffffff', borderRadius: '50%', boxShadow: '0 0 6px #fff' }} />
-          <div style={{ position: 'absolute', top: '25%', left: '35%', width: 2, height: 2, background: '#ffffff', borderRadius: '50%', boxShadow: '0 0 4px #fff' }} />
-          <div style={{ position: 'absolute', top: '18%', left: '60%', width: 3, height: 3, background: '#ffffff', borderRadius: '50%', boxShadow: '0 0 6px #fff' }} />
-          <div style={{ position: 'absolute', top: '35%', left: '78%', width: 2, height: 2, background: '#ffffff', borderRadius: '50%', boxShadow: '0 0 4px #fff' }} />
-          <div style={{ position: 'absolute', top: '70%', left: '15%', width: 3, height: 3, background: '#ffffff', borderRadius: '50%', boxShadow: '0 0 5px #fff' }} />
+        <div className="omni-night-sky" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1, overflow: 'hidden' }}>
+          {/* Cosmic Nebula Glow */}
+          <div style={{
+            position: 'absolute',
+            top: '15%',
+            right: '25%',
+            width: '400px',
+            height: '400px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(14, 116, 144, 0.15) 0%, rgba(2, 6, 23, 0) 70%)',
+            filter: 'blur(35px)'
+          }} />
+
+          {/* Drifting Stars Layer */}
+          <div style={{ position: 'absolute', inset: 0, animation: 'starsCosmicDrift 28s ease-in-out infinite' }}>
+            {NIGHT_STARS.map((star, idx) => (
+              <div
+                key={idx}
+                style={{
+                  position: 'absolute',
+                  top: star.top,
+                  left: star.left,
+                  animation: `${idx % 2 === 0 ? 'starTwinkleFast' : 'starTwinkleSlow'} ${star.dur} ease-in-out infinite ${star.delay}`
+                }}
+              >
+                {star.sparkle ? (
+                  <SparkleStar size={star.size * 3.5} color="#ffffff" />
+                ) : (
+                  <div
+                    style={{
+                      width: star.size,
+                      height: star.size,
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      boxShadow: `0 0 ${star.size * 2.5}px ${star.size}px rgba(255, 255, 255, 0.9)`
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Shooting Stars */}
+          <div style={{ position: 'absolute', top: '12%', right: '28%', animation: 'shootingStar1 10s ease-out infinite' }}>
+            <ShootingStar />
+          </div>
+          <div style={{ position: 'absolute', top: '24%', right: '55%', animation: 'shootingStar2 14s ease-out infinite 5s' }}>
+            <ShootingStar />
+          </div>
         </div>
       )}
 
-      {/* 2. ANIMATED FLOATING CLOUDS ("jo esme white sky jaisa hai o edhar udhar jata aata rhata hai") */}
-      {/* Cloud 1: Bottom-Left (Identical to reference screenshot media_1789558964584.png) */}
-      <div style={{ position: 'absolute', bottom: '34%', left: '2%', zIndex: 1, pointerEvents: 'none' }}>
-        <FluffyCloud width={135} height={70} opacity={0.92} className="omni-cloud-1" />
-      </div>
+      {/* Evening Sunset: Flock of Flying Birds Traversal Across Sunset Horizon */}
+      {activeThemeKey === 'evening' && (
+        <div className="omni-evening-birds" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2, overflow: 'hidden' }}>
+          {/* Bird 1: Flock Leader */}
+          <div style={{ position: 'absolute', top: '16%', left: 0, animation: 'birdFlyAcross1 22s linear infinite' }}>
+            <SilhouetteBird width={30} height={16} flapDuration="0.75s" />
+          </div>
 
-      {/* Cloud 2: Top-Left Floating gently */}
-      <div style={{ position: 'absolute', top: '12%', left: '8%', zIndex: 1, pointerEvents: 'none' }}>
-        <FluffyCloud width={160} height={82} opacity={0.8} className="omni-cloud-2" />
-      </div>
+          {/* Bird 2: Wingman High */}
+          <div style={{ position: 'absolute', top: '13%', left: 0, animation: 'birdFlyAcross2 24s linear infinite 1.4s' }}>
+            <SilhouetteBird width={26} height={14} flapDuration="0.8s" />
+          </div>
 
-      {/* Cloud 3: Mid-Right floating near Sun */}
-      <div style={{ position: 'absolute', top: '28%', right: '7%', zIndex: 1, pointerEvents: 'none' }}>
-        <FluffyCloud width={145} height={74} opacity={0.75} className="omni-cloud-3" />
-      </div>
+          {/* Bird 3: Wingman Low */}
+          <div style={{ position: 'absolute', top: '20%', left: 0, animation: 'birdFlyAcross3 23s linear infinite 1.8s' }}>
+            <SilhouetteBird width={25} height={13} flapDuration="0.7s" />
+          </div>
 
-      {/* Cloud 4: Bottom-Right subtle ambient cloud */}
-      <div style={{ position: 'absolute', bottom: '12%', right: '14%', zIndex: 1, pointerEvents: 'none' }}>
-        <FluffyCloud width={150} height={76} opacity={0.82} className="omni-cloud-2" />
-      </div>
+          {/* Bird 4: Trail High */}
+          <div style={{ position: 'absolute', top: '11%', left: 0, animation: 'birdFlyAcross1 25s linear infinite 3.5s' }}>
+            <SilhouetteBird width={22} height={12} flapDuration="0.85s" />
+          </div>
 
-      {/* Cloud 5: Horizontal Drifter across the horizon */}
-      <div style={{ position: 'absolute', top: '48%', left: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <FluffyCloud width={180} height={90} opacity={0.5} className="omni-cloud-horizon" />
-      </div>
+          {/* Bird 5: Trail Low */}
+          <div style={{ position: 'absolute', top: '23%', left: 0, animation: 'birdFlyAcross2 26s linear infinite 3.8s' }}>
+            <SilhouetteBird width={23} height={12} flapDuration="0.9s" />
+          </div>
+
+          {/* Bird 6: Distant Lone Glider */}
+          <div style={{ position: 'absolute', top: '32%', left: 0, animation: 'birdFlyAcross3 29s linear infinite 8s' }}>
+            <SilhouetteBird width={19} height={10} flapDuration="1.1s" />
+          </div>
+        </div>
+      )}
+
+      {/* 2. ANIMATED FLOATING CLOUDS (Only during daylight and evening, hidden at night per user instruction!) */}
+      {!activeTheme.isNight && (
+        <>
+          {/* Cloud 1: Bottom-Left */}
+          <div style={{ position: 'absolute', bottom: '34%', left: '2%', zIndex: 1, pointerEvents: 'none' }}>
+            <FluffyCloud 
+              width={135} 
+              height={70} 
+              opacity={activeThemeKey === 'evening' ? 0.65 : 0.92} 
+              fillColor={activeThemeKey === 'evening' ? '#ea580c' : '#ffffff'}
+              className="omni-cloud-1" 
+            />
+          </div>
+
+          {/* Cloud 2: Top-Left Floating gently */}
+          <div style={{ position: 'absolute', top: '12%', left: '8%', zIndex: 1, pointerEvents: 'none' }}>
+            <FluffyCloud 
+              width={160} 
+              height={82} 
+              opacity={activeThemeKey === 'evening' ? 0.55 : 0.8} 
+              fillColor={activeThemeKey === 'evening' ? '#c2410c' : '#ffffff'}
+              className="omni-cloud-2" 
+            />
+          </div>
+
+          {/* Cloud 3: Mid-Right floating near Sun */}
+          <div style={{ position: 'absolute', top: '28%', right: '7%', zIndex: 1, pointerEvents: 'none' }}>
+            <FluffyCloud 
+              width={145} 
+              height={74} 
+              opacity={activeThemeKey === 'evening' ? 0.6 : 0.75} 
+              fillColor={activeThemeKey === 'evening' ? '#9a3412' : '#ffffff'}
+              className="omni-cloud-3" 
+            />
+          </div>
+
+          {/* Cloud 4: Bottom-Right subtle ambient cloud */}
+          <div style={{ position: 'absolute', bottom: '12%', right: '14%', zIndex: 1, pointerEvents: 'none' }}>
+            <FluffyCloud 
+              width={150} 
+              height={76} 
+              opacity={activeThemeKey === 'evening' ? 0.55 : 0.82} 
+              fillColor={activeThemeKey === 'evening' ? '#c2410c' : '#ffffff'}
+              className="omni-cloud-2" 
+            />
+          </div>
+
+          {/* Cloud 5: Horizontal Drifter across the horizon */}
+          <div style={{ position: 'absolute', top: '48%', left: 0, zIndex: 0, pointerEvents: 'none' }}>
+            <FluffyCloud 
+              width={180} 
+              height={90} 
+              opacity={activeThemeKey === 'evening' ? 0.35 : 0.5} 
+              fillColor={activeThemeKey === 'evening' ? '#7c1846' : '#ffffff'}
+              className="omni-cloud-horizon" 
+            />
+          </div>
+        </>
+      )}
 
       {/* 3. CENTER DUAL-PANEL LOGIN CARD (MATCHING EXACT OMNIDIGITAL GEOMETRY) */}
       <div className="omni-login-card" style={{
