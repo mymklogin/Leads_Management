@@ -51,7 +51,7 @@ export function IpSecurityPage() {
   const fetchPolicy = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://127.0.0.1:5108/api/ResellerConnectivity/security-policy');
+      const res = await axios.get('/api/ResellerConnectivity/security-policy');
       if (res.data.success) {
         setPolicyConfig(res.data.policy);
         setPolicyForm({
@@ -76,7 +76,7 @@ export function IpSecurityPage() {
         ...policyConfig,
         ...policyForm
       };
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/security-policy', updated);
+      const res = await axios.post('/api/ResellerConnectivity/security-policy', updated);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchPolicy();
@@ -120,7 +120,7 @@ export function IpSecurityPage() {
     e.preventDefault();
     try {
       setSaveError('');
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/whitelisted-ips', ipForm);
+      const res = await axios.post('/api/ResellerConnectivity/whitelisted-ips', ipForm);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowIpModal(false);
@@ -135,7 +135,7 @@ export function IpSecurityPage() {
   const handleDeleteIp = async (id, ipAddr) => {
     if (!window.confirm(`Remove whitelisted IP '${ipAddr}'?`)) return;
     try {
-      const res = await axios.delete(`http://127.0.0.1:5108/api/ResellerConnectivity/whitelisted-ips/${id}`);
+      const res = await axios.delete(`/api/ResellerConnectivity/whitelisted-ips/${id}`);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchPolicy();
@@ -163,7 +163,7 @@ export function IpSecurityPage() {
     e.preventDefault();
     try {
       setSaveError('');
-      const res = await axios.post('http://127.0.0.1:5108/api/ResellerConnectivity/whitelisted-domains', domainForm);
+      const res = await axios.post('/api/ResellerConnectivity/whitelisted-domains', domainForm);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         setShowDomainModal(false);
@@ -178,7 +178,7 @@ export function IpSecurityPage() {
   const handleDeleteDomain = async (id, domUrl) => {
     if (!window.confirm(`Remove whitelisted domain '${domUrl}'?`)) return;
     try {
-      const res = await axios.delete(`http://127.0.0.1:5108/api/ResellerConnectivity/whitelisted-domains/${id}`);
+      const res = await axios.delete(`/api/ResellerConnectivity/whitelisted-domains/${id}`);
       if (res.data.success) {
         setSaveSuccess(res.data.message);
         fetchPolicy();
