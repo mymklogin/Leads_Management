@@ -167,19 +167,25 @@ const DEFAULT_MENU_TREE = [
     menuKey: 'RCS_SUITE',
     routePath: '/rcs',
     icon: 'MessageSquare',
-    sortOrder: 4,
+    sortOrder: 2,
     isActive: true,
     subMenus: [
+      /*
+      // --- COMMENTED OUT: NOT IN SCREENSHOT ---
       { id: 'sub-rcs-dash', parentId: 'menu-rcs', title: 'Dashboard', menuKey: 'RCS_DASHBOARD', routePath: '/dashboard', icon: 'Gauge', sortOrder: 1, isActive: true },
-      { id: 'sub-rcs-bots', parentId: 'menu-rcs', title: 'Manage Bots / Bot ID', menuKey: 'RCS_BOTS', routePath: '/rcs/bots', icon: 'Bot', sortOrder: 2, isActive: true },
-      { id: 'sub-rcs-tpl', parentId: 'menu-rcs', title: 'Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 3, isActive: true },
-      { id: 'sub-rcs-create', parentId: 'menu-rcs', title: 'Create Campaign', menuKey: 'RCS_CAMPAIGNS', routePath: '/rcs/campaign', icon: 'PlusCircle', sortOrder: 4, isActive: true },
-      { id: 'sub-rcs-multi', parentId: 'menu-rcs', title: 'Multi Schedule Campaign', menuKey: 'RCS_MULTI_SCHEDULE', routePath: '/rcs/multi-schedule', icon: 'Calendar', sortOrder: 5, isActive: true },
+      */
+      { id: 'sub-rcs-bots', parentId: 'menu-rcs', title: 'Manage Bots / Bot ID', menuKey: 'RCS_BOTS', routePath: '/rcs/bots', icon: 'Bot', sortOrder: 1, isActive: true },
+      { id: 'sub-rcs-tpl', parentId: 'menu-rcs', title: 'RCS Templates', menuKey: 'RCS_TEMPLATES', routePath: '/rcs/templates', icon: 'FileCode', sortOrder: 2, isActive: true },
+      { id: 'sub-rcs-create', parentId: 'menu-rcs', title: 'Create Campaign', menuKey: 'RCS_CAMPAIGNS', routePath: '/rcs/campaign', icon: 'PlusCircle', sortOrder: 3, isActive: true },
+      { id: 'sub-rcs-multi', parentId: 'menu-rcs', title: 'Multi Schedule Campaign', menuKey: 'RCS_MULTI_SCHEDULE', routePath: '/rcs/multi-schedule', icon: 'Calendar', sortOrder: 4, isActive: true },
+      { id: 'sub-rcs-chat', parentId: 'menu-rcs', title: 'Live RCS Chat', menuKey: 'RCS_CHAT', routePath: '/rcs/chat', icon: 'MessageSquare', sortOrder: 5, isActive: true }
+      /*
+      // --- COMMENTED OUT: NOT IN SCREENSHOT ---
       { id: 'sub-rcs-rep', parentId: 'menu-rcs', title: 'Campaign Report', menuKey: 'RCS_REPORTS', routePath: '/rcs/reports', icon: 'BarChart3', sortOrder: 6, isActive: true },
       { id: 'sub-rcs-mis', parentId: 'menu-rcs', title: 'MIS Report', menuKey: 'RCS_MIS_REPORT', routePath: '/rcs-mis', icon: 'PieChart', sortOrder: 7, isActive: true },
-      { id: 'sub-rcs-chat', parentId: 'menu-rcs', title: 'RCS Chat', menuKey: 'RCS_CHAT', routePath: '/rcs/chat', icon: 'MessageSquare', sortOrder: 8, isActive: true },
       { id: 'sub-rcs-cons', parentId: 'menu-rcs', title: 'Consolidate Report', menuKey: 'RCS_CONSOLIDATE_REPORT', routePath: '/rcs/consolidate-report', icon: 'Database', sortOrder: 9, isActive: true },
       { id: 'sub-rcs-doc', parentId: 'menu-rcs', title: 'API Documentation', menuKey: 'RCS_API_DOC', routePath: '/rcs/api-doc', icon: 'BookOpen', sortOrder: 10, isActive: true }
+      */
     ]
   },
   {
@@ -188,7 +194,7 @@ const DEFAULT_MENU_TREE = [
     menuKey: 'TELCO_GATEWAY',
     routePath: '/gateway',
     icon: 'Zap',
-    sortOrder: 5,
+    sortOrder: 3,
     isActive: true,
     badgeText: 'TELCO SMPP',
     badgeColor: '#16a34a',
@@ -204,7 +210,7 @@ const DEFAULT_MENU_TREE = [
     menuKey: 'REPORTS_SUITE',
     routePath: '/reports',
     icon: 'TrendingUp',
-    sortOrder: 6,
+    sortOrder: 4,
     isActive: true,
     subMenus: [
       { id: 'sub-rep-delivery', parentId: 'menu-reports', title: 'Delivery Report', menuKey: 'RCS_REPORTS', routePath: '/rcs/reports', icon: 'CheckCircle2', sortOrder: 1, isActive: true },
@@ -220,7 +226,7 @@ const DEFAULT_MENU_TREE = [
     menuKey: 'MANAGE_ADMIN',
     routePath: '/manage',
     icon: 'Settings',
-    sortOrder: 7,
+    sortOrder: 5,
     isActive: true,
     subMenus: [
       { id: 'sub-mng-leads', parentId: 'menu-manage', title: 'Leads CRM', menuKey: 'LEADS_CRM', routePath: '/leads', icon: 'Users', sortOrder: 1, isActive: true, badgeText: 'AI LEADS', badgeColor: '#0284c7' },
@@ -229,6 +235,8 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-mng-builder', parentId: 'menu-manage', title: 'Dynamic Menu & Submenu Management', menuKey: 'MENU_BUILDER', routePath: '/menu-builder', icon: 'Sliders', sortOrder: 4, isActive: true }
     ]
   },
+  /*
+  // --- COMMENTED OUT: RESELLER (NOT IN SCREENSHOT) ---
   {
     id: 'menu-reseller',
     title: 'RESELLER',
@@ -243,18 +251,22 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-res-users', parentId: 'menu-reseller', title: 'Reseller Management', menuKey: 'USER_MANAGEMENT', routePath: '/user-management', icon: 'Users', sortOrder: 3, isActive: true }
     ]
   },
+  // ---------------------------------------------------
+  */
   {
     id: 'menu-http',
     title: 'HTTP API',
     menuKey: 'HTTP_API_DOCS',
     routePath: '/api-docs',
     icon: 'Code',
-    sortOrder: 9,
+    sortOrder: 6,
     isActive: true,
     subMenus: [
       { id: 'sub-api-doc', parentId: 'menu-http', title: 'REST API Documentation', menuKey: 'RCS_API_DOC', routePath: '/rcs/api-doc', icon: 'BookOpen', sortOrder: 1, isActive: true }
     ]
   },
+  /*
+  // --- COMMENTED OUT: TWO FACTOR AUTHENTICATION (NOT IN SCREENSHOT) ---
   {
     id: 'menu-2fa',
     title: 'TWO FACTOR AUTHENTICATION',
@@ -268,6 +280,7 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-sec-otp', parentId: 'menu-2fa', title: 'Two Factor Authentication', menuKey: 'TWO_FACTOR_AUTH', routePath: '/security/2fa', icon: 'Key', sortOrder: 2, isActive: true }
     ]
   },
+  // --- COMMENTED OUT: JSON API (NOT IN SCREENSHOT) ---
   {
     id: 'menu-json',
     title: 'JSON API',
@@ -280,6 +293,7 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-json-spec', parentId: 'menu-json', title: 'JSON Webhook & Payload API', menuKey: 'RCS_API_DOC', routePath: '/json-api', icon: 'FileCode', sortOrder: 1, isActive: true }
     ]
   },
+  // --- COMMENTED OUT: UTILITIES (NOT IN SCREENSHOT) ---
   {
     id: 'menu-util',
     title: 'UTILITIES',
@@ -292,13 +306,15 @@ const DEFAULT_MENU_TREE = [
       { id: 'sub-util-ping', parentId: 'menu-util', title: 'SMPP & IP Ping Diagnostics', menuKey: 'IP_SECURITY', routePath: '/utilities/ping', icon: 'Sliders', sortOrder: 1, isActive: true }
     ]
   },
+  // ---------------------------------------------------
+  */
   {
     id: 'menu-help',
     title: 'HELP DESK',
     menuKey: 'HELP_DESK',
     routePath: '/help',
     icon: 'HelpCircle',
-    sortOrder: 13,
+    sortOrder: 7,
     isActive: true,
     subMenus: [
       { id: 'sub-help-support', parentId: 'menu-help', title: 'Support Tickets', menuKey: 'SUPPORT_TICKETS', routePath: '/support', icon: 'HelpCircle', sortOrder: 1, isActive: true }
@@ -316,17 +332,42 @@ export const Sidebar = ({ activeTab, onSelectTab }) => {
 
   const companyTitle = branding?.companyName || 'SAAS';
 
+  // Allowed menus matching exact dashboard layout
+  const ALLOWED_PARENT_IDS = new Set([
+    'menu-dash',
+    'menu-rcs',
+    'menu-telco',
+    'menu-reports',
+    'menu-manage',
+    'menu-http',
+    'menu-help'
+  ]);
+
+  const ALLOWED_RCS_SUB_KEYS = new Set([
+    'RCS_BOTS',
+    'RCS_TEMPLATES',
+    'RCS_CAMPAIGNS',
+    'RCS_MULTI_SCHEDULE',
+    'RCS_CHAT'
+  ]);
+
   // Fetch dynamic menus from Backend API
   const loadMenus = async () => {
     try {
       const res = await api.get('/DynamicMenus/tree');
       if (res.data?.success && Array.isArray(res.data.menus) && res.data.menus.length > 0) {
         const activeTree = res.data.menus
-          .filter(m => m.isActive !== false && m.IsActive !== false && m.id !== 'menu-smsbox' && m.id !== 'menu-clicker' && m.menuKey !== 'SMS_BOX' && m.menuKey !== 'CLICKER')
-          .map(m => ({
-            ...m,
-            subMenus: (m.subMenus || m.SubMenus || []).filter(s => s.isActive !== false && s.IsActive !== false)
-          }));
+          .filter(m => m.isActive !== false && m.IsActive !== false && ALLOWED_PARENT_IDS.has(m.id || m.Id))
+          .map(m => {
+            let subs = (m.subMenus || m.SubMenus || []).filter(s => s.isActive !== false && s.IsActive !== false);
+            if ((m.id || m.Id) === 'menu-rcs') {
+              subs = subs.filter(s => ALLOWED_RCS_SUB_KEYS.has(s.menuKey || s.MenuKey));
+            }
+            return {
+              ...m,
+              subMenus: subs
+            };
+          });
         setMenus(activeTree);
       }
     } catch (err) {
