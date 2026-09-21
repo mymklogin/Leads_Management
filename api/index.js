@@ -212,7 +212,7 @@ async function handler(req, res) {
       }
 
       const pool = getPool();
-      const campRes = await pool.query(`SELECT * FROM rcs_campaigns ORDER BY campaign_id DESC LIMIT 100;`);
+      const campRes = await pool.query(`SELECT * FROM rcs_campaigns ORDER BY created_at DESC, id DESC LIMIT 100;`);
       const campaigns = campRes.rows.map(c => {
         const postDate = toIstString(c.created_at);
         return {
@@ -575,14 +575,17 @@ async function handler(req, res) {
       // Immediately invalidate cache so fresh dispatch reflects everywhere
       invalidateCaches();
 
+      const recipientCount = Array.isArray(body.MobileNumbers) ? body.MobileNumbers.length : 1;
+
       return res.status(200).json({
         status: "OK",
         Status: "OK",
         ok: true,
         response: {
           campaignId: newCampId,
-          message: "Campaign dispatched successfully via OmniDigital Live Gateway & synced with Neon DB",
-          totalRecipients: 1
+          message: `Campaign created successfully. ID: ${newCampId}, Recipients: ${recipientCount}`,
+          totalRecipients: recipientCount,
+          totalMobiles: recipientCount
         }
       });
     }
