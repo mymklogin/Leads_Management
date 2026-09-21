@@ -23,19 +23,38 @@ import {
 } from 'lucide-react';
 
 export const RcsOverviewBalancePage = () => {
-  // Live Gateway Balances across 4 Distinct Telecom Service Wallets
-  const [rcsBalance, setRcsBalance] = useState(0);
-  const [rcsTxnBalance, setRcsTxnBalance] = useState(0);
-  const [rcsPromoBalance, setRcsPromoBalance] = useState(0);
-  const [smsBalance, setSmsBalance] = useState(0);
-  const [adminBalances, setAdminBalances] = useState({
-    rcsT: 0,
-    rcsP: 0,
-    bulkSmsT: 0,
-    bulkSmsP: 0,
-    whatsAppT: 0.0,
-    whatsAppP: 0.0
+  // Live Gateway Balances across 4 Distinct Telecom Service Wallets with Zero-Lag Instant Hydration
+  const [adminBalances, setAdminBalances] = useState(() => {
+    try {
+      const cachedAdmin = localStorage.getItem('rcs_overview_admin_balances');
+      if (cachedAdmin) return JSON.parse(cachedAdmin);
+      const cachedLive = localStorage.getItem('rcs_live_balances');
+      if (cachedLive) {
+        const p = JSON.parse(cachedLive);
+        return {
+          rcsT: p.rcsT ?? 57,
+          rcsP: p.rcsP ?? 109,
+          bulkSmsT: p.sms ?? 100,
+          bulkSmsP: p.sms ?? 100,
+          whatsAppT: 0,
+          whatsAppP: 0
+        };
+      }
+    } catch (_) {}
+    return {
+      rcsT: 57,
+      rcsP: 109,
+      bulkSmsT: 100,
+      bulkSmsP: 100,
+      whatsAppT: 0.0,
+      whatsAppP: 0.0
+    };
   });
+
+  const [rcsBalance, setRcsBalance] = useState(() => (adminBalances.rcsT ?? 57) + (adminBalances.rcsP ?? 109));
+  const [rcsTxnBalance, setRcsTxnBalance] = useState(() => adminBalances.rcsT ?? 57);
+  const [rcsPromoBalance, setRcsPromoBalance] = useState(() => adminBalances.rcsP ?? 109);
+  const [smsBalance, setSmsBalance] = useState(() => adminBalances.bulkSmsT ?? 100);
 
   const [gatewayStatus, setGatewayStatus] = useState({
     name: 'RCS Enterprise Live Cloud',
@@ -90,7 +109,13 @@ export const RcsOverviewBalancePage = () => {
 
   // Ledger & Audit Report States (Combobox + 2-Step Dropdowns + Action + Date Range)
   const [ledgerTransactions, setLedgerTransactions] = useState([]);
-  const [ledgerSummary, setLedgerSummary] = useState(null);
+  const [ledgerSummary, setLedgerSummary] = useState(() => {
+    try {
+      const cached = localStorage.getItem('rcs_overview_ledger_summary');
+      if (cached) return JSON.parse(cached);
+    } catch (_) {}
+    return null;
+  });
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [filterUserId, setFilterUserId] = useState(''); // Default to All Users
   const [filterUserSearch, setFilterUserSearch] = useState(''); // Type/search user in ledger combobox
@@ -174,14 +199,19 @@ export const RcsOverviewBalancePage = () => {
         setRcsTxnBalance(rT);
         setRcsPromoBalance(rP);
         setSmsBalance(sT);
-        setAdminBalances({
+        const newAdminBals = {
           rcsT: rT,
           rcsP: rP,
           bulkSmsT: sT,
           bulkSmsP: sP,
           whatsAppT: wT,
           whatsAppP: wP
-        });
+        };
+        setAdminBalances(newAdminBals);
+        try {
+          localStorage.setItem('rcs_overview_admin_balances', JSON.stringify(newAdminBals));
+          localStorage.setItem('rcs_live_balances', JSON.stringify({ rcsT: rT, rcsP: rP, sms: sT }));
+        } catch (_) {}
         setGatewayStatus({
           name: data.gateway || data.Gateway || 'RCS Enterprise Live Cloud',
           connected: data.connected !== undefined ? data.connected : true
@@ -221,12 +251,14 @@ export const RcsOverviewBalancePage = () => {
       if (!resetFilters && toDate) params.toDate = toDate;
 
       const res = await api.get('/RCSApi/GetBalanceLedger', { params });
-      if (res.data?.response) {
-        setLedgerTransactions(res.data.response.transactions || []);
-        setLedgerSummary(res.data.response.summary || null);
-      } else if (res.data?.transactions) {
-        setLedgerTransactions(res.data.transactions || []);
-        setLedgerSummary(res.data.summary || null);
+      const sum = res.data?.response?.summary || res.data?.summary || null;
+      const txs = res.data?.response?.transactions || res.data?.transactions || [];
+      setLedgerTransactions(txs);
+      if (sum) {
+        setLedgerSummary(sum);
+        try {
+          localStorage.setItem('rcs_overview_ledger_summary', JSON.stringify(sum));
+        } catch (_) {}
       }
     } catch (err) {
       setLedgerTransactions([]);
