@@ -620,12 +620,99 @@ async function handler(req, res) {
     // 11. GATEWAY SETTINGS API
     if (url.includes('Settings/gateway-config') || url.includes('gateway-config')) {
       return res.status(200).json({
-        gatewayName: "OmniDigital Telecom Cloud",
-        baseUrl: "https://omnidigital.co.in/api/RCSApi",
-        activeApiKey: omniApiKey,
-        supportEmail: "Abhishaarod@rcsflow.io",
-        supportPhone: "+91 9170304221",
-        connected: true
+        success: true,
+        gateway: {
+          provider: "OmniDigital Telecom Cloud (Primary)",
+          baseUrl: "https://omnidigital.co.in/api/RCSApi",
+          apiKey: omniApiKey,
+          defaultBotId: "3c4fa9a066274cd2",
+          defaultBotName: "PBG INFO",
+          defaultTemplateId: "YCSLPB_vg",
+          defaultMobile: "9170304221",
+          rcsTRate: 0.20,
+          rcsPRate: 0.20,
+          bulkSmsRate: 0.15,
+          voiceRate: 0.30,
+          whatsappRate: 0.40,
+          dlrWebhookUrl: "https://leads-management-gamma.vercel.app/api/RCSApi/DeliveryReportCallback",
+          chatReplyWebhookUrl: "https://leads-management-gamma.vercel.app/api/RCSApi/CustomerReplyCallback"
+        },
+        voice: {
+          provider: "ExpressIVR Enterprise OBD",
+          apiUrl: "http://localhost:2014",
+          apiKey: "YOUR_VOICE_PANEL_API_KEY",
+          defaultUserId: 50002,
+          defaultCli: "9999900119",
+          webhookBaseUrl: "https://leads-management-gamma.vercel.app",
+          countryCode: "91",
+          defaultSmsConfigJson: "{}"
+        },
+        branding: {
+          companyName: "SAAS",
+          brandLogoUrl: "",
+          webDomain: "https://leads-management-gamma.vercel.app",
+          apiDomain: "https://leads-management-gamma.vercel.app/api",
+          supportEmail: "Abhishaarod@rcsflow.io",
+          supportPhone: "+91 9170304221",
+          termsUrl: "/terms",
+          privacyUrl: "/privacy"
+        },
+        savedProviders: [
+          {
+            id: "gw-omni-primary",
+            name: "OmniDigital Telecom Cloud (Primary)",
+            channel: "RCS",
+            baseUrl: "https://omnidigital.co.in/api/RCSApi",
+            apiKey: omniApiKey,
+            defaultBotId: "3c4fa9a066274cd2",
+            defaultBotName: "PBG INFO",
+            defaultTemplateId: "YCSLPB_vg",
+            senderId: "PBGINF",
+            dltEntityId: "100155239482718",
+            isActive: true
+          },
+          {
+            id: "gw-tanla",
+            name: "Tanla Telecom Carrier Hub",
+            channel: "RCS",
+            baseUrl: "https://api.tanla.com/rcs/v1",
+            apiKey: "TANLA_MASTER_SECURE_KEY_88291",
+            senderId: "TNLACO",
+            dltEntityId: "100144928172635",
+            isActive: false
+          },
+          {
+            id: "gw-fast2sms",
+            name: "Fast2SMS DLT Gateway",
+            channel: "SMS",
+            baseUrl: "https://www.fast2sms.com/dev/bulkV2",
+            apiKey: "FAST2SMS_DLT_KEY_91823",
+            senderId: "SMSALERT",
+            dltEntityId: "100133827162534",
+            isActive: true
+          }
+        ]
+      });
+    }
+
+    // 12. MASTER DATA API
+    if (url.includes('MasterData/roles')) {
+      return res.status(200).json({
+        data: [
+          { id: 1, roleName: 'SuperAdmin', roleCode: 'SUPER_ADMIN', description: 'Complete system control & billing', isSystemRole: true },
+          { id: 2, roleName: 'Reseller', roleCode: 'RESELLER', description: 'White-label reseller with sub-client allocation', isSystemRole: true },
+          { id: 3, roleName: 'Client', roleCode: 'CLIENT', description: 'Enterprise messaging & campaign user', isSystemRole: true }
+        ]
+      });
+    }
+
+    if (url.includes('MasterData/template-types')) {
+      return res.status(200).json({
+        data: [
+          { id: 1, typeCode: 'PlainText', displayName: 'Text Message', channelType: 'RCS', description: 'Standard text with chip suggestions', isActive: true },
+          { id: 2, typeCode: 'RichCard', displayName: 'Standalone Rich Card', channelType: 'RCS', description: 'Hero image/video with title & buttons', isActive: true },
+          { id: 3, typeCode: 'Carousel', displayName: 'Multi-Card Carousel', channelType: 'RCS', description: 'Horizontal swipeable product catalog', isActive: true }
+        ]
       });
     }
 
