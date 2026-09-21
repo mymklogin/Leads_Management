@@ -68,7 +68,7 @@ export function MenuManagementPage() {
   const fetchTree = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://127.0.0.1:5108/api/DynamicMenus/tree');
+      const res = await axios.get('/api/DynamicMenus/tree');
       if (res.data.success) {
         setMenus(res.data.menus || []);
         // Expand all parents by default for easy visual editing
@@ -269,7 +269,7 @@ export function MenuManagementPage() {
     try {
       setSaving(true);
       setSaveError('');
-      const res = await axios.post('http://127.0.0.1:5108/api/DynamicMenus/save-tree', {
+      const res = await axios.post('/api/DynamicMenus/save-tree', {
         menus: menus
       });
 
@@ -291,7 +291,7 @@ export function MenuManagementPage() {
     if (!window.confirm('Reset all menus and submenus to standard telecom defaults? Any custom menus will be reset.')) return;
     try {
       setLoading(true);
-      const res = await axios.post('http://127.0.0.1:5108/api/DynamicMenus/reset-defaults');
+      const res = await axios.post('/api/DynamicMenus/reset-defaults');
       if (res.data.success) {
         setMenus(res.data.menus || []);
         window.dispatchEvent(new Event('lead_mgmt_menus_updated'));
