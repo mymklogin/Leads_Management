@@ -138,7 +138,7 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
     return str.slice(0, 10);
   };
 
-  // Filtered campaigns according to applied filters
+  // Filtered campaigns according to applied filters, sorted with latest delivered on top
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter(camp => {
       // Bot filter
@@ -154,6 +154,12 @@ export const RcsDeliveryReportsPage = ({ onNavigateToCampaign }) => {
         return false;
       }
       return true;
+    }).sort((a, b) => {
+      // Sort newest / latest delivered at the very top (e.g. 22:32 before 22:30)
+      const timeA = new Date(a.postDateTime ? a.postDateTime.replace(' ', 'T') : 0).getTime();
+      const timeB = new Date(b.postDateTime ? b.postDateTime.replace(' ', 'T') : 0).getTime();
+      if (timeB !== timeA) return timeB - timeA;
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
     });
   }, [campaigns, appliedFilters]);
 
